@@ -1,9 +1,9 @@
 /**
- * <metis-improvement> — "Miglioramento": where Hestia does worse according to your grades (weak domains,
+ * <metis-improvement> — "Improvement": where Hestia does worse according to your grades (weak domains,
  * labels, examples), the datasets built from them and the LoRA training jobs (planned in the agenda window,
  * running, finished). Building a dataset or starting a training stays a chat / agenda action.
  * Training dataset (docs/work/2026-10-30-training-dataset): saved turns and «Da rivedere», the nightly
- * corrections that wait for you (Accetta / Scarta / Correggi with your own answer) and «Esporta», the JSONL zip
+ * corrections that wait for you (Accept / Discard / Correct with your own answer) and «Export», the JSONL zip
  * to download, with names and contacts hidden (default) or in clear: the owner picks at each export.
  * SPEC docs/work/2026-10-18-core-modules-and-external-mcp §A2. Every path is under the api_prefix /api/metis/.
  */
@@ -116,7 +116,7 @@ export class MetisImprovement extends HestiaElement {
 
   private async exportNow(clear: boolean) {
     this.busy = clear ? 'export-clear' : 'export';
-    const r = await this.host.api('POST', `${API}/export`, { body: { in_chiaro: clear } });
+    const r = await this.host.api('POST', `${API}/export`, { body: { plain: clear } });
     this.busy = '';
     if (!r.ok) { this.host.toast(r.error || tr('Export failed'), 'danger'); return; }
     await this.download(r.data.id);
@@ -142,7 +142,7 @@ export class MetisImprovement extends HestiaElement {
           @click=${() => this.exportNow(false)}>${tr("Download masked")}</hxk-button>
         <hxk-button variant="ghost" icon="download" ?loading=${this.busy === 'export-clear'}
           @click=${() => this.exportNow(true)}>${tr("Download in clear")}</hxk-button></div>
-      <p class="note">${tr("Masked: names of people, emails, phones, IBANs and addresses become <PERSONA_1>… In clear: the real data, don't share the file. The turns reviewed and kept or corrected are included.")}</p>
+      <p class="note">${tr("Masked: names of people, emails, phones, IBANs and addresses become <PERSON_1>… In clear: the real data, don't share the file. The turns reviewed and kept or corrected are included.")}</p>
       ${list.map((e: any) => html`<div class="item">
         <div class="top"><div class="grow"><b>${when(e.created_at)}</b>
           <span class="small muted"> · ${e.sft ?? 0} ${tr("examples ·")} ${e.eval ?? 0} ${tr("trial ·")} ${e.dpo ?? 0} ${tr("pairs")}</span></div>

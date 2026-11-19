@@ -86,12 +86,12 @@ def test_remembers_the_last_days_and_whether_he_answered(monkeypatch):
             {"id": "a", "day": "2026-11-10", "text": "Hai mangiato?", "answered": True,
              "at": (NOW - timedelta(days=2)).isoformat()}]
     history = {"days": [{"date": "2026-11-10", "mood_word": "bene"},
-                        {"date": "2026-11-11", "mood_word": "giù", "stress": 4, "causes": ["lavoro"]},
+                        {"date": "2026-11-11", "mood_word": "giù", "stress": 4, "causes": ["work"]},
                         {"date": local_day(NOW), "mood_word": "così così"}]}
     talk, calls = _talk(monkeypatch, sent=sent, idle=30 * 3600, routes={"psyche": (200, history)})
     state = talk.weigh(NOW)
     assert state["unanswered"] == 1                                 # 20 hours and he never wrote after it
-    assert "2026-11-11: they felt giù, stress 4/5 (because of lavoro)" in state["past"]
+    assert "2026-11-11: they felt giù, stress 4/5 (because of work)" in state["past"]
     assert "2026-11-11: you wrote «Com'è andata dal medico?» (no answer)" in state["past"]
     assert "2026-11-10: you wrote «Hai mangiato?» (they answered)" in state["past"]
     assert any("do not insist" in line for line in state["past"])
@@ -124,13 +124,13 @@ def test_daily_limit_and_pause_between_two_messages(monkeypatch):
 
 def test_sends_what_oracle_wrote_through_hermes_and_keeps_it(monkeypatch):
     talk, calls = _talk(monkeypatch, routes={
-        "psyche": (200, {"summary": {"mood_word": "giù", "energy": 2, "causes": ["lavoro"]}}),
+        "psyche": (200, {"summary": {"mood_word": "giù", "energy": 2, "causes": ["work"]}}),
         "oracle": (200, {"text": "Giornata pesante al lavoro?"})})
     out = talk.run("t1")
     assert out["status"] == "sent" and out["text"] == "Giornata pesante al lavoro?"
     by = {c[0]: c for c in calls}
     assert by["oracle"][1] == "api/chat/opener"
-    assert by["oracle"][2]["reasons"] == ["How they feel today: giù, energy 2/5 (because of lavoro)",
+    assert by["oracle"][2]["reasons"] == ["How they feel today: giù, energy 2/5 (because of work)",
                                           "Training: Nessun allenamento da 9 giorni",
                                           "You two have not talked for about 30 hours"]
     event = by["hermes"][2]
@@ -187,10 +187,10 @@ def test_write_now_and_history_endpoints():
     with patch("requests.post"), patch("requests.get"), patch("requests.Session"):
         import app.main as main
     http = TestClient(main.app)
-    with patch.object(main.runtime, "talk_now", return_value={"status": "started", "track": "parla"}) as now:
-        assert http.post("/api/athena/think", params={"track": "parla"}).json()["track"] == "parla"
+    with patch.object(main.runtime, "talk_now", return_value={"status": "started", "track": "talk"}) as now:
+        assert http.post("/api/athena/think", params={"track": "talk"}).json()["track"] == "talk"
         now.assert_called_once()
-    row = {"id": "1", "text": "Ehi.", "reasons": ["How they feel today: giù, energy 2/5 (because of lavoro)"], "x": 1}
+    row = {"id": "1", "text": "Ehi.", "reasons": ["How they feel today: giù, energy 2/5 (because of work)"], "x": 1}
     state = {"drive": 0.4, "bar": 0.5, "wants": False, "past": ["hidden"],
              "reasons": ["You two have not talked for about 30 hours"]}
     with patch.object(main.runtime.talk, "recent", return_value=[row]), \

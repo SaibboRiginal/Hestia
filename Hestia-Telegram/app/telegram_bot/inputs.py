@@ -11,7 +11,7 @@ import re
 from dataclasses import dataclass, field
 from datetime import date, datetime, timedelta
 from typing import Any
-from hestia_common.i18n import t as tr  # fixed texts in the owner's language
+from hestia_common.i18n import is_yes, month_name, t as tr, weekday_name, word_regex, word_set  # owner language
 
 LABELS = {
     "title": "Title", "name": "Name", "q": "What are you looking for", "query": "What are you looking for", "text": "Text",
@@ -29,7 +29,7 @@ LABELS = {
     "occasion": "Occasion", "season": "Season", "color": "Colour", "colors": "Colours", "brand": "Brand",
     "size": "Size", "price": "Price", "times": "How many times", "per": "Every", "time_minutes": "Minutes available",
     "provider": "Calendar", "event_id": "Event", "ref": "Voice", "occurrence": "Which time", "to": "A",
-    "id": "Which", "momento": "Moment", "level": "Level", "contains": "Contains", "candidate_model": "Model",
+    "id": "Which", "moment": "Moment", "level": "Level", "contains": "Contains", "candidate_model": "Model",
     "dataset_name": "Dataset", "adapter_name": "Adapter name", "branch": "alt::Branch", "summary": "Summary",
     "paused": "Paused", "dry_run": "Test only", "minutes_dnd": "Minutes", "code": "Code", "type": "Type",
     "recurrence": "Repetition", "favorite": "Favourite", "rating": "Rating", "areas": "Zones", "actives": "pl::Active",
@@ -47,10 +47,8 @@ PLACEHOLDERS = {
     "to": "name@example.com", "facts": "I have the dentist on Tuesdays", "fact": "I prefer the morning",
 }
 
-WEEKDAYS = ["lunedì", "martedì", "mercoledì", "giovedì", "venerdì", "sabato", "domenica"]
-WEEKDAYS_PLAIN = ["lunedi", "martedi", "mercoledi", "giovedi", "venerdi", "sabato", "domenica"]
-MONTHS = ["gennaio", "febbraio", "marzo", "aprile", "maggio", "giugno", "luglio", "agosto", "settembre", "ottobre",
-          "novembre", "dicembre"]
+_RELATIVE = (("date.today", 0), ("date.tomorrow", 1), ("date.day_after_tomorrow", 2), ("date.yesterday", -1),
+             ("date.day_before_yesterday", -2))
 
 
 @dataclass
@@ -170,13 +168,12 @@ def parse_date(text: str, today: date | None = None) -> date | None:
     s = str(text or "").strip().lower()
     if not s:
         return None
-    rel = {"oggi": 0, "domani": 1, "dopodomani": 2, "ieri": -1, "l'altro ieri": -2, "altroieri": -2}
-    if s in rel:
-        return today + timedelta(days=rel[s])
-    for names in (WEEKDAYS, WEEKDAYS_PLAIN):
-        for i, wd in enumerate(names):
-            if s in (wd, wd[:3]):
-                return today + timedelta(days=(i - today.weekday()) % 7 or 7)
+    for key, delta in _RELATIVE:
+        if s in word_set(key):
+            return today + timedelta(days=delta)
+    for i in range(7):
+        if any(s in (wd, wd[:3]) for wd in word_set(f"date.weekday.{i}")):
+            return today + timedelta(days=(i - today.weekday()) % 7 or 7)
     m = re.fullmatch(r"(\d{4})-(\d{1,2})-(\d{1,2})", s)
     if m:
         try:
@@ -192,9 +189,12 @@ def parse_date(text: str, today: date | None = None) -> date | None:
         except ValueError:
             return None
         return d if m[3] or d >= today - timedelta(days=60) else date(year + 1, d.month, d.day)
-    m = re.fullmatch(r"(\d{1,2})\s+([a-zà]+)(?:\s+(\d{4}))?", s)
+    m = re.fullmatch(r"(\d{1,2})\s+([^\W\d_]+)(?:\s+(\d{4}))?", s) or re.fullmatch(
+        r"([^\W\d_]+)\s+(\d{1,2})(?:\s+(\d{4}))?", s)
+    if m and not m[1].isdigit():
+        m = [m[0], m[2], m[1], m[3]]
     if m:
-        month = next((i + 1 for i, name in enumerate(MONTHS) if name.startswith(m[2][:3])), 0)
+        month = next((i for i in range(1, 13) if any(n.startswith(m[2][:3]) for n in word_set(f"date.month.{i}"))), 0)
         if month:
             try:
                 return date(int(m[3]) if m[3] else today.year, month, int(m[1]))
@@ -204,7 +204,7 @@ def parse_date(text: str, today: date | None = None) -> date | None:
 
 
 def parse_time(text: str) -> str | None:
-    s = str(text or "").strip().lower().replace("alle ", "").replace("ore ", "")
+    s = word_regex(r"^(?:(?:{0})\s+)+", "date.time_prefix").sub("", str(text or "").strip().lower())
     m = re.fullmatch(r"(\d{1,2})(?:[:.](\d{2}))?", s)
     if not m:
         return None
@@ -218,7 +218,7 @@ def parse_datetime(text: str, today: date | None = None) -> tuple[str | None, bo
     m = re.fullmatch(r"(\d{4}-\d{2}-\d{2})[T ](\d{1,2}:\d{2})(?::\d{2})?.*", s)
     if m:
         return f"{m[1]}T{parse_time(m[2])}:00", True
-    parts = re.split(r"\s+(?:alle\s+|ore\s+)?(?=\d{1,2}(?:[:.]\d{2})?$)", s.lower(), maxsplit=1)
+    parts = word_regex(r"\s+(?:(?:{0})\s+)?(?=\d{{1,2}}(?:[:.]\d{{2}})?$)", "date.time_prefix").split(s.lower(), maxsplit=1)
     d = parse_date(parts[0], today)
     if d and len(parts) == 2:
         t = parse_time(parts[1])
@@ -244,9 +244,9 @@ def parse(f: Field, text: str) -> tuple[bool, Any, str]:
         return False, None, tr("Choose one of the options.")
     if f.kind == "bool":
         low = s.casefold()
-        if low in (tr("yes"), "si", "s", "yes", "true", "1", "vero"):
+        if low == tr("yes").casefold() or is_yes(low):
             return True, True, ""
-        if low in ("no", "n", "false", "0", "falso"):
+        if low in word_set("common.no_word"):
             return True, False, ""
         return False, None, tr("Answer yes or no.")
     if f.kind in ("int", "number"):
@@ -305,7 +305,7 @@ def shown_value(f: Field, value: Any) -> str:
 
 
 def human_datetime(value: str, today: date | None = None) -> str:
-    """``2026-10-25T18:30:00`` → «dom 25 ott 18:30» (oggi/domani in words)."""
+    """``2026-10-25T18:30:00`` → «Sun 25 Oct 18:30» in the owner's language (today/tomorrow in words)."""
     today = today or date.today()
     s = str(value or "")
     try:
@@ -314,13 +314,13 @@ def human_datetime(value: str, today: date | None = None) -> str:
         return s
     d = dt.date()
     if d == today:
-        day = "oggi"
+        day = tr("today")
     elif d == today + timedelta(days=1):
-        day = "domani"
+        day = tr("tomorrow")
     elif d == today - timedelta(days=1):
-        day = "ieri"
+        day = tr("yesterday")
     else:
-        day = f"{tr(WEEKDAYS[d.weekday()])[:3]} {d.day} {tr(MONTHS[d.month - 1])[:3]}" + (
+        day = f"{weekday_name(d.weekday())[:3]} {d.day} {month_name(d.month)[:3]}" + (
             f" {d.year}" if d.year != today.year else "")
     has_time = "T" in s or " " in s.strip()
     return f"{day} {dt:%H:%M}" if has_time and (dt.hour or dt.minute) else day

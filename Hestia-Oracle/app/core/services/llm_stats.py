@@ -5,7 +5,7 @@ Fed by every provider from what the server already returns (Ollama ``prompt_eval
 Kept in memory as a short rolling window per agent label, plus running totals per
 conversation (the chat stream binds its session id, see ``bind_session``); exposed by
 ``/api/chat/context``. Every call also becomes a usage row pushed to Archive (``llm_usage``). Also daily totals per use case × provider × model (last ``_DAYS`` local days, in
-memory since the start of Oracle), read by the WebUI page *Cervello* (``GET /api/ui/stats``).
+memory since the start of Oracle), read by the WebUI page *Brain* (``GET /api/ui/stats``).
 """
 from __future__ import annotations
 

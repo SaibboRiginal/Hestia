@@ -1,14 +1,14 @@
 """Questions the assistant asks in this chat (docs/work/2026-10-19-oracle-offline v3 A).
 
 Oracle streams a ``question`` frame (id ``ask_…``) when the model calls ``ask_user``. Here it becomes inline buttons:
-confirm and single choice answer at once; multiple choice toggles options (• on the chosen) then «Invia»; free text — and the
-«Altro…» of a choice that allows it — is the next message written in the chat. The answer goes to Oracle, which
+confirm and single choice answer at once; multiple choice toggles options (• on the chosen) then «Send»; free text — and the
+«Other…» of a choice that allows it — is the next message written in the chat. The answer goes to Oracle, which
 returns ``resume.message``: sent as the next chat turn, so the reply arrives here like any other.
 
 The same keyboard serves a **notification question** (Hermes ``question``, dossier
 docs/work/2026-10-30-questions-in-notifications): the answer goes to Hermes ``/api/notifications/{id}/reply``. A
-notification arrives unasked, so its free answer is never taken from whatever is written next: «Rispondi…» /
-«Altro…» starts it, or a reply to the notification message.
+notification arrives unasked, so its free answer is never taken from whatever is written next: «Reply…» /
+«Other…» starts it, or a reply to the notification message.
 """
 from __future__ import annotations
 
@@ -123,7 +123,7 @@ def handle_callback(call) -> None:
         core.bot.answer_callback_query(call.id, tr("This question is already closed"))
         return
     if action == "askw":
-        # «Rispondi…» / «Altro…» of a notification: the next message written is the answer.
+        # «Reply…» / «Other…» of a notification: the next message written is the answer.
         store.set_flow(entry["chat_id"], {"kind": TEXT_FLOW, "token": token})
         core.bot.answer_callback_query(call.id)
         core.bot.send_message(call.message.chat.id, tr("<i>Write the answer below.</i>"), parse_mode="HTML")

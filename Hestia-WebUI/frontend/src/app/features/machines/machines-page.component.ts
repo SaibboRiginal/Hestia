@@ -17,14 +17,14 @@ interface MachinesState {
 interface Pairing { code: string; expires_in: number; central: string; }
 
 const ROLE: Record<string, string> = {
-  tutto: tr('Does everything by herself'), centrale: tr('Central home, always on'), satellite: tr('Satellite'),
+  all: tr('Does everything by herself'), central: tr('Central home, always on'), satellite: tr('Satellite'),
 };
 /** What a satellite does for you, in plain words (user texts never name modules). */
 const JOB: Record<string, string> = { echo: tr('voice'), metis: tr('model training') };
 const SCRIPT = 'https://raw.githubusercontent.com/SaibboRiginal/Hestia/main';
 
 /**
- * «Macchine» (docs/work/2026-10-30-one-click-setup §4.0): the central home and its satellites. Link a machine with a
+ * «Machines» (docs/work/2026-10-30-one-click-setup §4.0): the central home and its satellites. Link a machine with a
  * one-time code (the satellite's installer sends it), unlink it, and let the brain's local models run on its video
  * card. Browser → WebUI → Hub → Hephaestus /api/setup/machines* (→ Hub /api/nodes, Oracle /api/llm/setup/machine).
  */
@@ -159,7 +159,7 @@ export class MachinesPageComponent {
   central = computed(() => {
     const p = this.pairing();
     const host = location.hostname;
-    return p?.central || (host && host !== 'localhost' && host !== '127.0.0.1' ? host : 'INDIRIZZO');
+    return p?.central || (host && host !== 'localhost' && host !== '127.0.0.1' ? host : tr('ADDRESS'));
   });
   windowsCmd = computed(() =>
     `& ([scriptblock]::Create((irm ${SCRIPT}/install.ps1))) -Join ${this.pairing()?.code} -Central ${this.central()}`);
@@ -200,7 +200,7 @@ export class MachinesPageComponent {
     }
   }
 
-  role(r: string) { return ROLE[r] || ROLE['tutto']; }
+  role(r: string) { return ROLE[r] || ROLE['all']; }
 
   hardware(): string {
     const h = this.state()?.this.hardware || {};

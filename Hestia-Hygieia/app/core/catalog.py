@@ -9,65 +9,65 @@ import re
 import unicodedata
 
 AREAS: list[dict] = [
-    {"value": "viso", "label": "Face", "icon": "face"},
-    {"value": "occhi", "label": "Eyes", "icon": "eye"},
-    {"value": "labbra", "label": "Lips", "icon": "lips"},
-    {"value": "capelli", "label": "Hair", "icon": "hair"},
-    {"value": "cuoio_capelluto", "label": "Scalp", "icon": "hair"},
-    {"value": "barba", "label": "Beard", "icon": "beard"},
-    {"value": "corpo", "label": "Body", "icon": "body"},
-    {"value": "mani", "label": "Hands", "icon": "hand"},
-    {"value": "piedi", "label": "Feet", "icon": "foot"},
-    {"value": "unghie", "label": "Nails", "icon": "hand"},
-    {"value": "denti", "label": "Teeth and mouth", "icon": "tooth"},
-    {"value": "profumo", "label": "Perfume", "icon": "drop"},
+    {"value": "face", "label": "Face", "icon": "face"},
+    {"value": "eyes", "label": "Eyes", "icon": "eye"},
+    {"value": "lips", "label": "Lips", "icon": "lips"},
+    {"value": "hair", "label": "Hair", "icon": "hair"},
+    {"value": "scalp", "label": "Scalp", "icon": "hair"},
+    {"value": "beard", "label": "Beard", "icon": "beard"},
+    {"value": "body", "label": "Body", "icon": "body"},
+    {"value": "hands", "label": "Hands", "icon": "hand"},
+    {"value": "feet", "label": "Feet", "icon": "foot"},
+    {"value": "nails", "label": "Nails", "icon": "hand"},
+    {"value": "teeth", "label": "Teeth and mouth", "icon": "tooth"},
+    {"value": "perfume", "label": "Perfume", "icon": "drop"},
 ]
 
 CATEGORIES: list[dict] = [{"value": slug, "label": label, "area": area} for slug, label, area in [
-    ("detergente", "Cleanser", "viso"), ("struccante", "Make-up remover", "viso"), ("tonico", "Toner", "viso"),
-    ("esfoliante", "Exfoliant", "viso"), ("siero", "Serum", "viso"), ("trattamento", "Treatment", "viso"),
-    ("crema", "Moisturiser", "viso"), ("contorno_occhi", "Eye cream", "occhi"), ("spf", "Sunscreen", "viso"),
-    ("maschera", "Mask", "viso"), ("olio", "Oil", ""), ("balsamo_labbra", "Lip balm", "labbra"),
-    ("shampoo", "Shampoo", "capelli"), ("balsamo", "Conditioner", "capelli"), ("maschera_capelli", "Hair mask", "capelli"),
-    ("styling", "Styling", "capelli"), ("bagnoschiuma", "Shower gel", "corpo"), ("crema_corpo", "Body cream", "corpo"),
-    ("deodorante", "Deodorant", "corpo"), ("scrub", "Scrub", "corpo"), ("rasatura", "Shaving", "barba"),
-    ("dopobarba", "Aftershave", "barba"), ("olio_barba", "Beard oil", "barba"), ("dentifricio", "Toothpaste", "denti"),
-    ("collutorio", "Mouthwash", "denti"), ("filo", "Floss / interdental brush", "denti"), ("profumo", "Perfume", "profumo"),
-    ("integratore", "Supplement", ""), ("strumento", "Tool", ""), ("altro", "Other", ""),
+    ("cleanser", "Cleanser", "face"), ("makeup_remover", "Make-up remover", "face"), ("toner", "Toner", "face"),
+    ("exfoliant", "Exfoliant", "face"), ("serum", "Serum", "face"), ("treatment", "Treatment", "face"),
+    ("cream", "Moisturiser", "face"), ("eye_contour", "Eye cream", "eyes"), ("spf", "Sunscreen", "face"),
+    ("mask", "Mask", "face"), ("oil", "Oil", ""), ("lip_balm", "Lip balm", "lips"),
+    ("shampoo", "Shampoo", "hair"), ("conditioner", "Conditioner", "hair"), ("hair_mask", "Hair mask", "hair"),
+    ("styling", "Styling", "hair"), ("body_wash", "Shower gel", "body"), ("body_cream", "Body cream", "body"),
+    ("deodorant", "Deodorant", "body"), ("scrub", "Scrub", "body"), ("shaving", "Shaving", "beard"),
+    ("aftershave", "Aftershave", "beard"), ("beard_oil", "Beard oil", "beard"), ("toothpaste", "Toothpaste", "teeth"),
+    ("mouthwash", "Mouthwash", "teeth"), ("floss", "Floss / interdental brush", "teeth"), ("perfume", "Perfume", "perfume"),
+    ("supplement", "Supplement", ""), ("tool", "Tool", ""), ("other", "Other", ""),
 ]]
 
 ACTIVES: list[dict] = [{"value": slug, "label": label, "family": family} for slug, label, family in [
-    ("retinolo", "Retinol", "retinoid"), ("retinale", "Retinal", "retinoid"), ("tretinoina", "Tretinoin", "retinoid"),
+    ("retinol", "Retinol", "retinoid"), ("retinal", "Retinal", "retinoid"), ("tretinoin", "Tretinoin", "retinoid"),
     ("adapalene", "Adapalene", "retinoid"), ("bakuchiol", "Bakuchiol", ""),
-    ("aha_glicolico", "Glycolic acid (AHA)", "aha"), ("aha_lattico", "Lactic acid (AHA)", "aha"),
-    ("aha_mandelico", "Mandelic acid (AHA)", "aha"), ("bha_salicilico", "Salicylic acid (BHA)", "bha"),
-    ("pha", "PHA (gluconolactone)", "pha"), ("acido_azelaico", "Azelaic acid", ""),
-    ("vitamina_c", "Vitamin C (ascorbic acid)", "vitc"), ("benzoile", "Benzoyl peroxide", "bpo"),
-    ("niacinamide", "Niacinamide", ""), ("acido_ialuronico", "Hyaluronic acid", ""), ("ceramidi", "Ceramides", ""),
-    ("peptidi", "Peptides", ""), ("pantenolo", "Panthenol", ""), ("centella", "Centella asiatica", ""),
-    ("urea", "Urea", ""), ("zinco", "Zinc", ""), ("spf_filtri", "Sunscreen filters", "spf"), ("caffeina", "Caffeine", ""),
-    ("minoxidil", "Minoxidil", ""), ("ketoconazolo", "Ketoconazole", ""), ("fluoro", "Fluoride", ""),
+    ("aha_glycolic", "Glycolic acid (AHA)", "aha"), ("aha_lactic", "Lactic acid (AHA)", "aha"),
+    ("aha_mandelic", "Mandelic acid (AHA)", "aha"), ("bha_salicylic", "Salicylic acid (BHA)", "bha"),
+    ("pha", "PHA (gluconolactone)", "pha"), ("azelaic_acid", "Azelaic acid", ""),
+    ("vitamin_c", "Vitamin C (ascorbic acid)", "vitc"), ("benzoyl", "Benzoyl peroxide", "bpo"),
+    ("niacinamide", "Niacinamide", ""), ("hyaluronic_acid", "Hyaluronic acid", ""), ("ceramides", "Ceramides", ""),
+    ("peptides", "Peptides", ""), ("panthenol", "Panthenol", ""), ("centella", "Centella asiatica", ""),
+    ("urea", "Urea", ""), ("zinc", "Zinc", ""), ("spf_filters", "Sunscreen filters", "spf"), ("caffeine", "Caffeine", ""),
+    ("minoxidil", "Minoxidil", ""), ("ketoconazole", "Ketoconazole", ""), ("fluoride", "Fluoride", ""),
 ]]
 
 # Metrics of the optional journal (1–5 each), per area; "*" applies to any area without its own list.
 METRICS: dict[str, list[dict]] = {
-    "viso": [{"value": "idratazione", "label": "Hydration"}, {"value": "brufoli", "label": "Spots", "lower_better": True},
-             {"value": "rossori", "label": "Redness", "lower_better": True},
+    "face": [{"value": "hydration", "label": "Hydration"}, {"value": "pimples", "label": "Spots", "lower_better": True},
+             {"value": "redness", "label": "Redness", "lower_better": True},
              {"value": "oleosita", "label": "Oiliness", "lower_better": True},
              {"value": "sensibilita", "label": "Sensitivity", "lower_better": True}],
-    "capelli": [{"value": "caduta", "label": "Hair loss", "lower_better": True},
-                {"value": "lucentezza", "label": "Shine"}, {"value": "crespo", "label": "Frizz", "lower_better": True}],
-    "cuoio_capelluto": [{"value": "forfora", "label": "Dandruff", "lower_better": True},
-                        {"value": "prurito", "label": "Itching", "lower_better": True},
+    "hair": [{"value": "hair_loss", "label": "Hair loss", "lower_better": True},
+                {"value": "shine", "label": "Shine"}, {"value": "frizz", "label": "Frizz", "lower_better": True}],
+    "scalp": [{"value": "dandruff", "label": "Dandruff", "lower_better": True},
+                        {"value": "itch", "label": "Itching", "lower_better": True},
                         {"value": "untuosita", "label": "Greasiness", "lower_better": True}],
-    "barba": [{"value": "irritazione", "label": "Irritation", "lower_better": True},
-              {"value": "peli_incarniti", "label": "Ingrown hairs", "lower_better": True}],
-    "corpo": [{"value": "secchezza", "label": "Dryness", "lower_better": True},
-              {"value": "irritazione", "label": "Irritation", "lower_better": True}],
-    "*": [{"value": "stato", "label": "General state"}],
+    "beard": [{"value": "irritation", "label": "Irritation", "lower_better": True},
+              {"value": "ingrown_hairs", "label": "Ingrown hairs", "lower_better": True}],
+    "body": [{"value": "dryness", "label": "Dryness", "lower_better": True},
+              {"value": "irritation", "label": "Irritation", "lower_better": True}],
+    "*": [{"value": "status", "label": "General state"}],
 }
 
-JOURNAL_TAGS = ["ciclo", "stress", "sole", "viaggio", "sport", "dormito poco", "new product", "alimentazione", "malattia"]
+JOURNAL_TAGS = ["cycle", "stress", "sun", "trip", "sport", "little_sleep", "new product", "nutrition", "illness"]
 
 # Advisory conflicts between active families (SPEC §4): same day, never blocking. Custom ones are options too.
 CONFLICTS: list[dict] = [

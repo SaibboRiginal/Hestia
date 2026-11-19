@@ -7,7 +7,7 @@ Endpoints:
   POST /mcp            → MCP (Streamable HTTP, JSON): initialize · tools/list · tools/call · ping (internal clients)
   POST /mcp/external   → the same MCP for external AIs, behind an access token (WebUI door /mcp forwards here)
   /.well-known/oauth-* · /oauth/* → OAuth 2.1 server (claude.ai / ChatGPT), via the WebUI door; consent on the WebUI
-  /api/mcp/accesses    → accesses management (AI access page in the WebUI, plugin of this module)
+  /api/mcp/accesses    → accesses management (Access page in the WebUI, plugin of this module)
   /api/mcp/ui/tools    → Commands page: the tools the WebUI sees, run one (core/ui_tools.py)
   GET  /health         → service health
   GET  /api/logs       → log buffer

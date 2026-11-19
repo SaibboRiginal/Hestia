@@ -55,7 +55,7 @@ def analyze(prompt: str, context: str = "", voice: bool = False) -> str:
             "method": "POST",
             "headers": {},
             "query": {},
-            "body": {"prompt": full_prompt, "use_case": USE_CASE, "voice": bool(voice)},  # chain chosen in Oracle → Modelli
+            "body": {"prompt": full_prompt, "use_case": USE_CASE, "voice": bool(voice)},  # chain chosen in Oracle → Models
             "timeout_seconds": 60,
         }
         resp = requests.post(

@@ -10,13 +10,13 @@ from hestia_common.settings_client import PERSONAL, setting, translated
 
 @pytest.mark.unit
 def test_translated_changes_texts_not_keys_or_values():
-    d = setting("x.tone", "Recap tone", "enum", "amichevole", group="Personal",
-                options=[("amichevole", "Always"), ("asciutto", "Errors only")])
+    d = setting("x.tone", "Recap tone", "enum", "friendly", group="Personal",
+                options=[("friendly", "Always"), ("dry", "Errors only")])
     it = translated(d, "it")
     assert it["label"] == "Tono del recap" and it["group"] == "Personali"
-    assert [o["value"] for o in it["options"]] == ["amichevole", "asciutto"]
+    assert [o["value"] for o in it["options"]] == ["friendly", "dry"]
     assert [o["label"] for o in it["options"]] == ["Sempre", "Solo errori"]
-    assert it["key"] == "x.tone" and it["default"] == "amichevole"
+    assert it["key"] == "x.tone" and it["default"] == "friendly"
     assert translated(d, "en")["label"] == "Recap tone"
 
 

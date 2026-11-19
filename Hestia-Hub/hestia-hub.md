@@ -87,7 +87,7 @@ WebUI, Telegram) and **satellites** (voice and model training near a video card)
 | `POST` | `/api/nodes/pair` | Pairing code for a new satellite `{code, expires_in}` |
 | `POST` | `/api/nodes/join` | Satellite installer: `{code, name, address}` → `{node_id, token, name}` (token shown once); 403 wrong/expired code |
 | `GET` | `/api/nodes` | Satellites (no token hash) with `modules [{name, online}]` and `online` |
-| `DELETE` | `/api/nodes/{node_id}` | «Scollega»: revoke the token, deregister its modules |
+| `DELETE` | `/api/nodes/{node_id}` | «Unlink»: revoke the token, deregister its modules |
 | `GET` | `/health` | Hub health |
 
 ---
@@ -139,7 +139,7 @@ Themis (`settings` tag, `layer:core`, `domain:settings`) and Metis (`improvement
 `tests/test_compose_registration_tags.py` validates every compose service's tags against these lists (W5: the tags
 and `domain:` values `images, appearance, home, people, food, office, deadlines` of the seven new modules were
 added after CI caught them, and the test also checks each `module_kit` registration). Plutus
-(`finance`, 2026-10-19, then `voice` for Echo on `layer:cognition`, 2026-10-22) were the latest: a new domain module adds its tag to `ALLOWED_TAGS` and `domain:` here. 2026-10-30: `mood` (Psyche, «Umore»).
+(`finance`, 2026-10-19, then `voice` for Echo on `layer:cognition`, 2026-10-22) were the latest: a new domain module adds its tag to `ALLOWED_TAGS` and `domain:` here. 2026-10-30: `mood` (Psyche, «Mood»).
 
 Tag `coach` (2026-10-20): a module that serves `GET /api/coach/needs` (`hestia_common.coach`) carries it; Chronos
 finds the coaches of the weekly plan with `GET /registry/services` filtered on this tag. `test_coach_modules_carry_the_coach_tag`
@@ -148,9 +148,9 @@ checks Hercules, Hygieia and Plutus.
 `capabilities.owns_tool_domains: [...]` lets a non-`layer:domain` service own a tool domain in Oracle's tool
 filtering (Argus and Hephaestus own `system`, so Forge/system tools reach the LLM).
 
-**2026-10-29 (texts for people, dossier `docs/work/2026-10-29-frontend-review-and-tests`)**: Plugin title «Mappa del sistema»; catalog tool/command entries carry `summary` and `telegram_group` (area, `hestia_common.areas`); map offline text «Mappa non raggiungibile».
+**2026-10-29 (texts for people, dossier `docs/work/2026-10-29-frontend-review-and-tests`)**: Plugin title «System map»; catalog tool/command entries carry `summary` and `telegram_group` (area, `hestia_common.areas`); map offline text «Map not reachable».
 
-**2026-11-15 (WebUI page in the owner's language, dossier `docs/work/2026-11-14-english-backend`)**: the texts of this module's WebUI page and widgets go through `tr` of `@hestia/webui-sdk` and follow «Lingua»; source texts in English, Italian in `Hestia-Shared/hestia_common/locales/it/messages.json`.
+**2026-11-15 (WebUI page in the owner's language, dossier `docs/work/2026-11-14-english-backend`)**: the texts of this module's WebUI page and widgets go through `tr` of `@hestia/webui-sdk` and follow «Language»; source texts in English, Italian in `Hestia-Shared/hestia_common/locales/it/messages.json`.
 
 **2026-11-16 (no Italian in the code, dossier `docs/work/2026-11-14-english-backend` v2.0)**: every text is English in the code; Italian lives only in `Hestia-Shared/hestia_common/locales/it/messages.json`. Labels declared at registration (manifest, capabilities, agenda rules, settings) are plain English, translated at the edge.
 

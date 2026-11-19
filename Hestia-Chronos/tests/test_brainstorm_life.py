@@ -111,7 +111,7 @@ class TestRoutines:
         from services import routines
         item = routines.create(title="Notizie", instruction="Dimmi le notizie", recurrence="FREQ=DAILY;BYHOUR=8")
         assert item["type"] == "job" and item["action"]["path"] == f"/api/routines/{item['key']}/run"
-        assert routines.list_routines()[0]["trigger"] == "orario"
+        assert routines.list_routines()[0]["trigger"] == "schedule"
 
     def test_routine_needs_instruction_and_trigger(self, store):
         from services import agenda, routines
@@ -142,7 +142,7 @@ class TestRoutines:
     def test_nothing_to_say_is_not_delivered(self, store):
         from services import routines
         item = routines.create(title="Settimana", instruction="Cosa c'è", recurrence="FREQ=WEEKLY")
-        with patch.object(routines, "_ask_oracle", return_value={"reply": "NIENTE.", "changes": []}), \
+        with patch.object(routines, "_ask_oracle", return_value={"reply": "NOTHING.", "changes": []}), \
                 patch.object(routines.hermes_client, "publish_event") as pub:
             out = routines.run(item["key"])
         assert out["delivered"] is False

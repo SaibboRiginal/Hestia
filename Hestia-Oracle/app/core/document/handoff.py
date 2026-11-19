@@ -1,10 +1,10 @@
-"""Chat attachments a domain module knows how to take (e.g. a bank statement PDF → Spese).
+"""Chat attachments a domain module knows how to take (e.g. a bank statement PDF → Expenses).
 
 Generic: Oracle knows no domain. A module declares in its Hub capabilities
 ``attachment_handlers: [{mime: [...], match: [...], min_hits, path, label}]``. When a file sent in chat has a matching
 mime and its text (or the user's message) contains the module's words, Oracle stores the file in Archive blobs
 (``owner_module=chat``) and hands the blob id to the module (``POST /route/<svc>/<path>``). The module answers
-``{handled, text}``; that text is the chat reply and goes in the history, so the next turn («sì») reaches the module's
+``{handled, text}``; that text is the chat reply and goes in the history, so the next turn («yes») reaches the module's
 tools with the ids the reply carries. No match or any failure → the normal document analysis (nothing is lost).
 SPEC docs/work/2026-10-19-email-push-expenses §4 (P4).
 """

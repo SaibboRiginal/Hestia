@@ -1,4 +1,4 @@
-"""Quiet mood capture — «I'm tired today» is written down without asking (dossier docs/work/2026-10-30-mood-diary).
+"""Quiet mood capture — «I'm tired today» (any language) is written down without asking (dossier docs/work/2026-10-30-mood-diary).
 
 After the answer, in the background step that already runs the memory extraction, Oracle looks at the user's
 message for how they feel *now*. A deterministic gate comes first (no model): the message is split into clauses and
@@ -8,9 +8,6 @@ extractor); a model that is offline or answers garbage falls back to the lexicon
 The result goes to the module that declares the Hub capability ``mood_capture_endpoint`` (no module name here);
 «don't log it» calls ``<endpoint>/undo``. The reply never claims it: a quiet notice follows the answer.
 Moods never go to long-term memory (memory rule 2c): that is the mood module's job.
-
-The words of every language live in ``locales/<lang>/words.json`` («mood.rules», «mood.label.<id>»,
-«mood.cause.<id>»): each language's rules read the clause on their own, so a new language is only a new file.
 """
 from __future__ import annotations
 
@@ -18,95 +15,106 @@ import json
 import logging
 import re
 import time
-from dataclasses import dataclass
-from functools import lru_cache
 from typing import Any, Callable
 
 from core.services import prompt_config
-from hestia_common import i18n
 from hestia_common.i18n import t as tr  # fixed texts in the owner's language
+from hestia_common.i18n import word_regex, word_set, words
 
 logger = logging.getLogger(f"hestia_oracle.{__name__}")
 
-LABELS = ("tired", "energized", "calm", "happy", "motivated", "bored", "nervous", "anxious", "sad", "down",
-          "angry", "ill")
+# Stored values (English): mood labels and causes. The words that say them live in locales/<lang>/words.json.
+LABELS = ("tired", "charged", "calm", "happy", "motivated", "bored", "nervous", "anxious", "sad", "down",
+          "angry", "sick")
 CAUSES = ("work", "sleep", "people", "health", "sport", "money", "home", "free_time", "weather")
+
+# words list → (label, mood, energy, stress). Order matters: stronger lists first.
+_LEXICON: list[tuple[str, tuple[str | None, int, int | None, int | None]]] = [
+    ("mood.tired_heavy", ("tired", 2, 1, None)),
+    ("mood.tired", ("tired", 3, 2, None)),
+    ("mood.charged_high", ("charged", 5, 5, None)),
+    ("mood.charged", ("charged", 4, 5, None)),
+    ("mood.calm", ("calm", 4, None, 1)),
+    ("mood.happy_high", ("happy", 5, None, None)),
+    ("mood.happy", ("happy", 4, None, None)),
+    ("mood.motivated", ("motivated", 4, 4, None)),
+    ("mood.bored", ("bored", 3, 2, None)),
+    ("mood.nervous", ("nervous", 2, None, 4)),
+    ("mood.anxious", ("anxious", 2, None, 5)),
+    ("mood.sad", ("sad", 2, None, None)),
+    ("mood.down_low", ("down", 1, None, None)),
+    ("mood.down", ("down", 2, None, None)),
+    ("mood.angry", ("angry", 2, None, 4)),
+    ("mood.sick", ("sick", 2, 2, None)),
+    ("mood.so_so", (None, 3, None, None)),
+]
+# «what a heavy day»: words list → (mood, labels)
+_DAYS = (("mood.day_tired", 2, ["tired"]), ("mood.day_1", 1, []), ("mood.day_2", 2, []), ("mood.day_5", 5, []),
+         ("mood.day_4", 4, []))
+
+
+def _rx(template: str, *keys: str) -> "re.Pattern[str]":
+    return word_regex(template, *keys)
+
+
+def _first_person():
+    return _rx(r"\b(?:{0})\b", "mood.first_person")
+
+
+def _verb_before():
+    return _rx(r"\b(?:{0})\s+(?:(?:{1})\s+)?$", "mood.subject_verb", "mood.adverb")
+
+
+def _third_person():
+    return _rx(r"\b(?:{0})(?=\s|$)", "mood.third_person")
+
+
+def _not_now():
+    return _rx(r"^\s*(?:{0})\b|\b(?:{1})\b", "mood.not_now_start", "mood.not_now")
+
+
+def _negation():
+    return _rx(r"\b(?:{0})\s+(?:\w+\s+){{0,2}}$", "mood.negation")
+
+
 _QUOTED = re.compile(r"[«\"“][^»\"”]*[»\"”]")
-_NEVER = re.compile(r"(?!x)x")
 
 
-def _rx(value: Any) -> re.Pattern:
-    return re.compile(str(value), re.I) if value else _NEVER
-
-
-@dataclass(frozen=True)
-class _Rules:
-    """The mood words of one language (``words.json`` «mood.rules»)."""
-    lexicon: tuple
-    day: re.Pattern
-    day_levels: dict
-    day_tired: frozenset
-    needs_verb: frozenset
-    first_person: re.Pattern
-    verb_before: re.Pattern
-    own_verb: re.Pattern
-    third_person: re.Pattern
-    not_now: re.Pattern
-    negation: re.Pattern
-    negated_good: frozenset
-    split: re.Pattern
-    continue_with: str
-    undo: re.Pattern
-
-
-@lru_cache(maxsize=1)
-def _languages() -> tuple[_Rules, ...]:
-    out = []
-    for raw in i18n.word_tables("mood.rules").values():
-        if not isinstance(raw, dict):
-            continue
-        out.append(_Rules(
-            lexicon=tuple((str(r[0]), (r[1], int(r[2]), r[3], r[4])) for r in raw.get("lexicon") or [] if len(r) == 5),
-            day=_rx(raw.get("day")), day_levels=dict(raw.get("day_levels") or {}),
-            day_tired=frozenset(raw.get("day_tired") or []), needs_verb=frozenset(raw.get("needs_verb") or []),
-            first_person=_rx(raw.get("first_person")), verb_before=_rx(raw.get("verb_before")),
-            own_verb=_rx(raw.get("own_verb")), third_person=_rx(raw.get("third_person")),
-            not_now=_rx(raw.get("not_now")), negation=_rx(raw.get("negation")),
-            negated_good=frozenset(raw.get("negated_good") or []),
-            split=re.compile(r"(?<=[.!?;:\n])|" + str(raw.get("split") or r"(?!x)x"), re.I),
-            continue_with=str(raw.get("continue_with") or ""), undo=_rx(raw.get("undo"))))
-    return tuple(out)
+def _split():
+    return _rx(r"(?<=[.!?;:\n])|,|\b(?:{0})\b", "mood.but")
 
 
 def is_undo(text: str) -> bool:
-    """«Don't log it», «remove the mood»… in any language (deterministic)."""
-    return any(r.undo.search(str(text or "")) for r in _languages())
+    """«Don't log it», «remove my mood»… in any language with a words file (deterministic)."""
+    return bool(_rx(r"\b(?:{0})\b", "mood.undo").search(str(text or "")))
 
 
-def _clauses(text: str, rules: _Rules) -> list[str]:
+def _clauses(text: str) -> list[str]:
     clean = _QUOTED.sub(" ", str(text or ""))
-    return [c.strip() for c in rules.split.split(clean) if c and c.strip()]
+    return [c.strip() for c in _split().split(clean) if c and c.strip()]
 
 
-def _hit(clause: str, rules: _Rules) -> dict | None:
+def _hit(clause: str) -> dict | None:
     """The mood a clause states, or None. Deterministic: this is the gate and the offline fallback."""
     low = clause.lower()
-    if low.endswith("?") or rules.not_now.search(low) or not rules.first_person.search(low):
+    if low.endswith("?") or _not_now().search(low) or not _first_person().search(low):
         return None
-    m = rules.day.search(low)
-    if m and not rules.negation.search(low[:m.start()]) and m.group(1) in rules.day_levels:
-        return {"mood": int(rules.day_levels[m.group(1)]), "energy": None, "stress": None,
-                "labels": ["tired"] if m.group(1) in rules.day_tired else [], "quote": clause}
-    for rx, (label, mood, energy, stress) in rules.lexicon:
-        for m in re.finditer(rf"\b(?:{rx})\b", low):
+    for key, level, labels in _DAYS:
+        m = _rx(r"\b(?:{0})\b", key).search(low)
+        if m and not _negation().search(low[:m.start()]):
+            return {"mood": level, "energy": None, "stress": None, "labels": list(labels), "quote": clause}
+    needs_verb, good = word_set("mood.needs_verb"), word_set("mood.good_words")
+    subject = _rx(r"\b(?:{0})\b", "mood.subject_verb")
+    for key, (label, mood, energy, stress) in _LEXICON:
+        for m in _rx(r"\b(?:{0})\b", key).finditer(low):
             before = low[:m.start()]
             word = m.group(0)
-            if word in rules.needs_verb and not rules.verb_before.search(before):
+            if word in needs_verb and not _verb_before().search(before):
                 continue
-            if rules.third_person.search(before) and not rules.own_verb.search(before):
+            if _third_person().search(before) and not subject.search(before):
                 continue
-            if rules.negation.search(before):
-                if word in rules.negated_good:     # «I'm not well» = down
+            if _negation().search(before):
+                if word in good:     # «I'm not well» = down
                     return {"mood": 2, "energy": None, "stress": None, "labels": ["down"], "quote": clause}
                 continue
             return {"mood": mood, "energy": energy, "stress": stress, "labels": [label] if label else [],
@@ -115,27 +123,24 @@ def _hit(clause: str, rules: _Rules) -> dict | None:
 
 
 def mood_clauses(text: str) -> list[dict]:
-    """Every clause of ``text`` that states how the user feels now, with the lexicon guess (the language whose rules
-    find most wins). A clause with no subject of its own continues the previous first-person one («I'm happy but
-    dead tired»)."""
-    best: list[dict] = []
-    for rules in _languages():
-        hits: list[dict] = []
-        previous_first = False
-        for clause in _clauses(text, rules):
-            low = clause.lower()
-            own = bool(rules.first_person.search(low))
-            hit = _hit(clause, rules)
-            if hit is None and not own and previous_first and not rules.third_person.search(low):
-                hit = _hit(f"{rules.continue_with}{clause}", rules)
+    """Every clause of ``text`` that states how the user feels now, with the lexicon guess. A clause with no subject
+    of its own continues the previous first-person one («I'm happy but dead tired»)."""
+    hits: list[dict] = []
+    previous_first = False
+    for clause in _clauses(text):
+        low = clause.lower()
+        own = bool(_first_person().search(low))
+        hit = _hit(clause)
+        if hit is None and not own and previous_first and not _third_person().search(low):
+            for prefix in words("mood.continue_prefix"):
+                hit = _hit(f"{prefix} {clause}")
                 if hit:
                     hit["quote"] = clause
-            if hit:
-                hits.append(hit)
-            previous_first = own if own or rules.third_person.search(low) else previous_first
-        if len(hits) > len(best):
-            best = hits
-    return best
+                    break
+        if hit:
+            hits.append(hit)
+        previous_first = own if own or _third_person().search(low) else previous_first
+    return hits
 
 
 def guess(hits: list[dict]) -> dict | None:
@@ -176,12 +181,10 @@ def parse_answer(raw: str) -> dict | None | str:
     mood = _level(data.get("mood"))
     if mood is None:
         return None
-    labels, causes = i18n.word_map("mood.label"), i18n.word_map("mood.cause")
-    norm = lambda v, known: known.get(str(v or "").strip().lower().replace("_", " "),  # noqa: E731
-                                      known.get(str(v or "").strip().lower(), ""))
+    norm = lambda v: str(v or "").strip().lower().replace(" ", "_")  # noqa: E731
     return {"mood": mood, "energy": _level(data.get("energy")), "stress": _level(data.get("stress")),
-            "labels": [l for l in dict.fromkeys(norm(x, labels) for x in (data.get("labels") or [])) if l in LABELS],
-            "causes": [c for c in dict.fromkeys(norm(x, causes) for x in (data.get("causes") or [])) if c in CAUSES]}
+            "labels": [l for l in dict.fromkeys(norm(x) for x in (data.get("labels") or [])) if l in LABELS],
+            "causes": [c for c in dict.fromkeys(norm(x) for x in (data.get("causes") or [])) if c in CAUSES]}
 
 
 class MoodCapture:

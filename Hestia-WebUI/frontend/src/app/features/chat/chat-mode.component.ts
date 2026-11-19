@@ -16,7 +16,7 @@ export const CHAT_MODES = [
 
 /**
  * <hx-chat-mode [(mode)]="mode" /> — composer button: how much Hestia reasons for THIS conversation.
- * The value comes from Themis (session → client → profile, default in Impostazioni → Personali);
+ * The value comes from Themis (session → client → profile, default in Settings → Personal);
  * a pick is saved for this conversation (scope session) and sent with every message.
  */
 @Component({

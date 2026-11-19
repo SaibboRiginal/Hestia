@@ -6,7 +6,7 @@ using Hestia.WebUI.Services;
 
 /// <summary>
 /// REST-based document upload endpoint for file analysis, plus the chat header's context gauge
-/// (window use + this conversation's consumption, from Oracle via the Hub) and "Compatta".
+/// (window use + this conversation's consumption, from Oracle via the Hub) and "Compact".
 /// For text chat, use SignalR ChatHub (/hubs/chat).
 /// </summary>
 [ApiController]
@@ -98,7 +98,7 @@ public class ChatController : ControllerBase
     [RequestSizeLimit(52_428_800)] // 50 MB
     public async Task<IActionResult> UploadDocument(
         IFormFile file,
-        [FromForm] string message = "Analizza questo documento.",
+        [FromForm] string message = "Analyse this document.",
         [FromForm] string? sessionId = null)
     {
         if (file is null || file.Length == 0)

@@ -85,12 +85,12 @@ def test_forge_needs_a_yes_or_an_explicit_build_ask():
     """A small model started a dev task on «vorrei un comando…» without asking (bench round 3)."""
     dev = _tool("forge_develop")
     _turn("vorrei un comando che mi mostra il meteo della settimana", dev)
-    ok, why = dev.handler(request="meteo")
+    ok, why = dev.handler(request="weather")
     assert not ok and "ask_user" in why
     for msg in ("sì, procedi", "sviluppa un comando per il meteo della settimana"):
         dev = _tool("forge_develop")
         _turn(msg, dev)
-        assert dev.handler(request="meteo")[0]
+        assert dev.handler(request="weather")[0]
 
 
 def test_runaway_writes_stop():

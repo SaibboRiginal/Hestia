@@ -1,8 +1,8 @@
 /**
- * <hephaestus-sviluppo> — "Sviluppo": Forge tasks and the Hestia repository, Codex / Claude Code style:
- * left = tasks, centre = the engine conversation (+ ask a change), right = File · Diff · Dossier · Test · Log · Ramo.
+ * <hephaestus-development> — "Development": Forge tasks and the Hestia repository, Codex / Claude Code style:
+ * left = tasks, centre = the engine conversation (+ ask a change), right = File · Diff · Dossier · Test · Log · Branch.
  * Ported from the WebUI built-in /forge page (SPEC docs/work/2026-10-18-core-modules-and-external-mcp §A4); calls
- * /api/hephaestus/forge|repo/* directly, polls instead of streaming. «Copia per AI» (§B5): markdown of the chosen
+ * /api/hephaestus/forge|repo/* directly, polls instead of streaming. «Copy for AI» (§B5): markdown of the chosen
  * tasks (GET forge/tasks/export, same views as the MCP tools forge_tasks / forge_task) to the clipboard or a .md.
  * Deep links: ?task=<id> (short ids too) · ?view=repo.
  */
@@ -23,7 +23,7 @@ const FILTERS: { id: Filter; label: string }[] = [
 
 type Size = 'wide' | 'mid' | 'phone';
 
-export class HephaestusSviluppo extends HestiaElement {
+export class HephaestusDevelopment extends HestiaElement {
   static properties = {
     ...HestiaElement.properties,
     rev: { state: true }, mode: { state: true }, size: { state: true }, centerTab: { state: true }, repoNav: { state: true },
@@ -283,7 +283,7 @@ export class HephaestusSviluppo extends HestiaElement {
     if (ok) { this.closeNew(); this.nReq = ''; this.nServices = ''; this.nWorkdoc = ''; this.mode = 'tasks'; }
   }
 
-  // ── Copia per AI (§B5) ────────────────────────────────────────────────
+  // ── Copy for AI (§B5) ────────────────────────────────────────────────
   private togglePick(id: string) {
     const s = new Set(this.picked);
     if (s.has(id)) s.delete(id); else s.add(id);

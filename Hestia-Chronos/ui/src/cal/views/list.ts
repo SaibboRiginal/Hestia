@@ -1,6 +1,6 @@
 /**
- * <chronos-cal-list> — agenda list grouped by day (31 days from the anchor). The «Adesso» divider marks the
- * current time (the list scrolls to it once); past rows show the outcome of their run (ok / fallito + detail).
+ * <chronos-cal-list> — agenda list grouped by day (31 days from the anchor). The «Now» divider marks the
+ * current time (the list scrolls to it once); past rows show the outcome of their run (ok / failed + detail).
  * Event: cal-select {ev, rect}.
  */
 import { LitElement, css, html, nothing, tokens, tr } from '@hestia/webui-sdk';

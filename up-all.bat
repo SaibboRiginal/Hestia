@@ -1,15 +1,16 @@
 @echo off
 setlocal
+rem Messages in the language of Windows when Hestia has a catalog for it (same file as install.ps1), else English.
 
 docker info >nul 2>&1
 if errorlevel 1 (
-    echo [Hestia] Docker non risponde: avvia Docker Desktop, aspetta che sia "running" e rilancia.
+    call :say "Docker is not answering: start Docker Desktop, wait until it is running and launch again."
     exit /b 1
 )
 
 docker network inspect hestia_net >nul 2>&1
 if errorlevel 1 (
-    echo [Hestia] Creating shared Docker network: hestia_net
+    call :say "Creating the shared Docker network: hestia_net"
     docker network create hestia_net >nul
 )
 
@@ -18,26 +19,19 @@ if "%~1"=="" goto :start
 goto :restart
 
 :build
-echo [Hestia] FULL REBUILD (dependencies changed) ...
-echo [Hestia] Clearing Python cache...
+call :say "FULL REBUILD (dependencies changed)..."
+call :say "Clearing the Python cache..."
 for /d /r %%d in (__pycache__) do @if exist "%%d" rmdir /s /q "%%d"
-echo [Hestia] Stopping existing containers first...
+call :say "Stopping the running containers first..."
 docker compose -f docker-compose.global.yml down
-echo [Hestia] Starting with fresh build...
+call :say "Starting with a fresh build..."
 docker compose -f docker-compose.global.yml up -d --build %2 %3 %4 %5
 goto :end
-
-:start
-echo [Hestia] Bringing up any stopped containers...
-docker compose -f docker-compose.global.yml up -d
-echo [Hestia] Restarting ALL services to pick up code changes...
-docker compose -f docker-compose.global.yml restart
-goto :end
-
-:restart
-echo [Hestia] Restarting: %*
-docker compose -f docker-compose.global.yml restart %*
-goto :end
-
-:end
 endlocal
+exit /b 0
+
+:say
+set "HX_MSG=%~1"
+set "HX_TAIL=%~2"
+powershell -NoProfile -Command "$k=$env:HX_MSG; $t=$k; $f='Hestia-Shared\hestia_common\locales\'+(Get-UICulture).TwoLetterISOLanguageName+'\installer.tsv'; if (Test-Path $f) { foreach ($x in [IO.File]::ReadAllLines($f, [Text.Encoding]::UTF8)) { $p=$x.Split([char]9); if ($p[0] -ceq $k) { $t=$p[1] } } }; Write-Host ('[Hestia] ' + $t + $env:HX_TAIL)"
+exit /b 0

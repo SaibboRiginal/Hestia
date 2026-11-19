@@ -393,7 +393,7 @@ Oracle Enhancement Plan (P1-P3) feature tests. 20 cases, all passing.
 
 ## §13 Unit Tests — /api/llm/generate endpoint (chains, 2026-10-19)
 
-- ✅ The use case's chain answers; a declared module use case uses its own chain; undeclared → «Uso generale» (listed)
+- ✅ The use case's chain answers; a declared module use case uses its own chain; undeclared → «General use» (listed)
 - ✅ An OpenAI-compatible step without key is still tried (local servers need none)
 - ✅ Every step failing → 503 naming the chain and each step
 - ✅ Missing/blank prompt → 400 (HTTPException must not be swallowed by the generic handler)

@@ -7,7 +7,7 @@ from typing import List, Optional
 
 
 class ArchiveRecord(Base):
-    """Data Lake per i record grezzi in arrivo dagli Ingest."""
+    """Data lake of the raw records coming from the ingest jobs."""
     __tablename__ = "archive_records"
 
     id = Column(Integer, primary_key=True, index=True)
@@ -24,7 +24,7 @@ class ArchiveRecord(Base):
 
 
 class EntityRecord(Base):
-    """Rappresenta oggetti del mondo reale (es. Case) processati."""
+    """Processed real-world objects (e.g. houses)."""
     __tablename__ = "entities"
 
     id = Column(Integer, primary_key=True, index=True)
@@ -32,7 +32,7 @@ class EntityRecord(Base):
     domain = Column(String, index=True)
     status = Column(String, default="active", index=True)
     payload = Column(JSONB, nullable=False)
-    # RAG: Vettori a 768 dimensioni per Nomic-Embed-Text
+    # RAG: 768-dimension vectors for Nomic-Embed-Text
     embedding = Column(Vector(768), nullable=True)
     embedding_model = Column(String, nullable=True)      # model that made the vector (app/vectors.py)
 
@@ -46,7 +46,7 @@ class EntityRecord(Base):
 
 
 class ChatHistory(Base):
-    """Memoria a breve termine delle sessioni chat."""
+    """Short-term memory of the chat sessions."""
     __tablename__ = "chat_history"
 
     id = Column(Integer, primary_key=True, index=True)
@@ -60,21 +60,21 @@ class ChatHistory(Base):
 
 class ChatSessionMeta(Base):
     """What the owner sets on a conversation (Cindy 26, dossier 2026-10-24-whole-cindy-brainstorm W7): its own
-    title, coloured tags and «fissata». Messages stay in ``chat_history``; a session without a row has none."""
+    title, coloured tags and «pinned». Messages stay in ``chat_history``; a session without a row has none."""
     __tablename__ = "chat_session_meta"
 
     session_id = Column(String, primary_key=True)
     title = Column(String, nullable=True)
-    tags = Column(JSONB, nullable=True)          # [{"name": "lavoro", "color": "blue"}]
+    tags = Column(JSONB, nullable=True)          # [{"name": "work", "color": "blue"}]
     pinned = Column(Boolean, nullable=False, default=False)
-    # «Non usare per l'allenamento» (docs/work/2026-10-30-training-dataset): no trace of it in the dataset.
+    # «Don't use for training» (docs/work/2026-10-30-training-dataset): no trace of it in the dataset.
     training_off = Column(Boolean, nullable=True, default=False)
     client = Column(String, nullable=True)
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
 
 
 class UserPreference(Base):
-    """Memoria a lungo termine: fatti, preferenze, e skill procedurali."""
+    """Long-term memory: facts, preferences and procedural skills."""
     __tablename__ = "user_preferences"
 
     id = Column(Integer, primary_key=True, index=True)
@@ -627,7 +627,7 @@ class LLMUsage(Base):
     context_window = Column(Integer, nullable=False, default=0)
     duration_ms = Column(Integer, nullable=False, default=0)
     cost_usd = Column(Float, nullable=False, default=0.0)
-    cost_kind = Column(String, nullable=True)          # api | abbonamento | locale | sconosciuto
+    cost_kind = Column(String, nullable=True)          # api | subscription | local | unknown
     outcome = Column(String, nullable=False, default="ok")   # ok | quota | error
     detail = Column(String, nullable=True)
 

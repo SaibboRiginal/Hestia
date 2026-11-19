@@ -12,7 +12,7 @@ from typing import Any, Callable
 
 from hestia_common.display import display, item
 from hestia_common.mcp_helpers import undo
-from hestia_common.i18n import t as tr  # fixed texts in the owner's language
+from hestia_common.i18n import is_yes, t as tr  # fixed texts in the owner's language
 
 logger = logging.getLogger(__name__)
 
@@ -116,7 +116,7 @@ def _words(v: Any) -> list[str]:
 def tool_tag(route: Route, tags: Any = "", remove: Any = "", title: str = "", pinned: Any = None,
              session_id: str = "", color: str = "", replace: Any = None, training_off: Any = None) -> dict:
     """``chat_tag``: tags (and maybe a title / pinned) on this conversation; ``replace`` (list) sets the tags
-    exactly (used by «Annulla»); returns ``undo`` back to the previous ones."""
+    exactly (used by «Undo»); returns ``undo`` back to the previous ones."""
     sid = str(session_id or "").strip() or _current(route)
     if not sid:
         raise ChatSessionsError(404, tr("no conversation to label"))
@@ -131,9 +131,9 @@ def tool_tag(route: Route, tags: Any = "", remove: Any = "", title: str = "", pi
     if str(title or "").strip():
         body["title"] = str(title).strip()
     if pinned not in (None, ""):
-        body["pinned"] = str(pinned).lower() in ("1", "true", "sì", "si", "yes")
+        body["pinned"] = is_yes(pinned)
     if training_off not in (None, ""):
-        body["training_off"] = str(training_off).lower() in ("1", "true", "sì", "si", "yes")
+        body["training_off"] = is_yes(training_off)
     out = set_meta(route, sid, body)
     names = ", ".join(t["name"] for t in out.get("tags") or []) or tr("f::none")
     logger.info("event=chat_tagged session_id=%s tags=%d", sid, len(out.get("tags") or []))

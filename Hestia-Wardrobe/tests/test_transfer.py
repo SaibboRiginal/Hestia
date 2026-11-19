@@ -47,9 +47,9 @@ def _hestia(prefix):
     w = Wardrobe(store, hub, lambda key, default=None: default, tz="Europe/Rome")
     w.ensure_vocabularies()
     t = Transfer("wardrobe", hub, sections=[
-        StoreSection("capi", "Capi", store, ["piece"], depends_on=["vocabolari", "foto"]),
-        StoreSection("vocabolari", "Vocabolari", store, ["taxonomy"]),
-        StoreSection("foto", "Foto", store, ["photo"], file_fields=["original", "medium", "thumb"]),
+        StoreSection("pieces", "Capi", store, ["piece"], depends_on=["vocabularies", "photos"]),
+        StoreSection("vocabularies", "Vocabolari", store, ["taxonomy"]),
+        StoreSection("photos", "Foto", store, ["photo"], file_fields=["original", "medium", "thumb"]),
     ])
     return w, t
 
@@ -67,11 +67,11 @@ def test_photos_travel_only_on_request_and_are_remapped():
         raw = base64.b64encode(b"\xff\xd8\xff fake jpeg").decode()
     cloud.add_photo("piece", tee["id"], {"name": "t.jpg", "mime": "image/jpeg", "data_b64": raw})
 
-    light = ct.export({"capi": {"keys": [f"piece:{tee['id']}"]}})
-    assert "foto" not in light["sections"] and light["files"] == []
+    light = ct.export({"pieces": {"keys": [f"piece:{tee['id']}"]}})
+    assert "photos" not in light["sections"] and light["files"] == []
 
-    full = json.loads(json.dumps(ct.export({"capi": {"keys": [f"piece:{tee['id']}"]}}, include_files=True)))
-    assert len(full["sections"]["foto"]["records"]) == 1 and len(full["files"]) == 3
+    full = json.loads(json.dumps(ct.export({"pieces": {"keys": [f"piece:{tee['id']}"]}}, include_files=True)))
+    assert len(full["sections"]["photos"]["records"]) == 1 and len(full["files"]) == 3
     files = [ct.file_get(f) for f in full["files"]]
 
     home, ht = _hestia("h")

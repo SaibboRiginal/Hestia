@@ -48,7 +48,7 @@ def _workdir_root() -> Path:
 
 
 def _model() -> str:
-    """Claude Code model for Forge: the ``claude`` (subscription) step of the «forge.code» chain, "" = CLI
+    """Claude Code model for Forge: the ``claude`` (subscription) step of the «forge.codice» chain, "" = CLI
     default."""
     from core.services import llm_chains
     return llm_chains.claude_code_model()
@@ -67,7 +67,7 @@ def status() -> dict[str, Any]:
     return {"available": True, "detail": "ok", "model": _model() or "default"}
 
 
-# Recent runs (in memory, WebUI page *Cervello* via GET /api/ui/code): task folder, start, ms, ok, turns, cost.
+# Recent runs (in memory, WebUI page *Brain* via GET /api/ui/code): task folder, start, ms, ok, turns, cost.
 _runs_lock = threading.Lock()
 _runs: deque = deque(maxlen=20)
 
@@ -190,7 +190,7 @@ def _run(workdir: str, prompt: str, append_system_prompt: str = "",
     }
     logger.info("event=claude_code_run_done ok=%s turns=%s", ok, result["turns"])
     if data.get("usage") or data.get("total_cost_usd"):
-        # Same daily totals as every other LLM call (use case "claude_code"; page Cervello).
+        # Same daily totals as every other LLM call (use case "claude_code"; page Brain).
         from core.services import llm_stats
         try:
             llm_stats.record_anthropic("claude_code", "claude_code", model or "default", data.get("usage") or {},

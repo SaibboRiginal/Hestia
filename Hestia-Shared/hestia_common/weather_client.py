@@ -2,7 +2,7 @@
 
     from hestia_common.weather_client import WeatherClient, is_rainy, day_summary
     w = WeatherClient()
-    f = w.forecast(place="", date_from="2026-10-21")      # place "" = Marko's Casa
+    f = w.forecast(place="", date_from="2026-10-21")      # place "" = the owner's Home
     if f.get("status") == "ok": ...
 
 Fail soft: any problem (no place, out of range, Hecate or the provider away) answers ``{"status": <reason>}``
@@ -35,7 +35,7 @@ def is_rainy(row: dict | None) -> bool:
 
 
 def day_summary(day: dict | None) -> str:
-    """``12–19°, pioggia 15–17`` (short Italian line for texts)."""
+    """``12–19°, rain 15–17`` (short line for texts, in the owner's language)."""
     if not day:
         return ""
     out = f"{day.get('min_c')}–{day.get('max_c')}°, {day.get('condition') or ''}".rstrip(", ")

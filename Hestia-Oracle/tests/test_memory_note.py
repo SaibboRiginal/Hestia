@@ -28,12 +28,12 @@ def _bodies(svc):
 class TestSaveNote:
     def test_lines_saved_with_external_origin(self):
         svc, scribe = _svc()
-        ok, out = svc.save_note("- Va in palestra il martedì\n\n• Non mangia latticini", topic="dieta", access="Claude")
+        ok, out = svc.save_note("- Va in palestra il martedì\n\n• Non mangia latticini", topic="diet", access="Claude")
         assert ok and [s["fact"] for s in out["saved"]] == ["Va in palestra il martedì", "Non mangia latticini"]
         body = _bodies(svc)[0]
         assert body["memory_class"] == MEMORY_CLASS_PREFERENCE and body["domains"] == ["general"]
         assert body["extra_data"]["source"] == "external" and body["extra_data"]["access"] == "Claude"
-        assert body["extra_data"]["topic"] == "dieta" and body["extra_data"]["noted_at"]
+        assert body["extra_data"]["topic"] == "diet" and body["extra_data"]["noted_at"]
         scribe.ask.assert_not_called()   # no LLM: works with the local model down
 
     def test_list_input_and_no_access_is_chat(self):

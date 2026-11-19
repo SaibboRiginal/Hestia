@@ -4,14 +4,14 @@
 for every client. Built like Oracle a blocchi: named providers, chains, uses declared by modules, external mode.
 **Node:** main host (local engines want the CPU/GPU of the PC)
 **Stack:** Python · FastAPI · ffmpeg · faster-whisper · Piper · Kokoro (onnx) · Docker · WebUI plugin bundle (Lit, `ui/`)
-**Port:** 19021 · Core module (`kind="core"`, page «Voce» order 125) · Dossier: `docs/work/2026-10-20-voice-module/`
+**Port:** 19021 · Core module (`kind="core"`, page «Voice» order 125) · Dossier: `docs/work/2026-10-20-voice-module/`
 
 ---
 
 ## Responsibility
 
-- **Listening** (`ascolto`): audio of any format (ogg/opus from Telegram, webm from the browser, mp3, wav, m4a…) → text.
-- **Speaking** (`voce`): text → audio (`ogg_opus` for Telegram voice notes, `mp3` for browsers, `wav`, `webm`).
+- **Listening** (`listen`): audio of any format (ogg/opus from Telegram, webm from the browser, mp3, wav, m4a…) → text.
+- **Speaking** (`voice`): text → audio (`ogg_opus` for Telegram voice notes, `mp3` for browsers, `wav`, `webm`).
   **Language follows the conversation** (Marko 2026-11-07): the text to speak is read in its own language
   (`core/lang.py`, langdetect; short or unsure texts keep `echo.language`, Italian when it is `auto`), and a local
   voice of another language is swapped for that language's voice of the same kind (Kokoro: `if_sara` + English →
@@ -19,7 +19,7 @@ for every client. Built like Oracle a blocchi: named providers, chains, uses dec
   so the chain moves on. A program at home (Chatterbox…) gets `language` in the OpenAI request. Listening with
   `auto` lets Whisper recognise the language. A `say` stream fixes the language on its first long sentence.
   Before speaking, the text is made speakable (markdown, links, code and emoji dropped; very long texts cut at
-  `echo.voice.max_chars` with «il resto è nel testo»).
+  `echo.voice.max_chars` with « The rest is in the text»).
 - **Streams in blocks**: `listen` (microphone in chunks → partial text, trailing silence for the end of a turn) and
   `say` (text while it is written → audio sentence by sentence). Live mode on every client is Oracle (the same chat,
   the same models) + Echo. **No external live service** (no OpenAI Realtime, no Gemini Live): Marko's decision.
@@ -38,17 +38,17 @@ for every client. Built like Oracle a blocchi: named providers, chains, uses dec
   (e.g. `ECHO_KEY_GROQ`), never in Themis.
 - **Chains** `echo.chains`: name → `{label, direction: ascolto|voce, steps[{provider, model, voice, options}]}`.
   The first ready step is used; a step out of quota (429) is skipped until its reset (`Retry-After` or
-  `echo.chains.cooldown`), «Riprova adesso» clears it. Defaults: `ascolto` (Whisper locale small → Groq
-  whisper-large-v3-turbo), `ascolto-preciso`, `voce` (Kokoro if_sara → Piper it_IT-paola-medium), `voce-naturale`.
+  `echo.chains.cooldown`), «Try again now» clears it. Defaults: `listen` (Whisper locale small → Groq
+  whisper-large-v3-turbo), `listening-precise`, `voice` (Kokoro if_sara → Piper it_IT-paola-medium), `voice-natural`.
 - **Uses** `echo.usecases`: every module declares its uses in Hub capabilities `voice_usecases`
   (`hestia_common.voice_usecases.usecase(id, label, direction=, chain=, help=, mode=)`); the page chooses chain and
-  mode per use. Undeclared uses still work on the default chain of their direction and are listed as «non dichiarato».
-- **Mode** `echo.mode`: `interna` (Echo's chains) or `esterna` (one engine does everything, `echo.external.provider`
+  mode per use. Undeclared uses still work on the default chain of their direction and are listed as «not declared».
+- **Mode** `echo.mode`: `internal` (Echo's chains) or `external` (one engine does everything, `echo.external.provider`
   + `echo.external.model`; Echo is only the door: cuts blocks, keeps audio, counts use). If the external engine fails:
-  `echo.external.fallback` = `interna` (back to the chains) or `nessuno` (say it does not work). Each use may override.
+  `echo.external.fallback` = `internal` (back to the chains) or `none` (say it does not work). Each use may override.
 
-Declared uses today: `echo.prova.*` (page «Prova»), `oracle.documents` (audio in documents, chain `ascolto-preciso`),
-`telegram.vocale`, `telegram.answer`, `webui.vocale`, `webui.listen`, `webui.live.listening`, `webui.live.voice`,
+Declared uses today: `echo.test.*` (page «Test»), `oracle.documents` (audio in documents, chain `listening-precise`),
+`telegram.voice_note`, `telegram.answer`, `webui.voice_note`, `webui.listen`, `webui.live.listening`, `webui.live.voice`,
 `hermes.notification`.
 
 ## Keeping audio (Archive)
@@ -58,7 +58,7 @@ notification id, `parent_id` = session). Classes:
 
 | Class | What | Kept |
 | --- | --- | --- |
-| `recording` | Marko's voice (voice notes, «Parla») | forever (opus 16 kbps); only Marko deletes them |
+| `recording` | Marko's voice (voice notes, «Talk») | forever (opus 16 kbps); only Marko deletes them |
 | `file` | audio sent as a document | like a document |
 | `generated` | replies read aloud | `echo.audio.generated_days` after the last listen, then regenerated from the text |
 | `notification` | voice of a notification | as long as its notification (dropped when superseded) |
@@ -69,34 +69,34 @@ The same text for the same message is never generated twice (`text_hash`).
 
 ## Notifications in voice
 
-Each module decides with its own setting `<module>.notifiche.voce` (`hestia_common.reminders.voice_setting`; on for
+Each module decides with its own setting `<module>.notifications.voice` (`hestia_common.reminders.voice_setting`; on for
 Hercules, Hygieia, Wardrobe; off for Plutus and Scout). The event carries `_voice`; Hermes publishes the written
 notification first, then asks Echo (use `hermes.notification`) and sends an `update` with `voice`: Telegram sends a voice
 message replying to the notification (deleted with it), the WebUI inbox shows «Ascolta». The written notification
 never changes.
 
-## «La tua voce»: voiceprint and personal dictionary (W4, dossier `2026-10-24-whole-cindy-brainstorm`)
+## «Your voice»: voiceprint and personal dictionary (W4, dossier `2026-10-24-whole-cindy-brainstorm`)
 
-- **Voiceprint** (Cindy 10, `app/core/voiceprint.py`): Marko records ~10 s once (page «Voce», Telegram «Registra la
-  mia voce», tool `voice_print_record`, at least 6 s of speech). Echo keeps a speaker embedding (WeSpeaker
+- **Voiceprint** (Cindy 10, `app/core/voiceprint.py`): Marko records ~10 s once (page «Voice», Telegram «Registra la
+  mia voce», tool `voiceprint_record`, at least 6 s of speech). Echo keeps a speaker embedding (WeSpeaker
   ResNet34 ONNX, downloaded on first use into `ECHO_MODELS_DIR/speaker`) in `echo-store` (`kind=voiceprint`) and the
   recording as a kept `recording`. On the uses in `echo.voiceprint.uses` (default the WebUI live listening) every 1.5 s
   window of speech under `echo.voiceprint.threshold` (cosine, 0.45) becomes silence **before** transcription and before
   the live end-of-turn check: the TV or other people neither enter the message nor keep a turn open. All windows
-  muted → «non ho sentito la tua voce». No voiceprint = no filter; engine missing → audio unchanged (`[🔄]`).
+  muted → «I didn't hear your voice». No voiceprint = no filter; engine missing → audio unchanged (`[🔄]`).
 - **End of turn**: live mode closes a turn after `echo.live.silence_ms` (1250 ms) of real silence of the owner.
 - **Personal dictionary** (Cindy 17, `app/core/dictionary.py`): names and terms passed to every listening engine as
   a hint (Whisper `initial_prompt`, OpenAI `prompt`, ≤ 80 words). Words added by hand are confirmed at once; a
   correction of a transcript (`POST /dictionary/learn`, tool `voice_correction`) makes the new words candidates,
   confirmed after `echo.dictionary.confirmations` (2) corrections. Rows `kind=word` (id = normalised word).
   The hint always starts with the assistant's chosen name and the owner's name (personal settings), so a new
-  name is written right from the first word; the setup «Ascolta» says «Ciao, sono <name>» in the voice's language
+  name is written right from the first word; the setup «Ascolta» says «Hi, I am <name>» in the voice's language
   (`lang.sample`, dossier `docs/work/2026-11-16-name-everywhere`).
 
 ## Clients
 
 - **Telegram**: a voice note becomes a chat message (transcript shown, then handled like typed text, recording
-  kept); every reply has «Ascolta»; `/voce` switches spoken answers to voice notes on or off.
+  kept); every reply has «Ascolta»; `/voice` switches spoken answers to voice notes on or off.
 - **WebUI**: voice messages in the chat like any messenger (hold to record, release to send, slide left to cancel;
   with a mouse click to record, then bin or send), audio bubble with transcript; «Ascolta» under every reply;
   **Parla** (live): the browser notices start and end of speech (`echo.live.silence_ms`), streams the mic to `listen`,
@@ -104,17 +104,17 @@ never changes.
 - **Page «Voce»** (plugin): Prova (mic → text, text → voice, with provider and chain that answered), Motori
   (providers, chains in the SDK `<hxk-chain>` editor shared with the brain models — only the engines of the chain direction, their models or voices —, uses), Uso (operations, minutes, characters, cost from `echo.pricing`, errors by use and
   engine), Audio conservati (space by class, listen, download, delete). **La tua voce** (`<echo-your-voice>`, W7): record the voiceprint
-  (≥ 6 s, a sentence to read, «Togli l'impronta»), the personal dictionary (sure words and candidates «n di N»,
-  add, remove with «Annulla»). In Prova «Correggi la trascrizione» sends `{heard, corrected}` to `/dictionary/learn`.
-  In Prova «Prepara la voce adesso» (`POST /models/prefetch`) downloads at once what listening and speaking need on
-  this computer, with what it does written next to it (it was «Scarica le voci» in the WebUI Download page).
+  (≥ 6 s, a sentence to read, «Remove the voiceprint»), the personal dictionary (sure words and candidates «n of N»,
+  add, remove with «Cancel»). In Prova «Fix the transcription» sends `{heard, corrected}` to `/dictionary/learn`.
+  In Prova «Prepare the voice now» (`POST /models/prefetch`) downloads at once what listening and speaking need on
+  this computer, with what it does written next to it (it was «Download the voices» in the WebUI Download page).
 
 ## Settings (Themis, `echo.*`)
 
 `echo.providers`, `echo.chains`, `echo.usecases`, `echo.mode`, `echo.external.provider`, `echo.external.model`,
 `echo.external.fallback`, `echo.language` (auto = follow the conversation), `echo.voice.max_chars` (1200), `echo.listening.max_seconds` (600),
 `echo.live.silence_ms` (1250), `echo.chains.cooldown` (60 min), `echo.audio.space_mb` (2048),
-`echo.audio.generated_days` (30), `echo.pricing`; group «La tua voce»: `echo.voiceprint.threshold` (0.45),
+`echo.audio.generated_days` (30), `echo.pricing`; group «Your voice»: `echo.voiceprint.threshold` (0.45),
 `echo.voiceprint.uses` (`["webui.live.listening"]`), `echo.dictionary.confirmations` (2).
 
 ## API (via Hub `/route/echo/...`, prefix `/api/voice`)
@@ -137,13 +137,13 @@ never changes.
 | GET | `/audio`, `/audio/{id}?format=`, `/audio-for?ref_id=` | kept audio (list with space, one, the one of a message) |
 | DELETE | `/audio/{id}`, `/audio?notification_id=\|message_id=` | delete one; drop regenerable audio of a removed notification |
 | POST | `/audio/cleanup` | agenda job |
-| GET | `/setup/catalog` | guided setup «Voce» (`core/voice_setup.py`): providers per direction, local first, with their models/voices (a cloud one once its key is there) and the chain's current first step; each provider has `note` (one line on what it is: Kokoro natural, Piper light) and each direction `steps` (the whole chain); `?hosts=` also looks on other computers of the house: speech programs found at home (Chatterbox 8004 and Kokoro-FastAPI 8880 through `/v1/audio/voices`, Speaches 8000 / LocalAI 8080 through `/v1/models` with speech models, Home Assistant's Wyoming 10300/10200 through `describe`) are listed as local with `found`, `url`; a block at a private address counts as local too; each direction has `programs` (free speech programs not found, offered to install with their site: Chatterbox, Kokoro-FastAPI, Speaches); Kokoro lists all its 54 voices, Piper one female and one male voice per language, each voice with `lang` + `lang_label` (the setup filters by a language selector, names stay plain: «Sara»); «Ascolta» says a sentence in the voice's own language |
+| GET | `/setup/catalog` | guided setup «Voice» (`core/voice_setup.py`): providers per direction, local first, with their models/voices (a cloud one once its key is there) and the chain's current first step; each provider has `note` (one line on what it is: Kokoro natural, Piper light) and each direction `steps` (the whole chain); `?hosts=` also looks on other computers of the house: speech programs found at home (Chatterbox 8004 and Kokoro-FastAPI 8880 through `/v1/audio/voices`, Speaches 8000 / LocalAI 8080 through `/v1/models` with speech models, Home Assistant's Wyoming 10300/10200 through `describe`) are listed as local with `found`, `url`; a block at a private address counts as local too; each direction has `programs` (free speech programs not found, offered to install with their site: Chatterbox, Kokoro-FastAPI, Speaches); Kokoro lists all its 54 voices, Piper one female and one male voice per language, each voice with `lang` + `lang_label` (the setup filters by a language selector, names stay plain: «Sara»); «Ascolta» says a sentence in the voice's own language |
 | POST | `/setup/reload-keys` | Echo re-reads the `ECHO_KEY_*` lines of its own `.env` (`Hestia-Echo/app/.env`, `blocks.reload_keys` → `hestia_common.env_keys`) → `{keys}` (names only): a key saved by the setup works at once, no container re-create; also at startup |
-| POST | `/setup/test` | «Prova» of a speech service `{provider}`: its list read with the key (no audio made) → `{ok, detail, models, voices, recommended {ascolto, voce}}` (preselected once the key works) |
+| POST | `/setup/test` | «Test» of a speech service `{provider}`: its list read with the key (no audio made) → `{ok, detail, models, voices, recommended {ascolto, voce}}` (preselected once the key works) |
 | POST | `/setup/preview` | «Ascolta» on a voice chosen in the setup `{provider, voice, model?, text?}`: a short sentence spoken by that provider only (no chain, nothing saved) → `{ok, audio_b64, mime_type}` or `{ok: false, detail}` (a local engine not downloaded yet, a service without key) |
-| POST | `/setup/hear` | «Prova» of listening in the setup `{provider, model, audio_b64, mime_type}`: the recording heard by that provider only → `{ok, text}` or `{ok: false, detail}` |
-| POST | `/setup/apply` | `{listen, speak}`, each a list of steps in order (one local engine, then cloud services; one object still accepted; a found program's step carries `url/type/label` and becomes a block) → `echo.chains` (the chosen steps first in `ascolto`/`voce`, the other providers' steps kept as fallbacks), then the local models are queued → `{queued, downloads}` |
-| POST | `/models/prefetch` | queue the local models of the first local step of the «ascolto» and «voce» chains (guided setup «Voce», Download page) → `{queued, downloads}` |
+| POST | `/setup/hear` | «Test» of listening in the setup `{provider, model, audio_b64, mime_type}`: the recording heard by that provider only → `{ok, text}` or `{ok: false, detail}` |
+| POST | `/setup/apply` | `{listen, speak}`, each a list of steps in order (one local engine, then cloud services; one object still accepted; a found program's step carries `url/type/label` and becomes a block) → `echo.chains` (the chosen steps first in `listen`/`voice`, the other providers' steps kept as fallbacks), then the local models are queued → `{queued, downloads}` |
+| POST | `/models/prefetch` | queue the local models of the first local step of the «listening» and «voice» chains (guided setup «Voice», Download page) → `{queued, downloads}` |
 
 Downloads (`/api/downloads`, `hestia_common.downloads`, state `/models/downloads.json`): Whisper (source `whisper`,
 faster-whisper's own download, no byte progress), Piper voices and Kokoro files (source `http`, resumable), the
@@ -154,7 +154,7 @@ so it shows on the Download page and the call waits for it.
 
 Audio plumbing note: ffmpeg writing WAV to a pipe cannot fill the header sizes (0xFFFFFFFF); `to_pcm16k`
 rewrites the header and `wav_duration` counts the frames really there (bench 2026-10-30: a 2.5 s reply was read as
-134217 s and rejected as «audio troppo lungo»). Local Whisper gets float samples, never a file: faster-whisper's own
+134217 s and rejected as «audio too long»). Local Whisper gets float samples, never a file: faster-whisper's own
 decoding calls PyAV with an argument PyAV ≥ 14 no longer has (every transcription failed, same bench).
 
 ## Configuration (infrastructure only)
@@ -172,19 +172,19 @@ silence, seq dedupe, sentence blocks), keeping (reuse, cleanup, space rule, warn
 `test_your_voice.py`: dictionary (add, learn to confirmation, hint in the engine options), voiceprint (enroll,
 other voices muted, live cache, unchanged without print or engine).
 
-MCP tools (Telegram + WebUI, section «Voce»): `voice_dictionary`, `voice_word`, `voice_word_remove`,
-`voice_correction`, `voice_print`, `voice_print_record` (a voice note), `voice_print_remove`.
+MCP tools (Telegram + WebUI, section «Voice»): `voice_dictionary`, `voice_word`, `voice_word_remove`,
+`voice_correction`, `voiceprint`, `voiceprint_record` (a voice note), `voiceprint_remove`.
 Echo's Hub capabilities declare `owns_tool_domains: ["voice"]`, so Oracle's domain gate keeps these tools in chat
 (without it they never reached the assistant; found on the real-model bench, 2026-10-30).
 
 
 **2026-11-14 (backend English, dossier `docs/work/2026-11-14-english-backend`)**: tool descriptions are English (for the model). What people read about the tools comes from `hestia_common/locales/<lang>/tools.json`.
 
-**2026-11-14 (owner's language, dossier `docs/work/2026-11-14-english-backend`)**: the module follows the personal setting «Lingua» (`settings.follow_personal()`), so the fixed texts it shows go out in the owner's language through `hestia_common.i18n.t`.
+**2026-11-14 (owner's language, dossier `docs/work/2026-11-14-english-backend`)**: the module follows the personal setting «Language» (`settings.follow_personal()`), so the fixed texts it shows go out in the owner's language through `hestia_common.i18n.t`.
 
-**2026-11-15 (owner's language, dossier `docs/work/2026-11-14-english-backend`)**: the notices, errors and cards this module shows go through `hestia_common.i18n.t` and follow «Lingua».
+**2026-11-15 (owner's language, dossier `docs/work/2026-11-14-english-backend`)**: the notices, errors and cards this module shows go through `hestia_common.i18n.t` and follow «Language».
 
-**2026-11-15 (WebUI page in the owner's language, dossier `docs/work/2026-11-14-english-backend`)**: the texts of this module's WebUI page and widgets go through `tr` of `@hestia/webui-sdk` and follow «Lingua»; source texts in English, Italian in `Hestia-Shared/hestia_common/locales/it/messages.json`.
+**2026-11-15 (WebUI page in the owner's language, dossier `docs/work/2026-11-14-english-backend`)**: the texts of this module's WebUI page and widgets go through `tr` of `@hestia/webui-sdk` and follow «Language»; source texts in English, Italian in `Hestia-Shared/hestia_common/locales/it/messages.json`.
 
 **2026-11-16 (no Italian in the code, dossier `docs/work/2026-11-14-english-backend` v2.0)**: every text is English in the code; Italian lives only in `Hestia-Shared/hestia_common/locales/it/messages.json`. Labels declared at registration (manifest, capabilities, agenda rules, settings) are plain English, translated at the edge.
 

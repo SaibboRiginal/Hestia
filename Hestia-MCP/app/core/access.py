@@ -21,7 +21,7 @@ from hestia_common.i18n import t as tr  # fixed texts in the owner's language
 
 logger = logging.getLogger("hestia_mcp.access")
 
-TOKEN_PREFIX = "hst_"          # access of kind token (made on the AI access page)
+TOKEN_PREFIX = "hst_"          # access of kind token (made on the Access page)
 OAUTH_TOKEN_PREFIX = "hso_"    # short-lived access token of an access of kind oauth (core/oauth.py)
 SCOPES = ("read", "write")
 _STORE = "api/mcp-access-store/accesses"
@@ -102,7 +102,7 @@ class AccessStore:
         with self._lock:
             self._cache.clear()
 
-    # ── management (AI access page) ──────────────────────────────────────────
+    # ── management (Access page) ──────────────────────────────────────────
     def list(self) -> list[dict]:
         return (self._ok(*self._archive("GET", _STORE)) or {}).get("accesses") or []
 

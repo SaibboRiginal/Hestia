@@ -8,7 +8,7 @@ import pytest
 pytestmark = pytest.mark.unit
 
 
-def _say(message, style="frase", level="info", event_type="note.saved", payload=None):
+def _say(message, style="sentence", level="info", event_type="note.saved", payload=None):
     from modules.service import conversational_message
     return conversational_message(message, "Titolo", level=level, event_type=event_type, payload=payload or {},
                                   style=style)
@@ -16,7 +16,7 @@ def _say(message, style="frase", level="info", event_type="note.saved", payload=
 
 def test_card_style_is_unchanged_and_skips_oracle():
     with patch("modules.service.narrate") as narrate:
-        assert _say("Spesa salvata", style="scheda") == "Spesa salvata"
+        assert _say("Spesa salvata", style="card") == "Spesa salvata"
         narrate.assert_not_called()
 
 
@@ -43,7 +43,7 @@ def test_oracle_down_keeps_the_card_text():
 def test_style_setting_is_declared_with_card_default():
     from modules import hermes_settings
     assert hermes_settings.NOTIFICATION_STYLE == "hermes.notifications.style"
-    assert [v for v, _ in hermes_settings.STYLES] == ["scheda", "frase"]
+    assert [v for v, _ in hermes_settings.STYLES] == ["card", "sentence"]
 
 
 def test_phrase_style_leaves_the_identity_to_oracle():

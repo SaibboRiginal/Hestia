@@ -20,7 +20,7 @@ A quick, single-page reference for service roles, dependencies, and runtime data
 | Hercules | Domain (Fitness) | Yes (gym coach) | No | Archive store, agenda job + Hermes for reminders, WebUI plugin |
 | Hygieia | Domain (Self care) | Yes (products, routines) | No | Archive store, agenda job + Hermes for reminders, WebUI plugin |
 | Wardrobe | Domain (Wardrobe) | Yes (pieces, outfits, suggestions) | No | Archive store + blobs, agenda + Hermes, WebUI plugin |
-| Plutus | Domain (Finance) | Yes (expenses, budgets, statements) | No | PayPal mails by push (Iris), statement PDF via plugin or chat (Oracle hand-off), Archive `finance-store`, agenda + Hermes, WebUI plugin «Spese» |
+| Plutus | Domain (Finance) | Yes (expenses, budgets, statements) | No | PayPal mails by push (Iris), statement PDF via plugin or chat (Oracle hand-off), Archive `finance-store`, agenda + Hermes, WebUI plugin «Expenses» |
 | Apollo | Domain (Images) | Yes (flows per purpose, job queue) | Yes (remote ComfyUI, `APOLLO_COMFYUI_URL`) | The only caller of image generators; ComfyUI websocket push; images in Archive blobs; `callback` push to the requester |
 | Aphrodite | Domain (Appearance) | Yes (which look is on) | No | Profiles, pets, per-client choice; today's moment pushed by Chronos; asks pictures to Apollo; clients read `/now` |
 | Lares | Domain (House) | Yes (devices, quick actions) | Yes (Home Assistant, `LARES_HA_URL`/`LARES_HA_TOKEN`) | The only caller of Home Assistant; websocket push of state changes; presence signal `home.present` |
@@ -34,7 +34,7 @@ A quick, single-page reference for service roles, dependencies, and runtime data
 | Hephaestus | Core Organ | Yes (remediation + Forge self-development) | No | Policy-gated remediation; Forge codes/tests/merges Hestia itself |
 | Athena | Core Organ | Yes (proactive advisory cognition: Sistema track idle retrospective, Vita track life reflection on module signals) | No | Advisory hints for Oracle; improvement hand-off to Forge; life observations for the daily recap |
 | Atlas | Shared Integration | No domain logic | No | Host-side fetch helper routed via Hub |
-| Metis | Core Organ | Yes (dataset curation, benchmark, training orchestration, usage log) | No | Builds datasets from feedback, runs benchmarks, orchestrates LoRA training; usage log → «Adesso» and «Scopri» (Archive `metis-store`); chat turn traces for the training dataset (Archive `dataset-store`) |
+| Metis | Core Organ | Yes (dataset curation, benchmark, training orchestration, usage log) | No | Builds datasets from feedback, runs benchmarks, orchestrates LoRA training; usage log → «Now» and «Discover» (Archive `metis-store`); chat turn traces for the training dataset (Archive `dataset-store`) |
 | Dummy | Test Module | Generic integration testing behavior | No | Deterministic target for routing/policy/execution tests |
 | MCP | Core Gateway | No tool-ownership (aggregates) | No | Hestia's one MCP server: every client (Oracle, Telegram, WebUI, external AIs with an access) lists and runs tools here; owns external accesses |
 | Swagger | Documentation Aggregator | No | No | Canonical API contract surface (`swagger.yml`) |
@@ -182,7 +182,7 @@ flowchart LR
 1. Argus/Oracle/user → `POST /api/hephaestus/remediate` → runbook + consent policy → Hub → target module
    `…/maintenance/reconcile` (Archive deletes incomplete entities and keeps them in `trash:<task_id>`).
 2. The reply's `details.undo_available` marks the task `undoable`.
-3. «Annulla riparazione» → `/remediate/{id}/rollback`: pending/failed → stopped; undoable → Hub → same module
+3. «Undo repair» → `/remediate/{id}/rollback`: pending/failed → stopped; undoable → Hub → same module
    `…/maintenance/undo` puts the rows back; otherwise `nothing_to_undo`.
 
 ### Tool flow (one MCP for every client)
@@ -196,7 +196,7 @@ flowchart LR
    and deploy only after the owner's approval.
 5. OAuth AI (claude.ai, ChatGPT): `/mcp` 401 with `resource_metadata` → WebUI `/.well-known/oauth-*` →
    `/oauth/register` → `/oauth/authorize` (WebUI → Hub → Hestia-MCP parks the request) → browser to
-   `/p/mcp/accesses?oauth=<id>` (WebUI login) → **Consenti** → code to the AI's redirect → `/oauth/token` (PKCE) →
+   `/p/mcp/access?oauth=<id>` (WebUI login) → **Consenti** → code to the AI's redirect → `/oauth/token` (PKCE) →
    `hso_…` bearer on `/mcp` exactly like a token access; `refresh_token` rotates, a replay revokes the access.
 6. External AI memory: `memory_note` (write access) → Hestia-MCP → Hub → Oracle `POST /api/memory/note` → Archive
    `/api/memory` (`durable_user_preference`, origin in `extra_data`); `memory_recall` reads them back. Page Memoria lists/forgets.
@@ -217,8 +217,8 @@ flowchart LR
    `/api/notifications` and Metis `/api/metis/usage/recent` through Hub for the awareness lines.
 6. She writes first: Athena loop (window `athena.talk`) → Psyche `/api/mood/today` + signals → Oracle
    `POST /api/chat/opener` → Hermes `/api/events/ingest` (`kind: athena.talk`, `_chat`) → Telegram chat text / WebUI
-   chat + Notifiche; the owner's answer is a normal `/api/chat` turn (awareness line «Oggi gli hai scritto tu»).
-7. Mini App: «Apri» / menu button → WebUI page with `#tgWebAppData` → WebUI `POST /api/webui/auth/telegram` → Hub →
+   chat + Notifiche; the owner's answer is a normal `/api/chat` turn (awareness line «Today you wrote to him»).
+7. Mini App: «Open» / menu button → WebUI page with `#tgWebAppData` → WebUI `POST /api/webui/auth/telegram` → Hub →
    Telegram `POST /api/webapp/verify` (bot-token HMAC, owner only) → 12-hour session token.
 8. Writing while she answers (dossier `docs/work/2026-11-18-real-test-problems` B): the client holds the text (one
    answer at a time per chat) and sends it as the next `/api/chat` turn; «Add now» → WebUI `ChatHub` `steer` / Telegram
@@ -237,9 +237,9 @@ flowchart LR
    e.g. Archive's «Backup».
 5. A page may need a route of its module outside the prefix: the module serves the same handler under the prefix
    too (Chronos `/api/agenda/routines`, `/api/agenda/special`), never a wider proxy rule.
-6. The WebUI shell uses the same doors: Metis (taps, «Adesso», «Scopri»), Aphrodite (look of now), Hermes
+6. The WebUI shell uses the same doors: Metis (taps, «Now», «Discover»), Aphrodite (look of now), Hermes
    `/api/ui/push/*` (Web Push), Oracle `/api/ui/chats*` (conversation history and tags → Archive
-   `/api/chat/sessions/*`); a suggested tool or an «Annulla» runs through Hestia-MCP `/api/mcp/ui/tools/call`.
+   `/api/chat/sessions/*`); a suggested tool or an «Cancel» runs through Hestia-MCP `/api/mcp/ui/tools/call`.
    Deleting a conversation: WebUI «…» → Oracle `DELETE /api/ui/chats/{id}` → Archive `DELETE /api/chat/sessions/{id}`
    (messages + title/tags/pin) and Metis forgets its saved turns. The model that answered travels with the answer:
    Oracle `final.model` → Archive `chat_history.model` → WebUI divider / Telegram line where it changes.
@@ -269,10 +269,10 @@ flowchart LR
 3. Special events: daily job `chronos.special.daily` → Hermes `special.soon` / `special.today` → `special_moment` to
    modules declaring `capabilities.special_moment_endpoint` and to routines waiting for it.
 4. Smart calendar: daily job `chronos.smart_calendar` → Hermes card «Sposta alle» (→ Chronos → Hecate update) /
-   «Lascia così». Registered jobs: `chronos.special.daily`, `chronos.smart_calendar`, `hermes.notifications.remind_pending`.
+   «Leave it». Registered jobs: `chronos.special.daily`, `chronos.smart_calendar`, `hermes.notifications.remind_pending`.
 
 ### Notification delivery details (same dossier, W2)
-- Hermes rings only the client the owner used in the last `hermes.delivery.active_client_minutes` (Chronos presence);
+- Hermes rings only the client the owner used in the last `hermes.delivery.client_active_minutes` (Chronos presence);
   the others get the notification silent. When the WebUI rings, subscribed browsers also get a Web Push (`hermes-store`).
 - Secret form: module event `_secret` → client form → Hermes `/api/notifications/{id}/secret` → Hub → the module.
   Hermes never stores or logs the values.
@@ -284,7 +284,7 @@ flowchart LR
   reset → Chronos → Hub → `POST /api/hephaestus/forge/tasks/{id}/resume`.
 
 ### Memory learning and performance flow (same dossier, W3)
-- Athena consolidation → Archive memory + `athena-store` learning row; «Annulla» → Athena → Archive PATCH memory.
+- Athena consolidation → Archive memory + `athena-store` learning row; «Cancel» → Athena → Archive PATCH memory.
   Memory review → proposals → Hermes card → Athena apply/dismiss.
 - Argus monitor cycle → performance sample (Docker socket read-only, Hub `/health`, Archive `/api/blobs/usage` via
   Hub) → alert worker → Hermes. Atlas recipe broken → WARNING log → Argus log alert / Forge proposal.
@@ -292,7 +292,7 @@ flowchart LR
 
 ### LLM access rule
 Only Oracle talks to LLM providers. Athena/Scout/Argus/Chronos use `/api/llm/generate` (`voice: true` for a text to
-the owner: Oracle adds who speaks and the personal «Lingua»), Forge and Wardrobe use
+the owner: Oracle adds who speaks and the personal «Language»), Forge and Wardrobe use
 `/api/llm/chat` — always via Hub. Callers name a `use_case` `<module>.<task>` (e.g. `scout.listings`, `athena.strategy`,
 `forge.code`) and declare it in their Hub registration (`capabilities.llm_usecases`, `hestia_common.oracle_usecases`);
 Oracle maps each use case to a named chain of provider/model steps (quota skip) and a brain mode (interna / esterna =
@@ -307,15 +307,15 @@ Every call becomes a usage row in Archive (`llm-usage`, panel Cervello → Uso).
 
 ### Oracle offline flow (Oracle down)
 1. Argus' monitor cycle sees Oracle down past `argus.oracle.grace` (60 s) → presence signal `oracle.offline` (Chronos
-   overlay «⏳ Non disponibile», effect `chat.reply = queued`) + one Hermes notice to every client.
+   overlay «⏳ Unavailable», effect `chat.reply = queued`) + one Hermes notice to every client.
 2. Telegram/WebUI: a chat message Oracle does not accept → Archive `/api/chat-queue` + fixed «in coda» reply.
 3. Oracle healthy → Argus clears the signal and closes the notice; Chronos sees `chat.reply` back to `live` and calls each
    client's `capabilities.chat_queue_drain` via Hub; each client sends each chat's queue to Oracle in one turn
-   (`queued`, the model answers each, merges or asks), then Chronos runs the «Mentre non c'ero» catch-up.
-4. Only fallback models left (Oracle `/health` `models=limited`) → signal `oracle.limited`, overlay «Limitato»;
+   (`queued`, the model answers each, merges or asks), then Chronos runs the «While I was away» catch-up.
+4. Only fallback models left (Oracle `/health` `models=limited`) → signal `oracle.limited`, overlay «Limited»;
    `models=none` → same as down.
 5. Any module down past `argus.repair.restart_after` → Argus → Hub → Hephaestus `/api/hephaestus/restart` (Docker),
-   at most `argus.repair.max_restarts`, then one Hermes notice; incidents persist in Archive `argus-store` («Registro»).
+   at most `argus.repair.max_restarts`, then one Hermes notice; incidents persist in Archive `argus-store` («Log»).
 
 ### Assistant question flow
 Oracle tool `ask_user` → turn stops, `question` frame (`ask_…`, kept in Archive `oracle-store`) → client card/buttons →
@@ -327,10 +327,10 @@ SPEC `docs/work/2026-10-19-oracle-offline` (v3).
    the daily agenda job `<module>.signals` → `hestia_common.signals_client` → Archive `/api/signals-store` (signals +
    weekly metrics, via Hub).
 2. Window `athena.reflection` (daily 18–20): Athena reads the store, links weekly series of different areas (Pearson),
-   asks the modules for details (`GET /api/module/context?topic=` via Hub), one Oracle call (`athena.reflection_run`),
+   asks the modules for details (`GET /api/module/context?topic=` via Hub), one Oracle call (`athena.reflection`),
    relevance gate.
 3. Accepted observations are stored (signals-store, `ref_id=athena`) and served as Athena's recap piece
-   (`GET /api/module/recap`, «Da tenere d'occhio»); no Hermes notice. Setting ideas → Themis proposal.
+   (`GET /api/module/recap`, «To keep an eye on»); no Hermes notice. Setting ideas → Themis proposal.
 SPEC `docs/work/2026-10-20-layered-reflection`.
 
 ### Backup flow (Archive → Google Drive)
@@ -367,10 +367,10 @@ SPEC `docs/work/2026-10-20-layered-reflection`.
    `query_vectors` from each model, Archive `app/vectors.py`), Ascolto and Voce; `setup/apply` also takes `modes` (Ragionamento/Codice/Immagini with their
    own model first in `potente/codice/visione`) and `order` (the «Scelti» list in the user's order, local and cloud
    mixed, Hephaestus → Oracle `plan_chains` sorts the chat steps by it); a mode can carry its own `steps` list.
-   «I modelli sono pronti»: WebUI `setup/brain/hello` → Hephaestus → Hub → Oracle `/api/llm/generate`
+   «The models are ready»: WebUI `setup/brain/hello` → Hephaestus → Hub → Oracle `/api/llm/generate`
    (use case `hephaestus.setup`) → the assistant's first message shown on the page. Voce/Ascolto «Ascolta» and
-   «Prova a parlare»: WebUI `setup/voice/preview|hear` → Hephaestus → Hub → Echo `/api/voice/setup/preview|hear`.
-2c. Connected services: setup screen «I tuoi servizi» and the Dispositivi page mount Hecate's one list
+   «Try speaking»: WebUI `setup/voice/preview|hear` → Hephaestus → Hub → Echo `/api/voice/setup/preview|hear`.
+2c. Connected services: setup screen «Your services» and the Dispositivi page mount Hecate's one list
    `<hecate-connections>` → WebUI `/api/webui/plugins/hecate/call/…` → Hub → Hecate `GET /api/gateway/connections`
    (every service the same shape and step) and `POST /api/gateway/connections/{id}` (Google: OAuth client kept in
    `Hestia-Hecate/data`, Google's page in a new tab, callback or pasted address, token in `data/google_token.json`;
@@ -386,7 +386,7 @@ SPEC `docs/work/2026-10-20-layered-reflection`.
 3. Buttons → WebUI `POST /api/webui/downloads/{module}/{op}` → module `/api/downloads/{id}/{op}`. Failure or big
    finished download → Hermes `/api/events/ingest` → Notifiche.
 
-### Machines flow (central + satellites, page «Macchine»)
+### Machines flow (central + satellites, page «Machines»)
 1. Central: WebUI `/api/webui/setup/machines/pair` → Hub → Hephaestus → Hub `POST /api/nodes/pair` → code shown with
    the one-line command.
 2. Satellite installer `--join CODE --central IP` → central Hub `POST /api/nodes/join {code, name, address}` →
@@ -395,16 +395,16 @@ SPEC `docs/work/2026-10-20-layered-reflection`.
 3. Satellite module → its Hub (relay) → central Hub `/api/registry/register` with `X-Hestia-Node-Token`, base URL
    rewritten to `<LAN IP>:<port>` → central routes to it first; every other call of the satellite's modules goes
    through the relay to the central Hub (Themis, Archive, Oracle stay there).
-4. «Usa la sua scheda video» → Hephaestus → Oracle `POST /api/llm/setup/machine` → Themis `oracle.providers.ollama.url`
-   = `http://<satellite>:11434`. «Scollega» → Hub `DELETE /api/nodes/{id}`.
-5. «Da fuori casa» → WebUI `/api/webui/setup/tunnel` → Hub → Hephaestus `/api/setup/tunnel` → Docker API starts
+4. «Use its graphics card» → Hephaestus → Oracle `POST /api/llm/setup/machine` → Themis `oracle.providers.ollama.url`
+   = `http://<satellite>:11434`. «Unlink» → Hub `DELETE /api/nodes/{id}`.
+5. «From outside home» → WebUI `/api/webui/setup/tunnel` → Hub → Hephaestus `/api/setup/tunnel` → Docker API starts
    `hestia_tunnel` (cloudflared → `hestia_webui:19015`) in a background thread (phases start/download/address/ready/
    error; a missing image is pulled as a Hephaestus download, source `docker`); WebUI `PublicUrlService` ← `hestia_tunnel:20241/quicktunnel`.
 
 ### Update flow («Aggiorna Hestia»)
 1. Chronos job `hephaestus.update_check` → Hephaestus `/api/setup/update/daily` → `git fetch` → newer tag (or
-   `origin/main`) → Oracle `/api/llm/generate` (`voice: true`, notes in the owner's «Lingua») → Hermes event with `_question` «Installo?».
-2. «Sì» (notification, page `/aggiornamenti` → WebUI → Hub, or Telegram tool) → `/api/setup/update/apply` → git
+   `origin/main`) → Oracle `/api/llm/generate` (`voice: true`, notes in the owner's «Language») → Hermes event with `_question` «Installo?».
+2. «Yes» (notification, page `/updates` → WebUI → Hub, or Telegram tool) → `/api/setup/update/apply` → git
    checkout → per changed service: restart, or new image (GHCR pull / SDK build) + re-create → Hub health → on
    failure checkout back + previous images → Hermes notice.
 
@@ -415,25 +415,25 @@ SPEC `docs/work/2026-10-20-layered-reflection`.
 3. Token saved to `Hestia-Hecate/data/google_token.json`, provider registry reloaded.
 
 ### Voice flows (Echo)
-1. Voice note (Telegram) or voice message (WebUI) → client → Echo `/api/voice/transcribe` (use `telegram.vocale` /
-   `webui.vocale`, recording kept in Archive with the message) → the text goes to Oracle like a typed message.
+1. Voice note (Telegram) or voice message (WebUI) → client → Echo `/api/voice/transcribe` (use `telegram.voice_note` /
+   `webui.voice_note`, recording kept in Archive with the message) → the text goes to Oracle like a typed message.
 2. «Ascolta» under a reply → Echo `/api/voice/speak` (kept with the reply; asked again → the kept audio).
-3. Live («Parla», Telegram `/voce`): mic chunks → Echo `listen` stream (partial text, silence ends the turn) → Oracle
+3. Live («Talk», Telegram `/voice`): mic chunks → Echo `listen` stream (partial text, silence ends the turn) → Oracle
    chat as usual → answer text → Echo `say` stream → sentences played in order. No external live service.
-4. Notification in voice: module setting `<module>.notifiche.voce` → event `_voice` → Hermes publishes the text, then
+4. Notification in voice: module setting `<module>.notifications.voice` → event `_voice` → Hermes publishes the text, then
    Echo `speak` (use `hermes.notification`, kept with the notification) → `update` with `voice` to the clients.
 5. Audio inside a document → Oracle → Echo (use `oracle.documents`); Oracle has no speech engine.
 6. Before any engine (W4): Echo voiceprint filter (uses in `echo.voiceprint.uses`: other voices → silence, also before
    the live end-of-turn check) + personal dictionary hint; a correction (`/dictionary/learn`) teaches new words.
-7. Spoken diary (W4 B9): evening recap → button «Racconta la giornata» (Hygieia piece action, `command`) → Telegram
+7. Spoken diary (W4 B9): evening recap → button «Tell me about your day» (Hygieia piece action, `command`) → Telegram
    asks a voice note → Hygieia `/api/selfcare/journal/voice` → Echo transcribe (use `hygieia.diary`) → diary
-   «giornata» → reflection signal `diario`.
+   «Day» → reflection signal `diary`.
 
 ### Device feed flow (same dossier, W4)
 - Garmin: agenda job `hecate.garmin.sync` → Hecate (garminconnect, tokens in its data folder) → `FeedPublisher`
   discovers `capabilities.feeds["wearable.daily"]` on the Hub → Hub → Hercules `/api/hercules/wearable` (activities,
   check-in) and Hygieia `/api/selfcare/wearable` (sleep); presence signal `wearable.woke_at` → Chronos.
-  «Collega Garmin» → Hermes secret form → Hecate `/api/gateway/garmin/login` (password never stored).
+  «Link Garmin» → Hermes secret form → Hecate `/api/gateway/garmin/login` (password never stored).
 - Phone: Tasker → tunnel → Hecate `/api/gateway/phone/push` (token) → presence signals `phone.home`/`phone.charging`
   → Chronos; app notification → feed `phone.notification` → Plutus `/api/finance/phone` (transaction to review).
 
@@ -447,19 +447,19 @@ SPEC `docs/work/2026-10-20-layered-reflection`.
 - This file is a quick architecture map. Detailed endpoint contracts remain in each service `hestia-*.md` and in `Hestia-Swagger/swagger.yml`.
 
 ### Mood (dossier `docs/work/2026-10-30-mood-diary`)
-1. Chat «oggi sono stanco» → Oracle answers → background: gate `mood_clauses` → prompt `mood_capture_template` (or
+1. Chat «Today I'm tired» → Oracle answers → background: gate `mood_clauses` → prompt `mood_capture_template` (or
    lexicon fallback) → Hub `registry/services` (capability `mood_capture_endpoint`) → Psyche `POST /api/mood/capture`
    (merge within 2 h) → notice `mood.saved` streamed after the answer. «Non segnarlo» → `/api/mood/capture/undo`.
-2. Psyche → `signals-store` (signals + weekly `mood.avg`/`mood.energy`) → Athena reflection; recap piece «Umore»;
+2. Psyche → `signals-store` (signals + weekly `mood.avg`/`mood.energy`) → Athena reflection; recap piece «Mood»;
    agenda job `psyche.checkin` → Hermes question with one-tap answers → `POST /api/mood`.
 
 ### W5 modules (dossier `docs/work/2026-10-24-whole-cindy-brainstorm`)
 1. People: a card's dates → Hera → Chronos `api/special` (key `hera-<id>-<n>`) → lead notice and greeting by Chronos;
    on the day `special_moment` → Hera (gift ideas notice) and Aphrodite (the owner's own moments change the look).
-2. Deadlines: Hecate → Iris → Kairos `/mail` (doorbell) → proposal card in Hermes → «Aggiungi» → agenda event
+2. Deadlines: Hecate → Iris → Kairos `/mail` (doorbell) → proposal card in Hermes → «Add» → agenda event
    `kairos.<id>`; agenda job `kairos.daily` → lead/today notices with «Fatto» (recurring ones roll on).
 3. House: Home Assistant websocket → Lares mirror; the owner's person entity → presence `home.present` → Chronos
-   state «Fuori casa» (declared by Hecate with `phone.home`). Commands: tool → Lares → HA REST service.
+   state «Outside home» (declared by Hecate with `phone.home`). Commands: tool → Lares → HA REST service.
 4. Images: tool or module → Apollo job → ComfyUI `/prompt` + websocket → `/history` + `/view` → Archive blobs →
    `callback` push (e.g. Aphrodite) or Hermes notice; tool answers carry `display.files` → Telegram photo.
 5. Documents: tool `document_create` → Calliope renders, reopens and checks → Archive blob → `display.files` →
@@ -469,8 +469,8 @@ SPEC `docs/work/2026-10-20-layered-reflection`.
 
 ### Texts for people and look (dossier `docs/work/2026-10-29-frontend-review-and-tests` v2)
 1. Tool `summary` (MCPTool) → module `tools/list` → Hub catalog (`summary`, `telegram_group`) → Hestia-MCP
-   `/api/mcp/ui/tools` and Metis `/api/metis/scopri` add `area*` + text for people (`hestia_common.areas`) →
-   WebUI «Comandi» and «Scopri» group by area; Telegram's menus use the same `AREAS`.
+   `/api/mcp/ui/tools` and Metis `/api/metis/discover` add `area*` + text for people (`hestia_common.areas`) →
+   WebUI «Commands» and «Discover» group by area; Telegram's menus use the same `AREAS`.
 2. Look: Impostazioni → Aspetto → ThemeService (theme × style × knobs, localStorage) → tokens and
    `data-style/glass/motion` on `<html>` → Angular pages and plugin shadow roots (tokens inherit).
 3. Language (dossier `docs/work/2026-11-14-english-backend`): Themis `themis.personal.language` → every module's
@@ -480,4 +480,4 @@ SPEC `docs/work/2026-10-20-layered-reflection`.
    text stays English in code; tool people texts come from `locales/<lang>/tools.json`. WebUI: `index.html` →
    `/api/webui/i18n.js` → Hub → Themis `/api/settings/i18n` → `globalThis.__hestiaI18n` → Angular `tr`/`| tr`
    and the SDK `tr` in every plugin; labels declared in English by the modules (manifests, capabilities, settings) are
-   translated at the edge (`i18n.localize`, WebUI HTTP interceptor, Telegram); saving «Lingua» reloads the page.
+   translated at the edge (`i18n.localize`, WebUI HTTP interceptor, Telegram); saving «Language» reloads the page.

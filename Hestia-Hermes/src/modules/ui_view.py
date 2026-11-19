@@ -1,7 +1,7 @@
-"""Hermes inside view (WebUI plugin page «Consegne», widget «Consegne oggi»).
+"""Hermes inside view (WebUI plugin page «Deliveries», widget «Deliveries today»).
 
 SPEC docs/work/2026-10-18-core-modules-and-external-mcp §A2. Read-only: what was sent to which client,
-held / quiet / retracted / superseded, answers, subscriptions. The inbox stays the WebUI Notifiche page.
+held / quiet / retracted / superseded, answers, subscriptions. The inbox stays the WebUI Notifications page.
 Data = the notification rows Hermes already keeps in Archive (``outbound_events``, channel ``notification``,
 per-client ``deliveries`` in the payload) and the active subscriptions.
 """
@@ -38,7 +38,7 @@ def _area(source: str) -> dict[str, str]:
 
 
 def delivery_view(row: dict[str, Any]) -> dict[str, Any]:
-    """One notification as the Consegne page shows it (no event payload, message preview only)."""
+    """One notification as the Deliveries page shows it (no event payload, message preview only)."""
     stored = row.get("payload") if isinstance(row.get("payload"), dict) else {}
     n = stored.get("notification") if isinstance(stored.get("notification"), dict) else {}
     raw = stored.get("deliveries") if isinstance(stored.get("deliveries"), dict) else {}

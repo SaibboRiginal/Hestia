@@ -50,7 +50,7 @@ export class HygieiaRoutines extends HestiaElement {
   constructor() { super(); this.items = undefined; this.archived = false; this.creating = null; this.m = null; }
   connectedCallback() {
     super.connectedCallback();
-    if (this.ctx?.query?.nuova) this.startCreate();
+    if (this.ctx?.query?.new) this.startCreate();
     this.load();
     this.onHost('refresh', () => this.load());
   }
@@ -59,12 +59,12 @@ export class HygieiaRoutines extends HestiaElement {
     this.items = r.ok ? r.data.items : null;
     this.m = m;
   }
-  private startCreate() { this.creating = { name: '', slot: 'evening', areas: ['viso'], cadence: { mode: 'target', times: 3, per: 'week' } }; }
+  private startCreate() { this.creating = { name: '', slot: 'evening', areas: ['face'], cadence: { mode: 'target', times: 3, per: 'week' } }; }
   private async create() {
     const c = this.creating;
     if (!c.name.trim()) { this.host.toast(tr('Name the routine'), 'warning'); return; }
     const r = await call(this.host, 'POST', `${API}/routines`, { body: { ...c, steps: [] } });
-    if (r.ok) { this.creating = null; this.host.navigate('routine/' + r.data.id, { nuova: '1' }); }
+    if (r.ok) { this.creating = null; this.host.navigate('routine/' + r.data.id, { new: '1' }); }
   }
   private async fav(r: any, e: Event) {
     e.stopPropagation();
@@ -154,7 +154,7 @@ export class HygieiaRoutine extends HestiaElement {
     super.connectedCallback();
     this.load();
     this.onHost('refresh', () => { if (!this.dirty) this.load(); });
-    if (this.ctx?.query?.nuova) this.picking = true;
+    if (this.ctx?.query?.new) this.picking = true;
   }
   private async load() {
     const [r, m, p, o] = await Promise.all([this.host.api('GET', `${API}/routines/${this.rid}`), meta(this.host),
@@ -258,7 +258,7 @@ export class HygieiaRoutine extends HestiaElement {
         <div class="grow"><div class="truncate">${productName(p)}</div><div class="small muted">${label(this.m?.categories, p.category)}${(p.actives || []).length ? ' · ' + p.actives.map((a: any) => label(this.m?.actives, a.name)).join(', ') : ''}</div></div>
         <hxk-icon name="plus"></hxk-icon></div>`)}</div>
       ${this.q.trim() ? html`<hxk-button icon="plus" @click=${() => this.addLabel()}>${tr("Step without product: «")}${this.q.trim()}»</hxk-button>` : nothing}
-      <button class="link small" @click=${() => this.host.navigate('products', { nuovo: '1' })}>${tr("The product isn't there? Add it ›")}</button>
+      <button class="link small" @click=${() => this.host.navigate('products', { new: '1' })}>${tr("The product isn't there? Add it ›")}</button>
     </div></div>`;
   }
 
@@ -333,7 +333,7 @@ export class HygieiaRoutine extends HestiaElement {
         <div class="between"><h2>${tr("Versions")}</h2>${(r.versions || []).length > 1 ? html`<hxk-button size="sm" icon="undo" @click=${() => this.undoVersion()}>${tr("Back to the previous one")}</hxk-button>` : nothing}</div>
         ${(r.versions || []).map((v: any) => html`<div class="ver">
           <b class="tnum">v${v.version}</b>
-          <div class="grow"><div class="small">${dayLabel(v.valid_from, false)}${v.by && v.by !== 'webui' ? tr(" · from {0}", v.by === 'assistant' ? 'assistente' : v.by) : ''}</div>
+          <div class="grow"><div class="small">${dayLabel(v.valid_from, false)}${v.by && v.by !== 'webui' ? tr(" · from {0}", v.by === 'assistant' ? 'assistant' : v.by) : ''}</div>
             ${v.diff ? html`<div class="small muted">${v.diff}</div>` : nothing}
             ${v.reason ? html`<div class="small">«${v.reason}»</div>` : nothing}</div></div>`)}
       </div>

@@ -14,6 +14,8 @@ import logging
 import os
 import queue
 import re
+
+from hestia_common.i18n import word_regex
 from datetime import datetime, timedelta
 from datetime import timezone as datetime_timezone
 from importlib import import_module
@@ -90,15 +92,12 @@ class TaggedVector(list):
         self.model = model
 _STARTUP_TS = time.time()
 
-# A quick answer (no tools) that says it did or will do something: «ho registrato», «riduco gli impegni».
-_CLAIMED_ACTION = re.compile(
-    r"(?<!non )\b(?:ho|abbiamo)\s+(?:gi[àa]\s+)?(?:registrat|salvat|annotat|segnat|impostat|creat|aggiunt|rimoss|cancellat|"
-    r"eliminat|spostat|ridott|programmat|memorizzat|attivat|disattivat)\w*"
-    r"|\b(?:registro|annoto|riduco|sposto|cancello|elimino|imposto|programmo|memorizzo)\s+(?:la|il|lo|gli|le|i|per|"
-    r"tutt|ogni)\b", re.IGNORECASE)
+# A quick answer (no tools) that says it did or will do something («I've logged it», «I'll reduce the commitments»),
+# in every language with a words file.
+_CLAIMED_ACTION = word_regex(r"(?:{0})", "oracle.claimed_action")
 
 # Tools every turn keeps whatever its domain: reminders, routines and asking the user back.
-_ALWAYS_TOOLS = frozenset({"assistant_agenda_add", "routine_create", "ask_user", "module_manual"})
+_ALWAYS_TOOLS = frozenset({"agenda_assistant_add", "routine_create", "ask_user", "module_manual"})
 
 def _turn_tool_domains(available_domains: list[str], intent) -> list[str]:
     """Domains whose tools the agent gets this turn: the classified ones (+ ``_ALWAYS_TOOLS``) when the classifier
@@ -243,8 +242,8 @@ def _approval_ttl() -> int:
 
 
 def _error_payload_fails(outcome: tuple[bool, Any]) -> tuple[bool, Any]:
-    """A module answering 200 with ``{"error": …}`` (e.g. «niente da spostare») did not do it: not ok, so the
-    chat never shows «Fatto» nor lists it under «Ho fatto» (bench with a real model, 2026-10-30)."""
+    """A module answering 200 with ``{"error": …}`` (e.g. «nothing to move») did not do it: not ok, so the
+    chat never shows «Done» nor lists it under «I did» (bench with a real model, 2026-10-30)."""
     ok, payload = outcome
     if ok and isinstance(payload, dict) and payload.get("error") and not payload.get("ok") \
             and not payload.get("saved"):
@@ -877,8 +876,8 @@ class OracleEngine:
     ):
         """Main conversational loop. Yields NDJSON lines.
 
-        *origin* (``hestia_common.origin.parse``) = who started the turn, decided by the system: ``utente`` acts
-        with the usual confirmation gate, ``routine`` only inside its instruction, ``autonomo`` only reads,
+        *origin* (``hestia_common.origin.parse``) = who started the turn, decided by the system: ``user`` acts
+        with the usual confirmation gate, ``routine`` only inside its instruction, ``autonomous`` only reads,
         proposes and notifies (Cindy 6).
 
         Modes (control PROCESS, same model for all; main.py resolves "" from oracle.chat.mode):
@@ -898,7 +897,7 @@ class OracleEngine:
 
         def _record_turn(route: str, domains: list[str] | None = None, tool_log: list | None = None,
                          answer: str = "", trace_parts: dict | None = None) -> None:
-            # Inside view (WebUI page Cervello, GET /api/ui/activity): one row per finished turn.
+            # Inside view (WebUI page Brain, GET /api/ui/activity): one row per finished turn.
             row = activity_log.record_turn(
                 session_id=session_id, client=client, mode=mode, route=route, model=agent.model_name,
                 provider=agent.provider, domains=domains, tool_log=tool_log,
@@ -917,17 +916,17 @@ class OracleEngine:
         if client and session_id:
             self._session_clients[session_id] = str(client)[:40]
         # The HTTP endpoint always passes the parsed origin (fail closed there); a direct in-process call is trusted.
-        origin = dict(origin or origin_mod.parse({origin_mod.HEADER: "utente"}, client))
+        origin = dict(origin or origin_mod.parse({origin_mod.HEADER: "user"}, client))
         if session_id:
             self._session_origins[session_id] = origin
-        # Conversation goal (Cindy 23): «obiettivo: …» fixes it, «ferma l'obiettivo» stops it.
-        _goal_text = conversation_goal.parse_prefix(user_message) if origin["level"] == "utente" else ""
+        # Conversation goal (Cindy 23): «goal: …» fixes it, «stop the goal» stops it.
+        _goal_text = conversation_goal.parse_prefix(user_message) if origin["level"] == "user" else ""
         if _goal_text:
             conversation_goal.set_goal(self._hub, session_id, _goal_text)
             if mode == "quick":
                 mode = "thinking"
-        elif origin["level"] == "utente" and conversation_goal.is_stop(user_message):
-            conversation_goal.end(self._hub, session_id, "fermato")
+        elif origin["level"] == "user" and conversation_goal.is_stop(user_message):
+            conversation_goal.end(self._hub, session_id, "stopped")
         logger.trace("event=chat_entry trace_id=%s session_id=%s mode=%s model=%s msg=%s",
                      trace_id, session_id, mode, model,
                      json.dumps(user_message[:120], ensure_ascii=False))
@@ -948,10 +947,10 @@ class OracleEngine:
 
         # ── Resolve agent by use case ──────────────────────────────────────────
         agent = self._resolve_agent(model)
-        # Brain mode (dossier 2026-10-19-oracle-blocks §D): esterna = an agent CLI runs the loop below.
+        # Brain mode (dossier 2026-10-19-oracle-blocks §D): external = an agent CLI runs the loop below.
         from core.services import external_agent, llm_chains
         chat_use_case = llm_chains.SLOTS.get(model, llm_chains.GENERAL)
-        external = external_agent.mode_for(chat_use_case) == "esterna"
+        external = external_agent.mode_for(chat_use_case) == "external"
         logger.trace("event=chat_agent_resolved trace_id=%s agent_type=%s model=%s provider=%s thinking=%s",
                      trace_id, type(agent).__name__, agent.model_name, agent.provider, agent.thinking)
         logger.info(
@@ -972,7 +971,7 @@ class OracleEngine:
             trace_id=trace_id,
         )
 
-        # Rapida is not a poorer path (Marko 2026-11-12): same persona, memories, tools and routing as every
+        # Quick is not a poorer path (Marko 2026-11-12): same persona, memories, tools and routing as every
         # mode; the only difference is that the model does not think (``_think_level`` below stays off).
         logger.trace(
             "event=chat_phase_timing_ms Chat phase timing | session=%s phase=init ms=%s domains=%s",
@@ -1054,7 +1053,7 @@ class OracleEngine:
                 ]
 
         # ── Phase 3: QUICK CHAT shortcut ──────────────────────────────────────
-        # Pensata / CoT were chosen by the user: always reason with the agent loop.
+        # Thinking / CoT were chosen by the user: always reason with the agent loop.
         if (intent.mode == "quick_chat" and intent.confidence >= QUICK_CHAT_CONFIDENCE_THRESHOLD
                 and mode not in ("thinking", "cot") and not external):
             yield stream_emitter.emit_status(tr("💬 Quick conversation..."))
@@ -1328,11 +1327,11 @@ class OracleEngine:
             except external_agent.AgentError as exc:
                 # Writes the agent already did must not run twice (Cindy 2): the internal loop continues from them.
                 _prior_actions = [e for e in (getattr(exc, "log", None) or []) if e.get("ok")]
-                if external_agent.brain()["fallback"] != "interna":
+                if external_agent.brain()["fallback"] != "internal":
                     answer, tokens, tool_log = (tr("⚠️ The external agent did not answer. Try again shortly."),
                                                 [tr("⚠️ The external agent did not answer. Try again shortly.")], [])
                 else:
-                    logger.warning("[🔄] event=chat_external_agent_failed session_id=%s fallback=interna error=%s",
+                    logger.warning("[🔄] event=chat_external_agent_failed session_id=%s fallback=internal error=%s",
                                    session_id, str(exc)[:200])
                     yield stream_emitter.emit_status(tr("🔄 External agent not available: I'll answer myself..."))
         if answer is None:
@@ -1371,7 +1370,7 @@ class OracleEngine:
             tool_log = list(tool_log) + list(_agent_log)
 
         # ── Conversation goal rounds (Cindy 23): after the owner's message is answered ────────────
-        if origin["level"] == "utente" and not any(e.get("ask") for e in tool_log):
+        if origin["level"] == "user" and not any(e.get("ask") for e in tool_log):
             _goal_answer, _goal_log, _goal_frames = self._goal_rounds(
                 session_id=session_id, history_text=history_text, preference_facts=preference_facts,
                 tools=domain_tools, ask_tools=_ask_tools_bound, think_level=_think_level,
@@ -1419,7 +1418,7 @@ class OracleEngine:
                                answer, trace_id=trace_id)
 
         # What this turn already did: the memory extractor never saves it again (bench 2026-10-30: a routine
-        # «pesarmi ogni lunedì» also became a memory; one memory.save turn ended with three rows).
+        # «weigh myself every Monday» also became a memory; one memory.save turn ended with three rows).
         _turn_memory = {
             "memory_by_tool": any(e.get("ok") and e.get("tool") in ("memory.save", "memory.forget")
                                   for e in tool_log),
@@ -1448,12 +1447,12 @@ class OracleEngine:
         yield stream_emitter.emit_final(
             answer,
             intent.valid_domains[0] if intent.valid_domains else "general",
-            origin=origin if origin.get("level") != "utente" or origin.get("kind") == "esterno" else None,
+            origin=origin if origin.get("level") != "user" or origin.get("kind") == "external" else None,
             trace_id=trace_id,
             model=llm_stats.last_model(session_id),
             operating_mode="agents" if agents_mode else "",
         )
-        # «Cosa ho cambiato» with Annulla per item (Cindy 13): clients draw it under the answer.
+        # «What I changed» with Undo per item (Cindy 13): clients draw it under the answer.
         _changes = stream_emitter.changes_from_log(tool_log)
         if _changes:
             yield stream_emitter.emit_changes(_changes, session_id=session_id)
@@ -1468,10 +1467,10 @@ class OracleEngine:
                 tname = str(entry.get("tool") or "")
                 kind = "memory.saved" if tname == "memory.save" else "memory.removed" if tname == "memory.forget" else (
                     "action.done" if entry.get("ok") else "action.failed")
-                # Agenda / Forge effects get their own kind so clients refresh calendar / Sviluppo.
+                # Agenda / Forge effects get their own kind so clients refresh calendar / Development.
                 if entry.get("ok") and entry.get("confirm"):
                     kind = "action.needs_approval"   # a proposal (Themis): nothing is done until the user confirms
-                elif entry.get("ok") and "assistant_agenda" in tname:
+                elif entry.get("ok") and "agenda_assistant" in tname:
                     kind = "agenda.planned"
                 elif entry.get("ok") and "forge_develop" in tname:
                     kind = "forge.task"
@@ -2139,7 +2138,7 @@ class OracleEngine:
             compaction_ms = 0
             compacted = False
 
-            # ── Quiet mood capture («oggi sono stanco» → the mood module, no confirmation) ──
+            # ── Quiet mood capture («I'm tired today» → the mood module, no confirmation) ──
             mood_signals: list[dict] = []
             try:
                 mood_signals = self._mood_capture.run(user_message)
@@ -2610,7 +2609,7 @@ class OracleEngine:
         ))
 
         # ── Oracle self-introspection tools (always available) ─────────────
-        # These let the LLM answer "come stai?", "stato servizi?", system
+        # These let the LLM answer "how are you?", "services status?", system
         # health questions with real data instead of platitudes.
 
         def _oracle_session_info_handler() -> tuple[bool, dict]:
@@ -2622,7 +2621,7 @@ class OracleEngine:
             description="Get full Hestia system state: Oracle's models, uptime, "
                         "AND health status of all registered services from Hub. "
                         "Use this for ANY question about your state, system health, "
-                        "service status, or 'come stai'. One call gives everything.",
+                        "service status, or 'how are you'. One call gives everything.",
             parameters={
                 "type": "object",
                 "properties": {},
@@ -2715,7 +2714,7 @@ class OracleEngine:
     def _origin_header(self, session_id: str) -> str:
         """``X-Hestia-Origin`` for the module calls of this turn; empty for the owner typing (X-Hestia-Client says it)."""
         o = self._session_origins.get(session_id) or {}
-        if not o.get("kind") or o.get("kind") == "utente":
+        if not o.get("kind") or o.get("kind") == "user":
             return ""
         return f"{o['kind']}:{o.get('ref') or ''}".rstrip(":")
 
@@ -2735,7 +2734,7 @@ class OracleEngine:
                         "which tool of that module you need.",
             parameters={"type": "object", "properties": {"module": {"type": "string"}}, "required": ["module"]},
             handler=_manual)]
-        if origin.get("level") != "utente":
+        if origin.get("level") != "user":
             return tools
         hub = self._hub
 
@@ -2746,11 +2745,11 @@ class OracleEngine:
             return True, {"goal": goal["text"], "note": tr("Goal set: I work on it after every answer.")}
 
         def _goal_done(summary: str = "") -> tuple[bool, Any]:
-            goal = conversation_goal.end(hub, session_id, "raggiunto", summary)
+            goal = conversation_goal.end(hub, session_id, "reached", summary)
             return (True, {"done": True, "goal": goal["text"]}) if goal else (False, tr("no active goal"))
 
         def _goal_stop() -> tuple[bool, Any]:
-            goal = conversation_goal.end(hub, session_id, "fermato")
+            goal = conversation_goal.end(hub, session_id, "stopped")
             return (True, {"stopped": True}) if goal else (False, tr("no active goal"))
 
         handlers = {"goal_set": _goal_set, "goal_done": _goal_done, "goal_stop": _goal_stop}
@@ -2763,7 +2762,7 @@ class OracleEngine:
     @staticmethod
     def _apply_origin_gate(tools: list[ToolDefinition], origin: dict) -> None:
         """Turn authority (Cindy 6): a routine never deletes, an autonomous turn never writes (it proposes)."""
-        if origin.get("level") == "utente":
+        if origin.get("level") == "user":
             return
         blocked = 0
         for t in tools:
@@ -3379,7 +3378,7 @@ class OracleEngine:
         """The small talk shortcut: one call without tools. It knows the owner like the agent loop does
         (*preference_facts*: what she remembers about them), so a chat turn is never answered by a stranger."""
         # Only when the user asked for a change: otherwise small models repeat the
-        # contract to the user ("Non risulta eseguita alcuna azione di modifica").
+        # contract to the user ("No change was made").
         no_action_contract = prompt_config.prompt(
             "no_action_execution_contract") if has_write_intent(user_message) else ""
         combined_client_instructions = "\n\n".join(
@@ -3413,8 +3412,8 @@ class OracleEngine:
         # The generic chain already tries its fallback steps.
         answer = self._ask_analyst(prompt)
         if _CLAIMED_ACTION.search(answer or ""):
-            # No tools here: an answer that says it did something is false (bench 2026-10-30: «oggi sono stanco»
-            # → «Ho registrato la stanchezza, riduco gli impegni»). One more try with the reason spelled out.
+            # No tools here: an answer that says it did something is false (bench 2026-10-30: «I'm tired today»
+            # → «I logged the tiredness, I'm cutting the commitments»). One more try with the reason spelled out.
             logger.info("[🔄] event=quick_answer_claimed_action answer=%s", (answer or "")[:120])
             answer = self._ask_analyst(prompt + "\n\n" + prompt_config.prompt("quick_chat_no_claim_retry")) or answer
         return answer

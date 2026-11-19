@@ -52,7 +52,7 @@ class TestHubManifest:
         assert (p["id"], p["label"], p["element"], p["order"]) == ("map", "Map", "hub-map", 100)
         (w,) = webui["widget"]
         assert (w["id"], w["label"], w["element"], w["auto"], w["open_page"]) == \
-            ("online", "Services online", "hub-online-widget", True, "mappa")
+            ("online", "Services online", "hub-online-widget", True, "map")
 
     def test_hub_in_catalog_without_registering(self):
         reg = ServiceRegistry()

@@ -69,7 +69,7 @@ def cmd_list(_args) -> None:
     for p in data.get("pending") or []:
         print(tr("  {0}  {1:>12}  waiting for Drive  {2}", p['created_at'], p.get('size', 0), p.get('name', '')))
     for it in data.get("items") or []:
-        mark = {"ok": "verificato", "fail": "verify failed"}.get(it.get("verify") or "", "")
+        mark = {"ok": "verified", "fail": "verify failed"}.get(it.get("verify") or "", "")
         print(f"  {it['name']}  {it.get('size', 0):>12}  {'monthly ' if it.get('monthly') else ''}{mark}")
     if not (data.get("items") or data.get("pending")):
         print(tr("No backups."))

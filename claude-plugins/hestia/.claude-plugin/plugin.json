@@ -29,7 +29,7 @@
       "description": "How every new session starts: off (plain Claude), strumenti (Hestia's tools, Claude's voice), hestia (Claude is Hestia).",
       "options": [
         "off",
-        "strumenti",
+        "tools",
         "hestia"
       ],
       "default": "off"

@@ -55,7 +55,7 @@ TERMINAL_STATES = {"failed", "rejected", "rolled_back", "deployed", "merged", "n
 
 
 # Permission modes (like Claude Code / Codex), one per group:
-#   ask       → Athena/Argus tasks wait for "approva sviluppo <id>" before coding;
+#   ask       → Athena/Argus tasks wait for "approve development <id>" before coding;
 #               merge waits for you.  User-typed tasks start (you asked), merge waits.
 #   auto      → every task codes on its own branch; merge waits for you.
 #   full_auto → codes and, if engine ok + tests green, merges/deploys alone
@@ -118,9 +118,9 @@ class Forge:
         self.claude_budget = ClaudeBudget(ClaudeSchedule())
         self.agenda = AgendaClient(cfg.hub_api_url)
         # Assistant presence (Chronos): autonomous work waits for the right state; tasks and
-        # deploys are reported as activities ("Occupato: Forge", "Sto mangiando").
+        # deploys are reported as activities ("Busy: Forge", "Eating").
         self.presence = PresenceClient("hephaestus", cfg.hub_api_url)
-        # Sviluppo page: transcript, full test output, engine/deploy logs per task.
+        # Development page: transcript, full test output, engine/deploy logs per task.
         self.artifacts = TaskArtifacts(cfg.state_file.parent / "tasks", cfg.worktrees_path)
         self._agenda_pool = ThreadPoolExecutor(max_workers=1, thread_name_prefix="forge-agenda")
         # Automatic review + team plan (Cindy 3 + 31): a fresh model with no tools, through Oracle.
@@ -193,7 +193,7 @@ class Forge:
         return forge_settings.get_bool(forge_settings.PAUSED)
 
     def set_paused(self, paused: bool, by: str = "user") -> dict[str, Any]:
-        """User switch (Sviluppo page, Telegram): persisted as a central setting. Resuming
+        """User switch (Development page, Telegram): persisted as a central setting. Resuming
         restarts nothing: tasks held during the pause stay proposed until the user starts them."""
         saved = forge_settings.settings.put(forge_settings.PAUSED, bool(paused), actor="user",
                                             reason=tr("Development paused by {0}", by) if paused else tr("Development resumed by {0}", by))
@@ -423,7 +423,7 @@ class Forge:
                     self._hold(task, "queued")
                     continue
                 if task["state"] == "approved":
-                    with self.presence.activity("hephaestus.deploy", label="aggiornamento", load="heavy",
+                    with self.presence.activity("hephaestus.deploy", label="update", load="heavy",
                                                 kind="maintenance", ttl_seconds=1800):
                         self._merge_and_deploy(task, task.get("approved_by", "user"))
                 elif (task.get("external") or {}).get("pending"):
@@ -617,7 +617,7 @@ class Forge:
                            workdoc=old.get("workdoc") or "")
 
     def add_note(self, task_id: str, text: str, by: str = "user") -> dict[str, Any]:
-        """An analysis or hint on a task (Sviluppo page, external AI): shown with the task, given to the engine
+        """An analysis or hint on a task (Development page, external AI): shown with the task, given to the engine
         when the task runs or is retried."""
         task = self._require(task_id)
         text = str(text or "").strip()
@@ -709,8 +709,8 @@ class Forge:
 
     def presence_allows_autonomous(self) -> tuple[bool, str]:
         """Autonomous Claude work also needs the assistant presence: effects ``work.heavy`` and
-        ``llm.claude`` = allow (e.g. "Sonno profondo"; not while the user is "Sveglio" or it is
-        "Stanco"). Presence unknown (Chronos down) → the budget windows alone decide."""
+        ``llm.claude`` = allow (e.g. "Deep sleep"; not while the user is "Awake" or it is
+        "Tired"). Presence unknown (Chronos down) → the budget windows alone decide."""
         state = self.presence.get()
         if not state:
             return True, "presence unknown: budget windows decide"
@@ -908,10 +908,10 @@ class Forge:
 
     def _wait_for_limit(self, task: dict, worktree: Path) -> None:
         """Claude limit: the task waits for the reset instead of failing (Cindy 15). Partial work is kept on
-        ``refs/forge/resume/<id>``; a one-off agenda task at the reset time resumes it («continua»)."""
+        ``refs/forge/resume/<id>``; a one-off agenda task at the reset time resumes it («continue»)."""
         until = self.claude_budget.mark_exhausted()
         self._save_settings()
-        # A fact for the presence engine ("Stanco" overlay): no Claude quota left until the reset.
+        # A fact for the presence engine ("Tired" overlay): no Claude quota left until the reset.
         self.presence.signal("resource.claude_quota_left", 0, meta={"until": until},
                              ttl_seconds=self._seconds_until(until))
         partial = git_ops.commit_all(worktree, tr("forge({0}): partial work before the limit", task['id']),
@@ -961,7 +961,7 @@ class Forge:
         return self.reviewer.plan(task["request"], task.get("services") or [])
 
     def _engine_for_piece(self, piece: dict, default):
-        wanted = "oracle" if piece.get("difficulty") == "semplice" else "claude"
+        wanted = "oracle" if piece.get("difficulty") == "simple" else "claude"
         engine = self.engines.get(wanted)
         if engine is not None and engine.available()[0]:
             return engine
@@ -1022,7 +1022,7 @@ class Forge:
         heading = heading or tr("Forge: change ready")
         short = task["id"][:6]
         self._notify(task, (
-            tr("🧩 <b>{0}</b> <code>{1}</code> · {2}\n{3}\n\n{4}\n\n<pre>{5}</pre>\nAnswer \"approva sviluppo {6}\" to apply it, \"rifiuta {7}\" to discard it.", _esc(heading), short, tests_label, _esc(summary[:900]), _esc(forge_review.card(review)), _esc(task['diff_stat'][-900:]), short, short)))
+            tr("🧩 <b>{0}</b> <code>{1}</code> · {2}\n{3}\n\n{4}\n\n<pre>{5}</pre>\nAnswer \"approve development {6}\" to apply it, \"reject {7}\" to discard it.", _esc(heading), short, tests_label, _esc(summary[:900]), _esc(forge_review.card(review)), _esc(task['diff_stat'][-900:]), short, short)))
 
         if task.get("auto_merge") and tests_ok is True and engine_ok and not review.get("blocking"):
             with self._lock:
@@ -1108,7 +1108,7 @@ class Forge:
                         if dplan.rebuild else "")
         if not self.cfg.deploy_cmd or not (services or dplan.restart_self):
             self._notify(task, (
-                f"✅ <b>Forge: applicata</b> <code>{task['id'][:6]}</code> (merge {merge_sha[:8]}).\n"
+                tr("✅ <b>Forge: applied</b> <code>{0}</code> (merge {1}).\n", task['id'][:6], merge_sha[:8])
                 + (tr("Restart: {0}.", ', '.join(services + (['hephaestus'] if dplan.restart_self else [])))
                    if (services or dplan.restart_self) else "") + rebuild_note))
             return
@@ -1120,7 +1120,7 @@ class Forge:
         if ok and not unhealthy:
             self._set_state(task, "deployed", f"{dplan.summary()}")
             self._notify(task, (
-                tr("🚀 <b>Forge: in production</b> <code>{0}</code> → {1}.\nRollback: \"rollback sviluppo {2}\".", task['id'][:6], _esc(dplan.summary()), task['id'][:6]) + rebuild_note))
+                tr("🚀 <b>Forge: in production</b> <code>{0}</code> → {1}.\nRollback: \"rollback development {2}\".", task['id'][:6], _esc(dplan.summary()), task['id'][:6]) + rebuild_note))
             if dplan.restart_self:
                 self._restart_self()
             return

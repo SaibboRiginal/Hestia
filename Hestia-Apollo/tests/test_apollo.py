@@ -68,12 +68,12 @@ def test_job_runs_saves_blob_and_pushes_callback(ai):
 
 def test_missing_flow_and_failures_are_told(ai):
     images, hub, comfy = ai
-    j = images.request("a logo", purpose="icona")
+    j = images.request("a logo", purpose="icon")
     assert j["status"] == "failed" and j["error"] == "missing_flow"
-    assert ("hermes", "POST", "apollo-missing-icona") in hub.calls
-    images.save_flow({"purpose": "icona", "graph": GRAPH})
+    assert ("hermes", "POST", "apollo-missing-icon") in hub.calls
+    images.save_flow({"purpose": "icon", "graph": GRAPH})
     comfy.fail = True
-    j = images.request("a logo", purpose="icona", notify=True)
+    j = images.request("a logo", purpose="icon", notify=True)
     images.run_next()
     assert images.job(j["id"])["error"].startswith("errore nel flusso")
     off = Images(Store(FakeArchive(), "images-store"), ComfyUI(""), FakeArchive()).request("x")

@@ -43,8 +43,8 @@ def _ts_unquote(lit: str) -> str:
 
 
 def python_texts():
-    """(path, text) of every ``tr("literal")`` in the modules (tests excluded)."""
-    for path in sorted(ROOT.glob("Hestia-*/**/*.py")):
+    """(path, text) of every ``tr("literal")`` in the modules and the host tools (tests excluded)."""
+    for path in sorted([*ROOT.glob("Hestia-*/**/*.py"), *ROOT.glob("tools/*.py"), *ROOT.glob("tools/cloud_test/*.py")]):
         if "/tests/" in path.as_posix() or "node_modules" in path.parts:
             continue
         try:
@@ -86,7 +86,7 @@ def merge(todo: Path) -> int:
     en = json.loads(CATALOG.read_text(encoding="utf-8"))
     filled = {k: v for k, v in json.loads(todo.read_text(encoding="utf-8")).items() if isinstance(v, str) and v}
     en.update(filled)
-    CATALOG.write_text(json.dumps(en, ensure_ascii=False, indent=1) + "\n", encoding="utf-8")
+    CATALOG.write_text(json.dumps(en, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
     print(f"check_i18n: {len(filled)} Italian texts added to {CATALOG.relative_to(ROOT)}")
     return 0
 

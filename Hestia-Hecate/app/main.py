@@ -29,7 +29,7 @@ from core.outbound import HOW_TO as OUTBOUND_HOW_TO, outbound_servers
 from core.mail_watch import MailWatcher
 from core.hecate_settings import (ACTION_NOTIFY_COOLDOWN, AUTH_RECHECK_INTERVAL, CALENDAR_BACKFILL_DAYS,
                                   PERSONAL_PLACES, WEATHER_CACHE_MINUTES, settings as hecate_settings)
-from hestia_common.i18n import t as tr  # fixed texts in the owner's language
+from hestia_common.i18n import current, t as tr  # fixed texts in the owner's language
 
 load_dotenv()
 
@@ -219,14 +219,14 @@ app.include_router(create_log_control_router("hestia_hecate"))
 app.include_router(hecate_settings.router())
 app.include_router(devices_api.router)
 
-# ── WebUI plugin «Dispositivi» (core): Garmin and the phone, set up without reading logs (brainstorm W7) ──
+# ── WebUI plugin «Devices» (core): Garmin and the phone, set up without reading logs (brainstorm W7) ──
 from hestia_common.plugin_client import PluginClient, page as plugin_page  # noqa: E402
 UI_DIST = os.getenv("HECATE_UI_DIST", "/ui/dist")   # outside /code: a dev mount of app/ must not hide it
 ui = PluginClient("hecate", title="Accounts and devices", icon="link", color="teal", kind="core", dist=UI_DIST,
                   description="The linked accounts and devices: calendar, mail, weather, watch, phone.",
                   version=os.getenv("HECATE_SERVICE_VERSION", "1.0.0"))
 ui.webui(entry="hecate.js", api_prefix="/api/gateway/",
-         pages=[plugin_page("dispositivi", "Devices", element="hecate-devices", icon="pulse", order=105,
+         pages=[plugin_page("devices", "Devices", element="hecate-devices", icon="pulse", order=105,
                             help="The Garmin watch (sleep and activities every morning) and the Android phone (at home, charging, notifications of the chosen apps): link them and see the latest data received.")])
 app.include_router(ui.router())
 
@@ -629,7 +629,7 @@ class FetchCommand(BaseModel):
     source: str = Field(...,
                         description="The fetcher to use, e.g., 'gmail_imap'")
     filter_query: str = Field(
-        ..., description="The targeted query, e.g., 'FROM \"alerts@casa.it\"'")
+        ..., description="The targeted query, e.g., 'FROM \"alerts@example.com\"'")
 
 
 @app.post("/api/ingest/trigger")
@@ -981,7 +981,7 @@ def _weather_call(fn, *args, **kwargs) -> dict:
 
 
 def _recap_piece(day, nxt) -> dict:
-    """Daily recap piece: tomorrow's weather at Casa (``hestia_common.recap`` contract)."""
+    """Daily recap piece: tomorrow's weather at Home (``hestia_common.recap`` contract)."""
     facts = recap_facts(weather, nxt.isoformat())
     icon = facts.pop("icon", "cloud-sun")
     return recap_contract.piece("hecate", tr("Weather"), icon=icon, emoji="🌦️", order=5, **facts)
@@ -993,7 +993,7 @@ app.include_router(recap_contract.recap_router(
 
 @app.get("/api/gateway/weather/now")
 def gateway_weather_now(place: str = ""):
-    """Current conditions + today at ``place`` (saved place name, address, city; empty = Casa)."""
+    """Current conditions + today at ``place`` (saved place name, address, city; empty = Home)."""
     return _weather_call(weather.now, place)
 
 
@@ -1023,7 +1023,7 @@ def gateway_weather_place(q: str = ""):
 
 @app.get("/api/gateway/weather/places")
 def gateway_weather_places():
-    """Marko's saved places and what each resolves to; ``options`` feeds the settings editor «Luoghi»."""
+    """Marko's saved places and what each resolves to; ``options`` feeds the settings editor «Places»."""
     try:
         rows = weather.resolved_places()
     except Exception as exc:
@@ -1293,7 +1293,7 @@ _pending_auth: dict[str, dict] = {}
 
 @app.get("/api/gateway/auth/google")
 def gateway_auth_google_state():
-    """«Collega Google» card (Dispositivi and the guided setup): is the OAuth client there, is the account linked,
+    """«Link Google» card (Devices and the guided setup): is the OAuth client there, is the account linked,
     is a flow waiting, and where Google sends back (public = it completes by itself from any device)."""
     cid, secret = google_oauth.client_credentials()
     session = google_oauth.pending() or {}
@@ -1405,7 +1405,7 @@ def _callback_html(**kw) -> str:
 
 _OAUTH_CALLBACK_HTML = """\
 <!DOCTYPE html>
-<html lang="it">
+<html lang="{lang}">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -1863,7 +1863,7 @@ def _poll_microsoft_oauth() -> dict:
 
 
 # ---------------------------------------------------------------------------
-# Connected services as one list (connections.py): every account/device the same card, Dispositivi + setup.
+# Connected services as one list (connections.py): every account/device the same card, Devices + setup.
 # ---------------------------------------------------------------------------
 def _google_words(fn):
     """Google's HTTP errors ({error, hint} or text) → one sentence for the card."""

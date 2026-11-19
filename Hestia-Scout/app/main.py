@@ -52,7 +52,7 @@ except ModuleNotFoundError:
 
 logger, log_buffer = setup_service_logging("hestia_scout")
 
-# What Scout asks Oracle for (the chain is chosen by Marko in Oracle → Cervello → Modelli).
+# What Scout asks Oracle for (the chain is chosen by the owner in Oracle → Brain → Models).
 LLM_USECASES = [llm_usecase("scout.listings", "Scout · reading listings", chain="fast",
                             help="Extracts the listing data from Scout's emails.")]
 
@@ -203,7 +203,7 @@ def scout_mail(req: MailDelivery | None = None):
 
 
 def check_now(days: int = 1) -> dict:
-    """«Controlla ora»: ask Iris to pass again the listing mails of the last days, then run the cycle."""
+    """«Check now»: ask Iris to pass again the listing mails of the last days, then run the cycle."""
     def _run():
         mail.backfill(MAIL_KEY, days)       # delivered mails ring /api/scout/mail
         run_cycle_guarded("user")           # pending records even when nothing new arrived
@@ -247,11 +247,11 @@ from ui_api import to_view as _listing_view
 
 
 class ListingsSection(Section):
-    """Archive entities of Scout's domain. Import upserts (Archive merges the payload); Sostituisci never
+    """Archive entities of Scout's domain. Import upserts (Archive merges the payload); Replace never
     deletes: listings come back from the mail cycle anyway."""
 
     def __init__(self, store: ListingStore):
-        super().__init__("annunci", tr("Listings"), icon="home", deletes=False)
+        super().__init__("listings", tr("Listings"), icon="home", deletes=False)
         self.store = store
 
     def records(self, *, deleted: bool = False) -> list[dict]:
@@ -284,7 +284,7 @@ api_app.include_router(transfer.router())
 
 @api_app.post("/api/scout/check")
 def scout_check():
-    """«Controlla email»: Iris backfill (last day) + cycle."""
+    """«Check email»: Iris backfill (last day) + cycle."""
     return check_now()
 
 @api_app.get("/api/module-tools/domains")

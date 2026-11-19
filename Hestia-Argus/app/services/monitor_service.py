@@ -132,7 +132,7 @@ _degraded_reported: dict[str, float] = {"count": -1.0, "at": 0.0}
 
 
 def _report_degraded() -> None:
-    """Fact for the assistant presence ("Stanco" with N modules in error): sent when the count
+    """Fact for the assistant presence ("Tired" with N modules in error): sent when the count
     changes, refreshed every 10 min; expires after 30 min if Argus stops reporting."""
     if _presence is None:
         return

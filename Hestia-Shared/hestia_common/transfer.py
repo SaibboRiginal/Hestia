@@ -1,21 +1,21 @@
 """Export and import per module — one contract for every module (dossier ``docs/work/2026-10-20-import-export``).
 
-A module lists *sections* of its own data; a client (WebUI page «Esporta e importa», ``tools/hestia_transfer.py``)
+A module lists *sections* of its own data; a client (WebUI page «Export and import», ``tools/hestia_transfer.py``)
 picks modules → sections → single items, writes one ``.hestia`` file and imports it elsewhere with a mode:
 
-- ``append``  (Aggiungi)   new records only; existing ones stay as they are;
-- ``merge``   (Unisci)     new records + existing ones only when the file's copy is newer (``updated_at``);
-- ``replace`` (Sostituisci) the file wins; records only in the target are deleted (only for a section exported
-  whole: a partial section — chosen items or «solo modifiche dal» — never deletes).
+- ``append``  (Add)       new records only; existing ones stay as they are;
+- ``merge``   (Merge)      new records + existing ones only when the file's copy is newer (``updated_at``);
+- ``replace`` (Replace) the file wins; records only in the target are deleted (only for a section exported
+  whole: a partial section — chosen items or «only changes since» — never deletes).
 
 Every import can run as a dry run (preview: same report, nothing written).
 
     from hestia_common.transfer import Transfer, StoreSection
 
     transfer = Transfer("hercules", hub, sections=[
-        StoreSection("esercizi", "Esercizi", store, ["exercise"], icon="dumbbell"),
-        StoreSection("sessioni", "Sessioni", store, ["session", "set"], item_kinds=["session"],
-                     depends_on=["esercizi", "schede"]),
+        StoreSection("exercises", "Exercises", store, ["exercise"], icon="dumbbell"),
+        StoreSection("sessions", "Sessions", store, ["session", "set"], item_kinds=["session"],
+                     depends_on=["exercises", "plans"]),
     ])
     app.include_router(transfer.router())                 # /api/transfer/*
     caps.update(transfer.capabilities())                  # Hub registration

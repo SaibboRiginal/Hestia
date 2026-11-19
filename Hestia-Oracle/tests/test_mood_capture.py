@@ -21,18 +21,24 @@ BENCH = [
     ("sto benissimo!", "happy"),
     ("oggi sto bene", "happy"),
     ("sono felice, ho passato l'esame", "happy"),
-    ("sono carico per la palestra", "energized"),
-    ("oggi spacco", "energized"),
+    ("sono carico per la palestra", "charged"),
+    ("oggi spacco", "charged"),
     ("sono un po' nervoso per il colloquio", "nervous"),
     ("sono in ansia per domani", "anxious"),
     ("sono stressato dal lavoro", "anxious"),
     ("mi sento triste", "sad"),
     ("sono incazzato nero", "angry"),
-    ("ho la febbre, sono a letto", "ill"),
+    ("ho la febbre, sono a letto", "sick"),
     ("che giornata pesante", "tired"),
     ("giornata fantastica oggi", ""),
-    ("mia moglie è stanca ma io sono carico", "energized"),
+    ("mia moglie è stanca ma io sono carico", "charged"),
     ("ciao", None),
+    # English, from the same words files (docs/LANGUAGES.md)
+    ("I am so tired today", "tired"),
+    ("I feel down", "down"),
+    ("I'm happy, I passed the exam", "happy"),
+    ("hello", None),
+    ("why am I always tired?", None),
     ("test", None),
     ("che tempo fa domani?", None),
     ("perché sono sempre stanco?", None),
@@ -82,8 +88,8 @@ def test_undo_phrases():
 def test_parse_answer():
     assert parse_answer("NONE") == "NONE" and parse_answer("`NONE`.") == "NONE"
     assert parse_answer("boh") is None and parse_answer("") is None and parse_answer("{rotto") is None
-    out = parse_answer('Ecco: {"mood": 7, "energy": "2", "labels": ["Stanco", "felicione", "giu"], '
-                       '"causes": ["lavoro", "x"]}')
+    out = parse_answer('Ecco: {"mood": 7, "energy": "2", "labels": ["Tired", "felicione", "down"], '
+                       '"causes": ["work", "x"]}')
     assert out == {"mood": 5, "energy": 2, "stress": None, "labels": ["tired", "down"], "causes": ["work"]}
     assert parse_answer('{"energy": 2}') is None
 
@@ -109,7 +115,7 @@ class FakeHub:
 def test_run_uses_the_model_answer():
     hub = FakeHub()
     cap = MoodCapture(hub, lambda prompt: '{"mood": 2, "energy": 1, "stress": null, "labels": ["tired"], '
-                                          '"causes": ["lavoro"]}')
+                                          '"causes": ["work"]}')
     sig = cap.run("oggi sono stanco morto, il lavoro mi ha ucciso")
     service, path, method, body = hub.calls[0]
     assert (service, path, method) == ("psyche", "/api/mood/capture", "POST")

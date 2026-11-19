@@ -9,6 +9,7 @@ Everything derived (day summary, trend, insights, signals, recap) is computed he
 from __future__ import annotations
 
 import logging
+import unicodedata
 from collections import Counter
 from datetime import date, datetime, timedelta
 from statistics import mean
@@ -17,20 +18,29 @@ from zoneinfo import ZoneInfo
 
 from hestia_common.module_kit import Invalid, NotFound, new_id, now_iso, parse_dt
 from hestia_common import i18n
-from hestia_common.i18n import t as tr  # fixed texts in the owner's language
+from hestia_common.i18n import t as tr, word_set  # fixed texts in the owner's language
 
 logger = logging.getLogger("hestia_psyche.service")
 
 KIND = "mood"
-LABELS = ("tired", "energized", "calm", "happy", "motivated", "bored", "nervous", "anxious", "sad", "down",
-          "angry", "ill")
+# Stored values (English); people read them through tr (catalog «mood::…» / «cause::…»).
+LABELS = ("tired", "charged", "calm", "happy", "motivated", "bored", "nervous", "anxious", "sad", "down",
+          "angry", "sick")
 CAUSES = ("work", "sleep", "people", "health", "sport", "money", "home", "free_time", "weather")
-# What a person reads for each id (through tr); the owner's own words for them live in words.json («mood.label.<id>»).
-NAMES = {**{k: f"mood::{k}" for k in LABELS}, "free_time": "mood::free time"}
 SOURCES = ("chat", "tap", "webui", "telegram", "external", "checkin")
 MOOD_WORDS = {1: "mood::very low", 2: "mood::low", 3: "mood::so-so", 4: "mood::good", 5: "mood::great"}   # shown through tr
 WEEKDAYS = ("monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday")
 QUOTE_MAX = 200
+
+
+def label_text(label: str) -> str:
+    """A stored mood label (``tired``) in the owner's language."""
+    return tr(f"mood::{label}")
+
+
+def cause_text(cause: str) -> str:
+    """A stored cause (``free_time``) in the owner's language."""
+    return tr(f"cause::{cause}")
 NOTE_MAX = 1000
 
 
@@ -48,24 +58,31 @@ def _level(value: Any, field: str, required: bool = False) -> int | None:
     return n
 
 
-def _vocab(values: Any, allowed: tuple[str, ...], words: str) -> list[str]:
-    """Keep only ids of the vocabulary, in order, no duplicates; the owner's words for them in any language
-    (a word of «mood.label.tired» → tired) count too."""
+def _fold(text: Any) -> str:
+    """Lower case without accents: «Café», «cafe» and «CAFÉ» are the same word."""
+    t = unicodedata.normalize("NFD", str(text or "").strip().lower())
+    return "".join(c for c in t if unicodedata.category(c) != "Mn").replace("_", " ")
+
+
+def _vocab(values: Any, allowed: tuple[str, ...], prefix: str = "") -> list[str]:
+    """Keep only words of the vocabulary, in order, no duplicates. The owner may write the stored value (``tired``)
+    or its word in any language of the catalog (``mood::tired`` → its translation), case and accent tolerant."""
     if isinstance(values, str):
         values = [v for v in values.replace(";", ",").split(",")]
-    known = {**i18n.word_map(words), **{a: a for a in allowed}}
+    norm = {_fold(a): a for a in allowed}
+    if prefix:
+        for code in i18n.languages():
+            texts = i18n.catalog("messages", code)
+            for a in allowed:
+                said = texts.get(f"{prefix}::{a}")
+                if isinstance(said, str) and said:
+                    norm.setdefault(_fold(said), a)
     out: list[str] = []
     for v in values or []:
-        key = str(v or "").strip().lower()
-        ident = known.get(key) or known.get(key.replace("_", " ")) or ""
-        if ident in allowed and ident not in out:
-            out.append(ident)
+        key = _fold(v)
+        if key in norm and norm[key] not in out:
+            out.append(norm[key])
     return out
-
-
-def name(ident: str) -> str:
-    """The text a person reads for a label or a cause id."""
-    return tr(NAMES.get(ident, f"mood::{ident}"))
 
 
 def mood_word(level: int | float | None) -> str:
@@ -96,9 +113,9 @@ class Psyche:
             else:
                 d.setdefault(f, None)
         if "labels" in body or not old:
-            d["labels"] = _vocab(body.get("labels"), LABELS, "mood.label")
+            d["labels"] = _vocab(body.get("labels"), LABELS, "mood")
         if "causes" in body or not old:
-            d["causes"] = _vocab(body.get("causes"), CAUSES, "mood.cause")
+            d["causes"] = _vocab(body.get("causes"), CAUSES, "cause")
         if "note" in body or not old:
             d["note"] = str(body.get("note") or "").strip()[:NOTE_MAX]
         if "quote" in body or not old:
@@ -118,9 +135,9 @@ class Psyche:
         if not value:
             return self.today()
         text = str(value).strip().lower()
-        if text in ("today", *i18n.words("day.today")):
+        if text in word_set("date.today"):
             return self.today()
-        if text in ("yesterday", *i18n.words("day.yesterday")):
+        if text in word_set("date.yesterday"):
             return self.today() - timedelta(days=1)
         try:
             d = date.fromisoformat(text[:10])
@@ -163,9 +180,9 @@ class Psyche:
             if age <= timedelta(minutes=merge):
                 quote = " · ".join(q for q in (last.get("quote"), str(body.get("quote") or "").strip()) if q)
                 merged = {**body, "labels": list(dict.fromkeys((last.get("labels") or [])
-                                                               + _vocab(body.get("labels"), LABELS, "mood.label"))),
+                                                               + _vocab(body.get("labels"), LABELS, "mood"))),
                           "causes": list(dict.fromkeys((last.get("causes") or [])
-                                                       + _vocab(body.get("causes"), CAUSES, "mood.cause"))),
+                                                       + _vocab(body.get("causes"), CAUSES, "cause"))),
                           "quote": quote[-QUOTE_MAX:]}
                 for f in ("energy", "stress"):
                     if merged.get(f) in (None, ""):
@@ -293,18 +310,18 @@ class Psyche:
                 out["weekdays"] = {WEEKDAYS[k]: round(v, 2) for k, v in sorted(wd.items())}
         labels = Counter(l for d in recent for l in d["labels"])
         if labels:
-            top = [f"{name(l)} ({n})" for l, n in labels.most_common(3)]
+            top = [f"{label_text(l)} ({n})" for l, n in labels.most_common(3)]
             s.append(tr("The most frequent words: ") + ", ".join(top) + ".")
         bad_causes = Counter(c for d in recent if d["mood"] <= 2 for c in d["causes"])
         if bad_causes:
             c, n = bad_causes.most_common(1)[0]
             if n >= 2:
-                s.append(tr("On bad days «{0}» comes up often ({1} times).", name(c), n))
+                s.append(tr("On bad days «{0}» comes up often ({1} times).", cause_text(c), n))
         good_causes = Counter(c for d in recent if d["mood"] >= 4 for c in d["causes"])
         if good_causes:
             c, n = good_causes.most_common(1)[0]
             if n >= 2:
-                s.append(tr("On good days there is often «{0}» ({1} times).", name(c), n))
+                s.append(tr("On good days there is often «{0}» ({1} times).", cause_text(c), n))
         out["labels"] = dict(labels.most_common(8))
         return out
 
@@ -361,7 +378,7 @@ class Psyche:
         s = self.summary(rows)
         done = []
         if s:
-            extra = ", ".join(name(x) for x in s["labels"][:3])
+            extra = ", ".join(label_text(l) for l in s["labels"][:3])
             done.append({"text": tr("Mood {0}/5 · {1}", s['mood'], s['mood_word']) + (f" · {extra}" if extra else ""),
                          "tone": "success" if s["mood"] >= 4 else "warning" if s["mood"] <= 2 else ""})
         recent = self.days(14, day)
@@ -377,10 +394,10 @@ class Psyche:
     def context_text(self, budget: int = 400) -> str:
         days = self.days(7)
         if not days:
-            return tr("Mood: no data in the last 7 days.")
+            return "Mood: no data in the last 7 days."  # hidden text for the model: English
         parts = [f"{d['date'][8:10]}/{d['date'][5:7]} {d['mood']}/5" + (f" ({', '.join(d['labels'][:2])})"
                                                                        if d["labels"] else "") for d in days]
-        return (tr("Mood of the last 7 days: ") + "; ".join(parts))[:max(80, int(budget))]
+        return ("Mood of the last 7 days: " + "; ".join(parts))[:max(80, int(budget))]
 
     def checkin(self) -> dict | None:
         """Agenda job: the evening question, only when today has no check-in (the module decides, Hermes sends)."""

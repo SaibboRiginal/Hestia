@@ -91,13 +91,13 @@ def test_personal_places_validate_and_resolve_through_hecate():
     def call(svc, method, path, body=None, query=None, timeout=8):
         if svc == "hecate":
             calls.append((svc, path))
-            return 200, {"options": [{"value": "casa", "label": "Casa · Milano"}]}
+            return 200, {"options": [{"value": "home", "label": "Casa · Milano"}]}
         return inner(svc, method, path, body=body, query=query, timeout=timeout)
     hub.call = call
     registry = Registry(None)
     registry.register("themis", list(PERSONAL.values()))
     themis = Themis(hub, registry)
-    places = [{"id": "casa", "name": "Casa", "address": "Milano", "kind": "home"}]
+    places = [{"id": "home", "name": "Casa", "address": "Milano", "kind": "home"}]
     assert themis.set("themis.personal.places", places)["value"] == places
     with pytest.raises(Exception):
         themis.set("themis.personal.places", [{"name": "X", "kind": "castello"}])
@@ -192,9 +192,9 @@ def test_localize_walks_lists_under_kept_keys(monkeypatch):
     from hestia_common import i18n
     values = {"themis.personal.language": "it"}
     monkeypatch.setattr(i18n, "_reader", values.get)
-    out = i18n.localize({"page": [{"id": "deliveries", "label": "Deliveries"}], "action": {"label": "Plan"},
+    out = i18n.localize({"page": [{"id": "consegne", "label": "Deliveries"}], "action": {"label": "Plan"},
                          "status": "Deliveries", "area_label": "alt::Day", "args": {"q": "Deliveries"}})
-    assert out["page"] == [{"id": "deliveries", "label": "Consegne"}]
+    assert out["page"] == [{"id": "consegne", "label": "Consegne"}]
     assert out["status"] == "Deliveries"                 # a string under a kept key is an id, never translated
     assert out["area_label"] == "Giornata"
     assert out["args"] == {"q": "Deliveries"}            # the owner's data stays as it is

@@ -3,7 +3,7 @@ care + weekly series, published to Archive through ``hestia_common.signals_clien
 
 Built on what the planner and the statistics already judge (cadence goals, ``goal_state``, ``routine_stats`` streaks,
 the journal scores). Expiry / restock alerts are reminders, not facts about the user: they stay out. Texts speak of
-«Cura di sé», never of the module.
+«Self care», never of the module.
 """
 from __future__ import annotations
 
@@ -87,7 +87,7 @@ def evaluate(h: "Hygieia", today: date | None = None) -> tuple[list[dict], list[
         if mean - now >= DROP_POINTS:
             out.append(signal("adherence_drop", tr("Routines kept {0}% this week, before {1}%", now, mean),
                               kind="trend", severity="warning", metrics={"percent": now, "previous": mean},
-                              period=weeks[-1], page="statistics"))
+                              period=weeks[-1], page="stats"))
     for p in h.plan(today.isoformat())["routines"]:
         g = p["goal"]
         if g.get("mode") == "target" and g.get("behind") and p["state"] == "due":
@@ -108,7 +108,7 @@ def evaluate(h: "Hygieia", today: date | None = None) -> tuple[list[dict], list[
     if told:
         # B9 spoken evening diary: the day told by the owner, read by the evening reflection (full text via topic)
         note = " ".join(str(told.get("note") or "").split())
-        out.append(signal("diario", tr("Day told: {0}", note[:200]) + ("…" if len(note) > 200 else ""),
+        out.append(signal("diary", tr("Day told: {0}", note[:200]) + ("…" if len(note) > 200 else ""),
                           kind="trend", severity="info", metrics={"chars": len(note)}, period=today.isoformat(),
                           ttl_days=2, page="diary"))
     return out, weekly_metrics(h, weeks, adherence)
@@ -149,7 +149,7 @@ def detail(h: "Hygieia", topic: str, today: date | None = None) -> str | None:
     h.store.refresh()
     today = today or h.today()
     kind, _, ref = (topic or "").partition(":")
-    if topic == "diario":
+    if topic == "diary":
         told = _told(h, today)
         return tr("Diary of the day ({0}): {1}", today.isoformat(), told.get('note')) if told else None
     if topic == "adherence_drop":

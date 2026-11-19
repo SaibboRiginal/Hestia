@@ -85,7 +85,7 @@ def _create(title: str, html: str, format: str = "pdf", theme: str = "", must_co
                                lines=[tr("{0} pages, {1} KB · checked", out['pages'], max(1, out['size'] // 1024)) if out['format'] == 'pdf'
                                      else tr("{0} parts, {1} KB · checked", out['pages'], max(1, out['size'] // 1024))],
                                files=[file(out["blob_id"], out["name"], out["mime"])],
-                               actions=[action(tr("Delete"), "document_delete", {"document": out["id"]})])}
+                               actions=[action(tr("Delete"), "document_created_delete", {"document": out["id"]})])}
 
 
 def _list() -> dict:
@@ -107,7 +107,7 @@ S = {"type": "string"}
 G = "documents"
 kit.tools([
     MCPTool(name="document_create", description=("Create a PDF, Word or Excel file: title, html (h1-h3, p, ul/ol/li, table/tr/th/td, b, i), "
-                                                "format pdf|docx|xlsx, theme classic|modern|plain, must_contain (texts that must appear, "
+                                                "format pdf|docx|xlsx, theme classic|modern|sober, must_contain (texts that must appear, "
                                                 "checked again)."),
             parameters={"type": "object", "properties": {
                 "title": S, "html": {"type": "string", "description": "content in simple HTML"},
@@ -115,13 +115,13 @@ kit.tools([
                 "must_contain": {"type": "array", "items": S}}, "required": ["title", "html"]},
             handler=_create, title="Create document", method="POST", clients=["telegram", "ui"], telegram_group=G,
             telegram={"section": "Documents", "primary": 1}),
-    MCPTool(name="document_list", description="The documents created recently.",
+    MCPTool(name="document_created_list", description="The documents created recently.",
             parameters={"type": "object", "properties": {}}, handler=_list, title="Documents created",
             clients=["telegram", "ui"], telegram_group=G, telegram={"section": "Documents", "primary": 2}),
-    MCPTool(name="document_send", description="Send again the file of a created document.",
+    MCPTool(name="document_created_send", description="Send again the file of a created document.",
             parameters={"type": "object", "properties": {"document": S}, "required": ["document"]}, handler=_send,
             title="Send document", clients=["telegram", "ui"], telegram_group=G, telegram={"section": "Documents"}),
-    MCPTool(name="document_delete", description="Delete a created document (and its file).",
+    MCPTool(name="document_created_delete", description="Delete a created document (and its file).",
             parameters={"type": "object", "properties": {"document": S}, "required": ["document"]},
             handler=lambda document: docs.delete(document), title="Delete created document", method="POST",
             clients=["telegram", "ui"], telegram_group=G, telegram={"section": "Documents"}),

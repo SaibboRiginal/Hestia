@@ -56,4 +56,4 @@ class TestProfile:
     def test_unknown_client_falls_back_to_claude(self):
         with patch.object(oracle_settings, "get_int", return_value=1500), \
                 patch.object(oracle_settings, "chat_instructions", return_value=[]):
-            assert assistant_profile.build(None, client="altro")["client"] == "claude"
+            assert assistant_profile.build(None, client="other")["client"] == "claude"

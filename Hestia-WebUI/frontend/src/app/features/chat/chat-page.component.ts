@@ -35,7 +35,7 @@ function dayKey(d: Date | undefined): string {
   return d && !isNaN(+d) ? `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}` : '';
 }
 
-/** «Oggi», «Ieri», «mer 5 nov» (with the year when it is not this one). */
+/** «Today», «Yesterday», «Wed 5 Nov» (with the year when it is not this one). */
 export function dayLabel(d: Date, now = new Date()): string {
   const start = (x: Date) => new Date(x.getFullYear(), x.getMonth(), x.getDate()).getTime();
   const diff = Math.round((start(now) - start(d)) / 86400000);
@@ -439,7 +439,7 @@ export class ChatPageComponent implements AfterViewChecked, OnDestroy {
     // After a reload: queued messages keep their hourglass and an open question comes back (oracle-offline v3).
     void this.chat.restorePending();
     void this.identity.load();
-    // «Ascolta» that gives no sound says why, with the way to the voice page.
+    // «Listen» that gives no sound says why, with the way to the voice page.
     let seen = this.voice.failed()?.n ?? 0;
     effect(() => {
       const f = this.voice.failed();
@@ -468,7 +468,7 @@ export class ChatPageComponent implements AfterViewChecked, OnDestroy {
 
   use(s: string) { this.text = s; this.send(); }
 
-  /** «Annulla» under «Ho fatto»: the inverse tool, through the commands door (Hestia-MCP). */
+  /** «Undo» under «Done»: the inverse tool, through the commands door (Hestia-MCP). */
   async undo(m: ChatMessage, i: number, c: ChatChange) {
     if (!c.undo) return;
     this.undoing.set(m.id + i);

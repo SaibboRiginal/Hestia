@@ -5,8 +5,8 @@ restart ``hestia_<svc>`` + health check, never itself, never during a Forge depl
 - down for ``argus.repair.restart_after`` seconds → restart 1; still down → restart again after twice the wait, up
   to ``argus.repair.max_restarts`` (Themis, 0 = never). Each try is an action of the incident (journal).
 - every try failed → one Hermes notice with generic text (``replaces: system.repair.<svc>``), no more restarts;
-- back up → the notice is closed («Tornato a posto»), counters reset.
-Off with the existing «Riparazione automatica» (``argus.remediate.enabled``).
+- back up → the notice is closed («Back to normal»), counters reset.
+Off with the existing «Automatic repair» (``argus.remediate.enabled``).
 """
 from __future__ import annotations
 
@@ -21,7 +21,7 @@ from hestia_common.i18n import t as tr  # fixed texts in the owner's language
 
 logger = logging.getLogger(f"hestia_argus.{__name__}")
 
-NOTICE_EVENT = "service.action_required"   # always-on system subscription (like the «Non disponibile» notice)
+NOTICE_EVENT = "service.action_required"   # always-on system subscription (like the «Unavailable» notice)
 _NEVER = {"argus", "hephaestus", "hub"}     # who would restart them (Argus itself / Hephaestus / the only door)
 
 _lock = threading.Lock()

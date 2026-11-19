@@ -30,7 +30,7 @@ logger = logging.getLogger("hestia_oracle.module_agents")
 TOOL_PREFIX = "agent_"
 USECASE_PREFIX = "agent."
 # Cross-cutting tools the main brain keeps itself (reminders and routines are asked in any conversation).
-MAIN_TOOLS = frozenset({"assistant_agenda_add", "routine_create", "ask_user"})
+MAIN_TOOLS = frozenset({"agenda_assistant_add", "routine_create", "ask_user"})
 # Replaced by the agents: the manual lives in each agent's prompt.
 DROPPED_TOOLS = frozenset({"module_manual"})
 _SUMMARY_CHARS = 240

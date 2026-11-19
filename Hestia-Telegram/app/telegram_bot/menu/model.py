@@ -3,7 +3,7 @@
 1. ``menu.defaults`` (data in this repo), 2. module hints on each tool (``telegram_group`` + ``telegram``),
 3. the user's layout (Themis ``telegram.menu.layout``).
 
-A tool that no layer mentions still appears (area from its module, else «Altro»): no layout can lose a function.
+A tool that no layer mentions still appears (area from its module, else «Other»): no layout can lose a function.
 """
 from __future__ import annotations
 
@@ -156,7 +156,7 @@ def build(tools: list, layout: dict | None = None) -> Menu:
         else:
             ranked = [(p[3], p[2], p[0]) for p in placed if p[1] == area.key and p[3]]
             area.primary = [n for _, _, n in sorted(ranked, key=lambda r: (_as_int(r[0], 99), r[1]))][:D.PRIMARY_MAX]
-        # sections: by first tool order, «Altre azioni» then «Avanzate» last
+        # sections: by first tool order, «Other actions» then «Advanced» last
         order_of = {n: i for i, n in enumerate(p[0] for p in sorted(placed, key=lambda p: p[2]))}
         area.sections = dict(sorted(
             area.sections.items(),

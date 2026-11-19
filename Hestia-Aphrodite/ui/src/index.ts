@@ -59,7 +59,7 @@ export class AphroditeLook extends HestiaElement {
   private async savePet() {
     const d = this.petDraft;
     if (!d.name?.trim()) { this.host.toast(tr('What is its name?'), 'warning'); return; }
-    const r = await call(this.host, 'POST', '/tools/pet_create', { name: d.name, species: d.species || 'cat', look: d.look || '' });
+    const r = await call(this.host, 'POST', '/tools/pet', { name: d.name, species: d.species || 'cat', look: d.look || '' });
     if (r.ok) { this.petDraft = null; this.host.toast(tr('Pet created: the images arrive when they\'re ready'), 'success'); this.load(); }
   }
   private async uploadPose(pet: any, pose: string) {

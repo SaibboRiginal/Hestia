@@ -160,7 +160,7 @@ def test_planner_has_no_domain_words():
     import inspect
     from services import coach_planner
     src = inspect.getsource(coach_planner).lower()
-    for word in ("hercules", "hygieia", "plutus", "retinol", "palestra", "allenamento", "fitness", "selfcare"):
+    for word in ("hercules", "hygieia", "plutus", "retinol", "gym", "training", "fitness", "selfcare"):
         assert word not in src
 
 

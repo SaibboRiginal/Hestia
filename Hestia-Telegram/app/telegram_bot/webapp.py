@@ -32,7 +32,7 @@ def page_url(path: str = "/") -> str:
 
 
 def open_button(label: str, path: str = "/"):
-    """«Apri …» for a WebUI page: Mini App on https, link on http, nothing without a public address."""
+    """«Open …» for a WebUI page: Mini App on https, link on http, nothing without a public address."""
     url = page_url(path)
     if not url:
         return None
@@ -43,7 +43,7 @@ def open_button(label: str, path: str = "/"):
 
 
 def set_menu_button() -> None:
-    """The chat's menu button «Apri Hestia» (only with a public https address)."""
+    """The chat's menu button «Open <assistant>» (only with a public https address)."""
     url = page_url("/")
     if not url.startswith("https://"):
         return

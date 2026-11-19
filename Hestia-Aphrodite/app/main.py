@@ -1,4 +1,4 @@
-"""Hestia-Aphrodite — how the clients look («Look», port 19023).
+"""Hestia-Aphrodite — how the clients look («Look», port 19023, dossier docs/work/2026-10-24-whole-cindy-brainstorm W5 A2).
 
 Profiles, pets and per-client choices in Archive (``/api/appearance-store``); today's special moments pushed by the
 calendar (capability ``special_moment_endpoint``); pictures asked to the image module with a callback; clients read
@@ -28,7 +28,7 @@ from .core.service import CLIENTS, EFFECTS, POSES, Appearance
 API = "/api/appearance"
 kit = ModuleKit("aphrodite", port=19023, api=API, domain="appearance", title="Look", store="appearance-store",
                 when_to_use="site look: holiday and season themes, effects, companion pet",
-                manual="The look changes by itself (birthday, holidays, seasons): look_now says what is shown and why. look_choice turns themes off (back to standard) or picks the pet. look_pet_create creates a pet; look_generate asks for its images or the background.")
+                manual="The look changes by itself (birthday, holidays, seasons): look_now says what is shown and why. look_choice turns themes off (back to standard) or picks the pet. look_pet creates a pet; look_generate asks for its images or the background.")
 app = kit.app
 look = Appearance(kit.store, kit.hub, tz_name=kit.tz)
 
@@ -135,7 +135,7 @@ def _now(client: str = "webui") -> dict:
     return {**n, "display": display(tr("Look now"), lines=lines, files=files, actions=[
         action(tr("Turn themes off") if n["auto"] else tr("Turn themes back on"), "look_choice",
                {"client": client, "auto": not n["auto"]}),
-        action(tr("Upcoming themes"), "look_upcoming")])}
+        action(tr("Upcoming themes"), "look_next")])}
 
 
 def _choice(client: str = "webui", auto: bool | None = None, pet: str | None = None) -> dict:
@@ -165,12 +165,12 @@ kit.tools([
             parameters={"type": "object", "properties": {"client": CL, "auto": B, "pet": S}},
             handler=_choice, title="Choose look", method="POST", clients=["telegram", "ui"], telegram_group=G,
             telegram={"section": "Look", "primary": 4}),
-    MCPTool(name="look_upcoming", description="The themes of the next days (days, default 60).",
+    MCPTool(name="look_next", description="The themes of the next days (days, default 60).",
             parameters={"type": "object", "properties": {"days": {"type": "integer"}}},
             handler=lambda days=60: (lambda rows: {"items": rows, "display": display(tr("Upcoming themes"), items=[
                 item(r["why"], [r["date"][8:10] + "/" + r["date"][5:7]]) for r in rows[:15]])})(look.upcoming(days)),
             title="Upcoming themes", clients=["telegram", "ui"], telegram_group=G, telegram={"section": "Look"}),
-    MCPTool(name="look_pet_create", description="Create a pet companion (name, species, look = what it looks like) and ask for its images.",
+    MCPTool(name="look_pet", description="Create a pet companion (name, species, look = what it looks like) and ask for its images.",
             parameters={"type": "object", "properties": {"name": S, "species": S, "look": S}, "required": ["name"]},
             handler=lambda name, species="cat", look="": _pet(name, species, look), title="New pet",
             method="POST", clients=["telegram", "ui"], telegram_group=G, telegram={"section": "Look"}),

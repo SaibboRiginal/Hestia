@@ -1,6 +1,6 @@
 """What comes with an answer besides its text (dossier docs/work/2026-10-24-whole-cindy-brainstorm, Cindy 9 + 13).
 
-- **changes** frame: the writes made in this turn, «Ho fatto» with one «Annulla: …» button per change that has an
+- **changes** frame: the writes made in this turn, «Done» with one «Undo: …» button per change that has an
   undo tool. The button is a normal tool button (``t:``, ``actions.tool_button``) with the undo arguments preset,
   so it runs like every other action (confirm card for a delete, same errors, same stale handling).
 - **buttons** of the ``hestia-ui`` components: a tap (``ux:<id>``) sends their ``send`` text as the next chat

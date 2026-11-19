@@ -1,9 +1,9 @@
-"""«Mentre non c'ero» — what the agenda missed while the assistant could not answer (oracle-offline v3 D).
+"""«While I was away» — what the agenda missed while the assistant could not answer (oracle-offline v3 D).
 
-When ``chat.reply`` relaxes from ``queued`` to ``live`` (the «Non disponibile» overlay ends), Chronos — owner of the
+When ``chat.reply`` relaxes from ``queued`` to ``live`` (the «Unavailable» overlay ends), Chronos — owner of the
 agenda — looks at the runs that failed in that window: each job/task still active is run again once if its missed
 run is recent enough (``chronos.catchup.max_age_hours``), older ones are only listed. Then ONE message through
-Hermes says what happened: «Mentre non c'ero: …». Nothing missed → nothing sent. Fixed text (no model round trip
+Hermes says what happened: «While I was away: …». Nothing missed → nothing sent. Fixed text (no model round trip
 right after a recovery).
 """
 from __future__ import annotations

@@ -12,7 +12,7 @@ const LABELS: Record<string, string> = {
 };
 
 /**
- * Live mode «Parla» over any page (brainstorm C12, W7): started from the sidebar, the Home or Ctrl+Shift+Space, it
+ * Live mode «Talk» over any page (brainstorm C12, W7): started from the sidebar, the Home or Ctrl+Shift+Space, it
  * keeps going while you move around; the pet is its face when there is one (happy while talking, calm while
  * listening). The Chat page shows its own panel, so this one hides there.
  */

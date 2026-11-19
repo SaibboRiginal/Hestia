@@ -1,4 +1,4 @@
-"""«Da fuori casa» — the WebUI reachable from outside home through a Cloudflare quick tunnel (§4.2, P5b).
+"""«Away from home» — the WebUI reachable from outside home through a Cloudflare quick tunnel (§4.2, P5b).
 
 Single responsibility: start, stop and read the ``hestia_tunnel`` container. It is created here through the Docker API
 (not in compose: ``up-all`` and the installer must never open Hestia to the internet by themselves), on ``hestia_net``,
@@ -178,7 +178,7 @@ def _start_now(client=None) -> None:
                     _downloads.add(f"docker:{IMAGE}", tr("Link from outside home (Cloudflare)"), "docker",
                                    {"image": IMAGE}, size_hint=25_000_000)
                     job = _downloads.wait(f"docker:{IMAGE}", timeout=900)
-                    if job.get("state") != "fatto":
+                    if job.get("state") != "done":
                         raise RuntimeError(job.get("error") or tr("download failed"))
                 else:
                     client.images.pull(IMAGE)

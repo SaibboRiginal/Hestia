@@ -5,11 +5,11 @@ nagged as user reminders), but readable by the user and by every module.
 
 Item types
 ----------
-- ``event``  informational / planned (e.g. "Forge: sviluppo X stanotte").
+- ``event``  informational / planned (e.g. "Forge: develop X tonight").
 - ``task``   one-off action to execute at ``start_at`` (repairs, follow-ups).
-- ``job``    recurring action (RRULE), e.g. "Scout: controlla email ogni 30 min".
+- ``job``    recurring action (RRULE), e.g. "Scout: check email every 30 min".
 - ``window`` period in which something is allowed (RRULE + duration), e.g.
-             "Claude Pro: notti prima del reset". Modules ask
+             "Claude Pro: nights before the reset". Modules ask
              ``window_status(key)`` instead of hardcoding times.
 
 Rules are data: modules *register* defaults (idempotent by ``key``); the user
@@ -307,7 +307,7 @@ def create(*, title: str, type_: str = "event", owner: str = "user", start_at: s
 
 
 # Latest declaration of every module's default rules (in memory, re-asserted hourly by ``register_async``):
-# what «Ripristina» brings a deleted or changed standard activity back to (§3.9 recap dossier).
+# what «Restore» brings a deleted or changed standard activity back to (§3.9 recap dossier).
 _DECLARED: dict[str, dict[str, dict]] = {}
 
 
@@ -350,14 +350,14 @@ def register_rules(owner: str, rules: list[dict]) -> list[dict]:
 
 def _standard_state(item: dict) -> str:
     if item["status"] == "cancelled":
-        return "eliminata"
+        return "deleted"
     if item["status"] == "paused":
         return "paused"
     if item["status"] == "failed":
-        return "fallita"
+        return "failed"
     if item["user_modified"]:
-        return "modificata"
-    return "attiva"
+        return "edited"
+    return "active"
 
 
 def standard(owner: str | None = None) -> dict:
@@ -373,8 +373,8 @@ def standard(owner: str | None = None) -> dict:
                      "description": item.get("description") or "", "start_at": item["start_at"],
                      "end_at": item.get("end_at"), "recurrence": item.get("recurrence"),
                      "flex": (item.get("params") or {}).get("flex"), "state": state,
-                     "can_restore": state != "attiva"})
-    order = {"eliminata": 0, "fallita": 1, "in pausa": 2, "modificata": 3, "attiva": 4}
+                     "can_restore": state != "active"})
+    order = {"deleted": 0, "failed": 1, "paused": 2, "edited": 3, "active": 4}
     rows.sort(key=lambda r: (order[r["state"]], r["owner"], r["title"] or ""))
     templates = [t for t in list_templates() if not owner or t.get("owner") == owner]
     return {"activities": rows, "templates": templates,
@@ -495,8 +495,8 @@ def fail(ref: str | int, detail: str = "", by: str = "module") -> dict:
         item = get(ref)
         at = datetime.now(timezone.utc).isoformat()
         item["status"] = "failed"
-        item["last_result"] = {"ok": False, "detail": (detail or "fallito")[:300], "at": at, "by": by}
-        _record_run(item, None, False, (detail or "fallito")[:300], at, by)
+        item["last_result"] = {"ok": False, "detail": (detail or "failed")[:300], "at": at, "by": by}
+        _record_run(item, None, False, (detail or "failed")[:300], at, by)
         item = _save(item)
         if item.get("parent"):
             _mark_parent(item, ok=False, detail=tr("linked item failed: {0}", item['title']), by=by)
@@ -820,7 +820,7 @@ def create_from_template(owner: str, template_id: str, *, values: dict, start_at
                   params={"template": template_id, "values": values}, created_by="user")
 
 
-# ── Runs view (WebUI plugin «Esecuzioni», SPEC 2026-10-18-core-modules-and-external-mcp §A2) ──────────
+# ── Runs view (WebUI plugin «Runs», SPEC 2026-10-18-core-modules-and-external-mcp §A2) ──────────
 RUN_STATUSES = ("ok", "failed", "skipped")
 
 
@@ -889,7 +889,7 @@ def runs(*, owner: str | None = None, status: str | None = None, since: datetime
 
 
 def failed_jobs(since: datetime | None = None, now: datetime | None = None) -> list[dict]:
-    """Jobs/tasks whose last run failed (or that stopped as failed) and can run again: «Riprova job» chips."""
+    """Jobs/tasks whose last run failed (or that stopped as failed) and can run again: «Retry job» chips."""
     now = now or datetime.now(timezone.utc)
     since = since or now - timedelta(days=1)
     out = []

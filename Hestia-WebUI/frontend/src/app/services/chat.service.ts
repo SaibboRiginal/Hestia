@@ -12,7 +12,7 @@ import { tr } from '../core/i18n';
 
 /**
  * Chat state over the SignalR stream. Root instance = the Chat page ("main" channel);
- * the "Crea con Hestia" drawer provides its own instance with channel "assistant".
+ * the "Create with the assistant" drawer provides its own instance with channel "assistant".
  */
 /** Status frames that only echo a cancel (the chat is already freed by `cancelStream`). */
 const STATUS_IGNORED = new Set(['Cancelled', 'Stream cancelled']);
@@ -53,7 +53,7 @@ export class ChatService {
       if (event.type === 'queued_answer') { if (this.channel === 'main') this.handleQueuedAnswer(event); return; }
       if (this.signalR.activeChannel === this.channel) this.handleEvent(event);
     });
-    // She wrote first (Athena «parla con te», a notification whose payload has `_chat`): it also appears in the open
+    // She wrote first (Athena «talks to you», a notification whose payload has `_chat`): it also appears in the open
     // chat, like a message of hers. Oracle knows it through its awareness line, so the answer has its context.
     this.signalR.notifications$.subscribe(push => {
       const chat = (push['payload'] as { _chat?: boolean } | undefined)?._chat;
@@ -113,7 +113,7 @@ export class ChatService {
         mode,
         model,
         ...(context ? { context } : {}),
-        // Live mode «Parla»: Hestia answers as speech, short (docs/work/2026-11-06-living-hestia F1).
+        // Live mode «Talk»: the assistant answers as speech, short (docs/work/2026-11-06-living-hestia F1).
         ...(spoken ? { spoken: true } : {}),
       });
     } catch (err: any) {
@@ -126,7 +126,7 @@ export class ChatService {
   }
 
   /**
-   * A voice message (dossier voice-module §7.2): the audio bubble appears at once, the voice module transcribes it
+   * A voice message (voice dossier §7.2): the audio bubble appears at once, the voice module transcribes it
    * (recording kept with the message), then the text goes to Hestia exactly like a typed one.
    */
   async sendVoice(audio: Blob, mime: string, seconds: number, sessionId: string, mode = 'auto'): Promise<string | null> {
@@ -367,7 +367,7 @@ export class ChatService {
         break;
 
       case 'changes': {
-        // «What I did» under the answer (Cindy 13): can arrive before or after `final`.
+        // «Done» under the answer (Cindy 13): can arrive before or after `final`.
         const target = streamId ?? this.lastAssistantId;
         if (target && event.items?.length) this.patch(target, { changes: event.items.map(c => ({ ...c, done: false })) });
         break;
@@ -375,7 +375,7 @@ export class ChatService {
 
       case 'error':
         if (streamId && event.content) {
-          this.finalizeStreaming(streamId, tr(event.content), undefined, undefined, true);   // the server's own texts are English sources
+          this.finalizeStreaming(streamId, event.content, undefined, undefined, true);
         }
         break;
 
@@ -488,8 +488,8 @@ export class ChatService {
     }
     const n: ChatNotice = {
       id: uid(), kind: event.kind || 'info', level: event.level || 'info',
-      icon: event.icon || 'info', emoji: event.emoji, title: event.title ? tr(event.title) : tr('Info'),
-      detail: event.detail ? tr(event.detail) : '', data: event.data,
+      icon: event.icon || 'info', emoji: event.emoji, title: event.title || tr('Info'),
+      detail: event.detail || '', data: event.data,
     };
     if (!this.noticePrefs.allows(n)) return;
     const target = this.currentStreamingId() ?? this.lastAssistantId;
@@ -503,7 +503,7 @@ export class ChatService {
   }
 
   private handleThinking(event: ServerEvent): void {
-    // A step with nothing to show is not a step: no «Ragionamento» block for an empty thought.
+    // A step with nothing to show is not a step: no «Reasoning» block for an empty thought.
     const kind = event.action || 'reasoning';
     if (kind === 'reasoning' ? !(event.content || '').trim() : !event.tool) return;
     this.stepCounter++;

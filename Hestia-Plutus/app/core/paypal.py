@@ -1,6 +1,6 @@
 """PayPal receipt mails → transactions (deterministic first; Oracle only when a money mail is not understood).
 
-PayPal sends one mail per payment, refund or money received, in Italian or English. The parser reads the subject
+PayPal sends one mail per payment, refund or money received, in the owner's language. The parser reads the subject
 and body text (HTML already flattened by Hecate) and returns what it is sure about. No real receipts in the repo:
 tests use synthetic ones shaped like the public templates.
 """
@@ -9,37 +9,24 @@ from __future__ import annotations
 import re
 from typing import Any
 
+from hestia_common.i18n import word_regex, words
+
 from .catalog import find_currency, parse_amount
 
-# kind, subject/body patterns (lowercase). The first match wins.
-_KINDS = [
-    ("refund", r"rimborso|refund|ti (?:è|e) stato rimborsato|you(?:'ve| have) (?:got|received) a refund"),
-    ("received", r"hai ricevuto (?:denaro|un pagamento|\d)|you(?:'ve| have)? received (?:money|a payment|\d)|"
-                 r"ti ha inviato|sent you"),
-    ("payment", r"ricevuta|hai inviato un pagamento|hai pagato|hai autorizzato un pagamento|pagamento a|"
-                r"receipt for your payment|you sent a payment|you(?:'ve| have)? paid|you authorized a payment|"
-                r"payment to|il tuo pagamento|your payment|abbonamento|subscription|ordine|order"),
-]
+# kind, subject/body patterns (lowercase, words of every language). The first match wins.
+_KINDS = [("refund", word_regex("{0}", "plutus.paypal.refund")),
+          ("received", word_regex("{0}", "plutus.paypal.received")),
+          ("payment", word_regex("{0}", "plutus.paypal.payment"))]
 
-_MONEY_HINT = re.compile(r"pagament|ricevut|rimbors|denaro|addebit|payment|receipt|refund|money|order|ordine|"
-                         r"abbonament|subscription", re.I)
+_MONEY_HINT = word_regex("{0}", "plutus.money_hint")
 
-_MERCHANT_RES = [
-    re.compile(r"(?:pagamento|payment)\s+(?:a|to)\s+(.+?)(?:\s+(?:di|for|per|of)\s+[-€$£\d]|[.\n|]|$)", re.I),
-    re.compile(r"(?:hai inviato|you sent)\s+(?:un pagamento|a payment)?\s*(?:di|of)?\s*[^\n]*?\s+(?:a|to)\s+(.+?)(?:[.\n|]|$)",
-               re.I),
-    re.compile(r"(?:rimborso|refund)\s+(?:da|from)\s+(.+?)(?:[.\n|]|$)", re.I),
-    re.compile(r"(.+?)\s+(?:ti ha inviato|ti ha rimborsato|sent you|has sent you|refunded)", re.I),
-    re.compile(r"(?:esercente|venditore|merchant|seller)\s*[:\n]\s*(.+?)(?:\n|$)", re.I),
-]
+_MERCHANT_RES = [re.compile(p, re.I) for p in words("plutus.paypal.merchant")]
 _AMOUNT_RES = [
-    re.compile(r"(?:importo|totale|total|amount|pagamento di|payment of|hai inviato|you sent|hai ricevuto|you received|"
-               r"rimborso di|refund of|hai pagato|you paid)[^\d€$£\n-]{0,30}(-?\s*[€$£]?\s*\d[\d.,']*\s*(?:€|EUR|USD|GBP|\$|£)?)",
-               re.I),
+    word_regex(r"(?:{0})[^\d€$£\n-]{{0,30}}(-?\s*[€$£]?\s*\d[\d.,']*\s*(?:€|EUR|USD|GBP|\$|£)?)",
+               "plutus.paypal.amount_label"),
     re.compile(r"([€$£]\s*\d[\d.,']*\s*(?:EUR|USD|GBP)?|\d[\d.,']*\s*(?:€|EUR|USD|GBP))", re.I),
 ]
-_TXN_RE = re.compile(r"(?:id (?:della )?transazione|transaction id|codice transazione|id transazione)\s*[:\n#]?\s*"
-                     r"([A-Z0-9]{10,20})", re.I)
+_TXN_RE = word_regex(r"(?:{0})\s*[:\n#]?\s*([A-Z0-9]{{10,20}})", "plutus.paypal.transaction_id")
 
 
 def looks_like_money(subject: str, body: str = "") -> bool:

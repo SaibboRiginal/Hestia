@@ -49,7 +49,7 @@ light outdoor activities (run, bike, walk) planned with the weather
   `pr:<exercise>` → records of the last 14 days, `missed_streak` → which days, `deload` → the low check-ins,
   `week_goal` → goal hint and days left); an unknown topic answers the normal line. Same shape `{module, domain,
   updated_at, text}`, cut to `budget`.
-- `GET /api/module/recap?day=&next=`: piece «Allenamento» of the daily recap (sessions with sets/minutes, records, a
+- `GET /api/module/recap?day=&next=`: piece «Training» of the daily recap (sessions with sets/minutes, records, a
   planned day skipped or missed, next workout, goal note) plus outdoor lines: activities done, slots not done or
   still to mark, slots planned tomorrow (`Activities.recap`). Plain facts, capability `recap_endpoint`.
 - Template edits by the assistant keep the previous revision (`POST /templates/{id}/undo`).
@@ -57,18 +57,18 @@ light outdoor activities (run, bike, walk) planned with the weather
 ## Reflection signals (`app/core/signals.py`, docs/work/2026-10-20-layered-reflection)
 
 Deterministic facts published to Archive `signals-store` through `hestia_common.signals_client` (module `hercules`,
-domain `fitness`); texts say «Allenamento» things, never the module name. No LLM, no new judging logic.
+domain `fitness`); texts say «Training» things, never the module name. No LLM, no new judging logic.
 
 | Key | Kind · severity | When | Page |
 |---|---|---|---|
-| `stall:<exercise_id>` | trend · attenzione | `progression.stall` (setting `hercules.stall.exposures`), exercise trained in the last 30 days | `esercizi/<id>` |
-| `deload` | trend · attenzione | ≥ 3 check-ins with energy ≤ 2 in 7 days | `allenamento` |
-| `missed_streak` | streak · attenzione (alta ≥ 4) | ≥ 2 planned days of the weekly program missed in a row (skipped/moved days neither count nor break) | `allenamento` |
-| `pr:<exercise_id>` | milestone · info, ttl 3 days | `records.recent_prs` of the last 3 days | `esercizi/<id>` |
-| `week_goal` | goal · attenzione | a weekly goal `behind` with ≤ 2 days left | `progressi` |
+| `stall:<exercise_id>` | trend · attenzione | `progression.stall` (setting `hercules.stall.exposures`), exercise trained in the last 30 days | `exercises/<id>` |
+| `deload` | trend · attenzione | ≥ 3 check-ins with energy ≤ 2 in 7 days | `training` |
+| `missed_streak` | streak · attenzione (alta ≥ 4) | ≥ 2 planned days of the weekly program missed in a row (skipped/moved days neither count nor break) | `training` |
+| `pr:<exercise_id>` | milestone · info, ttl 3 days | `records.recent_prs` of the last 3 days | `exercises/<id>` |
+| `week_goal` | goal · attenzione | a weekly goal `behind` with ≤ 2 days left | `progress` |
 
 Weekly metrics (last 12 ISO weeks, current included; weeks before the first workout left out): `fitness.sessions`
-«Allenamenti», `fitness.volume` «Volume (kg)», `fitness.energy` «Energia media» (only weeks with check-ins).
+«Workouts», `fitness.volume` «Volume (kg)», `fitness.energy` «Average energy» (only weeks with check-ins).
 
 When: `signals.changed()` (debounced re-evaluation) after sync with ops, session finish/delete, set delete, check-in,
 quick done/undo, import, the MCP finish/check-in tools and once after warm-up; agenda job `hercules.signals` (daily
@@ -80,16 +80,16 @@ Agenda job `hercules.reminder` (daily 18:30, editable in the agenda) → `POST /
 Sends only when enabled, a goal is behind, nothing done or skipped today, no live session, and under
 `hercules.reminder.max_per_week`. Hermes `service.action_required` with `replaces: hercules.reminder`
 (one live reminder) and actions **Segna fatto** (`resolves: true`) / **Salta oggi**; target `owner`;
-`_link` opens the plugin page `allenamento`.
+`_link` opens the plugin page `training`.
 
 ## Client UI (plugin contract)
 
 Icons, never emoji (DESIGN-SYSTEM rule, `docs/work/2026-10-20-icons-in-clients`): `<hxk-icon name tone>`. Favourites star (warning), streaks flame, records trophy, rest timer; energy 1–5 as numbers (1 with battery-low).
 
 Bundle `ui/src/index.ts` → `/ui/webui/hercules.js` (built in the Dockerfile). Pages: allenamento (today / live),
-schede, schede/:id, esercizi, esercizi/:id, storico, storico/:id, progressi, corpo. Widgets: prossimo (name always visible; exercise list only in size l), settimana,
+schede, plans/:id, esercizi, exercises/:id, storico, history/:id, progressi, corpo. Widgets: prossimo (name always visible; exercise list only in size l), settimana,
 fatto, record, esercizio, muscoli, peso, live (settimana also shows «Corsa 1/2» per open intention). Quick actions:
-fatto (one tap per template, undo), inizia, peso, corsa («Ho corso», km optional, undo), salta.
+fatto (one tap per template, undo), inizia, peso, corsa («I went running», km optional, undo), salta.
 A UI change needs `up-all.bat --build hercules`.
 
 ## Settings (Themis, `hercules.*`)
@@ -111,8 +111,8 @@ propose, `{plan}/confirm`, `{plan}/slots` (+`/{slot}/done|missed|moved|ask`), `{
 
 ## Export and import (`/api/transfer/*`, dossier `docs/work/2026-10-20-import-export`)
 
-Sections (hestia_common.transfer over `hercules-store`): `esercizi` (exercise) · `schede` (template, program) ·
-`sessioni` (session + its sets) · `misure` (measurement) · `obiettivi` (goal, plan) · `feedback` (checkin, feedback).
+Sections (hestia_common.transfer over `hercules-store`): `exercises` (exercise) · `plans` (template, program) ·
+`sessions` (session + its sets) · `measures` (measurement) · `goals` (goal, plan) · `feedback` (checkin, feedback).
 Choosing a session pulls its template and exercises. Reminder and adaptation rows are runtime state: never exported.
 Settings travel through Themis.
 
@@ -136,7 +136,7 @@ Hub tag `coach`; `app/core/coach.py` mounted with `hestia_common.coach.CoachRout
 - **Placed**: kept in memory; the summary says «Nel piano: giovedì 18:30» and the reminder gives the time.
 - **Reports** (`CoachClient`, background): done on finish/quick done/sync, skipped on skip day, changed on postpone
   and on goal/program save. **Review**: sessions done vs the weekly goal, deload/stall flags.
-- Settings: `hercules.coach.time_of_day` (evening), `hercules.coach.min_minutes` (30), group «Piano della settimana».
+- Settings: `hercules.coach.time_of_day` (evening), `hercules.coach.min_minutes` (30), group «Weekly plan».
 
 
 ## Outdoor activities (dossier `docs/work/2026-10-20-weather-hecate` §3.8)
@@ -146,7 +146,7 @@ slots of the week (pure `score_hour`/`best_of_day`/`pick_slots`): dry, daylight,
 free in Marko's calendars (Hecate events) and not on top of another planned slot; back-to-back days avoided when
 there is a choice. Weather = Hecate forecast at the place (saved place name, city, or Casa). Nothing reaches the
 calendar before `fitness_confirm_activity` (all slots, some by number, or times Marko chose).
-- **Calendar «Allenamenti»** (Google, ensured through Hecate `calendars`): one event per confirmed slot (30' reminder),
+- **Calendar «Workouts»** (Google, ensured through Hecate `calendars`): one event per confirmed slot (30' reminder),
   each finished gym session and each logged activity → training history. Marko's other events are never touched.
   Done/missed shows as ✓/✗ in the Google title (Google has no icons). Links in store kind `calendar_link`.
 - **«L'hai fatto?»**: agenda task `hercules.activity.<slot>` 30' after the slot → Hermes (key = the task key)
@@ -164,7 +164,7 @@ calendar before `fitness_confirm_activity` (all slots, some by number, or times 
 ## From the watch (feed `wearable.daily`, dossier `docs/work/2026-10-24-whole-cindy-brainstorm` W4 B10)
 
 Hecate pushes each day read from Garmin to `POST /api/hercules/wearable` (`hestia_common.feeds`, declared as
-`capabilities.feeds`). Outdoor activities (corsa, bici, camminata, nuoto) become done activities like «Ho corso»
+`capabilities.feeds`). Outdoor activities (corsa, bici, camminata, nuoto) become done activities like «I went running»
 (`activities.log(..., ext="garmin:<id>")`: a planned slot that day is closed); each device activity is logged once,
 and one the owner deleted never comes back. Strength workouts stay with the gym sessions. Today's sleep score and
 morning body battery (or training readiness), 0–100 → 1–5, become the day's check-in (`source: device`) only when
@@ -172,24 +172,24 @@ there is no check-in made by hand; the adaptation of today's workout reads it li
 
 ## Telegram card (`display`)
 `GET /api/hercules/summary` (tool `fitness_summary`) also lists the week's logged activities (runs, walks, rides:
-line «Attività: …», field `activities_week`), not only gym sessions.
+line «Activity: …», field `activities_week`), not only gym sessions.
 `GET /api/hercules/summary` and `GET /api/hercules/next` (tools `fitness_summary`, `fitness_next_workout`) return a `display` card: the week lines with Inizia / Come mi sento (or Registra serie / Concludi during a session); the next workout with exercises, sets and suggested weight, buttons Inizia (preset template) / Adatta a come sto / Sposta / Salta oggi. Built with `hestia_common.display`; Hestia-MCP keeps it only for Telegram (docs/work/2026-10-23-telegram-from-scratch §6).
 
 ## Module guide for the assistant (dossier `docs/work/2026-10-24-whole-cindy-brainstorm`, Cindy 30)
 The Hub registration declares `capabilities.when_to_use` (one line in the assistant's «MODULI» index) and
 `capabilities.manual` (short manual the assistant loads with `module_manual` only when it needs it).
 
-**2026-10-29 (texts for people, dossier `docs/work/2026-10-29-frontend-review-and-tests`)**: Counts through the SDK `plural()` («1 esercizio», «1 allenamento»); templates offline text «Apri Allenamento…».
+**2026-10-29 (texts for people, dossier `docs/work/2026-10-29-frontend-review-and-tests`)**: Counts through the SDK `plural()` («1 esercizio», «1 allenamento»); templates offline text «Open Training…».
 
 
 **2026-11-14 (backend English, dossier `docs/work/2026-11-14-english-backend`)**: tool descriptions and the module manual are English (for the model). What people read about the tools comes from `hestia_common/locales/<lang>/tools.json`.
 
-**2026-11-15 (owner's language, dossier `docs/work/2026-11-14-english-backend`)**: the notices, errors and cards this module shows go through `hestia_common.i18n.t` and follow «Lingua».
+**2026-11-15 (owner's language, dossier `docs/work/2026-11-14-english-backend`)**: the notices, errors and cards this module shows go through `hestia_common.i18n.t` and follow «Language».
 
-**2026-11-15 (WebUI page in the owner's language, dossier `docs/work/2026-11-14-english-backend`)**: the texts of this module's WebUI page and widgets go through `tr` of `@hestia/webui-sdk` and follow «Lingua»; source texts in English, Italian in `Hestia-Shared/hestia_common/locales/it/messages.json`.
+**2026-11-15 (WebUI page in the owner's language, dossier `docs/work/2026-11-14-english-backend`)**: the texts of this module's WebUI page and widgets go through `tr` of `@hestia/webui-sdk` and follow «Language»; source texts in English, Italian in `Hestia-Shared/hestia_common/locales/it/messages.json`.
 
 **2026-11-16 (no Italian in the code, dossier `docs/work/2026-11-14-english-backend` v2.0)**: every text is English in the code; Italian lives only in `Hestia-Shared/hestia_common/locales/it/messages.json`. Labels declared at registration (manifest, capabilities, agenda rules, settings) are plain English, translated at the edge.
-**2026-11-15 (WebUI page in the owner's language, dossier `docs/work/2026-11-14-english-backend`)**: the texts of this module's WebUI page and widgets go through `tr` of `@hestia/webui-sdk` and follow «Lingua»; English texts in `Hestia-Shared/hestia_common/locales/en/messages.json`.
+**2026-11-15 (WebUI page in the owner's language, dossier `docs/work/2026-11-14-english-backend`)**: the texts of this module's WebUI page and widgets go through `tr` of `@hestia/webui-sdk` and follow «Language»; English texts in `Hestia-Shared/hestia_common/locales/en/messages.json`.
 
 **2026-11-16** (dossier `docs/work/2026-11-16-name-everywhere`): the fixed texts of this module that speak of the assistant
 as a person (pages, help, agenda titles, notes) write `{assistant}` and say the name the owner chose; texts about the

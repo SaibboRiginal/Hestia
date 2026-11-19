@@ -1,7 +1,7 @@
 /**
  * <wardrobe-pieces>      — every piece as photo tiles: search, filters, quick add, multi-select (laundry, outfit, archive).
  * <wardrobe-accessories> — the same page limited to accessories.
- * <wardrobe-piece>       — one piece: photos, details, status in one tap, outfits, «Indossato», edit, archive/delete.
+ * <wardrobe-piece>       — one piece: photos, details, status in one tap, outfits, «Worn», edit, archive/delete.
  */
 import { css, html, nothing, tr } from '@hestia/webui-sdk';
 import { API, STATUS_TONE, seasonIcon, WardrobeElement, call, dayLabel, dots, img, label, money, photo, relDays, vocabOptions, wardrobeStyles } from './util';
@@ -23,7 +23,7 @@ export class WardrobePieces extends WardrobeElement {
   constructor() { super(); this.items = undefined; this.total = 0; this.q = ''; this.f = { sort: 'recent' }; this.adding = false; this.sel = []; this.selecting = false; }
 
   connectedCallback() {
-    if (this.ctx?.query?.nuovo !== undefined) this.adding = true;
+    if (this.ctx?.query?.new !== undefined) this.adding = true;
     if (this.ctx?.query?.status) this.f = { ...this.f, status: this.ctx.query.status };
     super.connectedCallback();
   }
@@ -180,14 +180,14 @@ export class WardrobePiece extends WardrobeElement {
       : tr("«{0}» leaves the wardrobe but stays in the history. You can restore it.", this.p.name), { label: hard ? tr('Delete') : tr('f::Archive'), danger: hard });
     if (!ok) return;
     const r = await call(this.host, 'DELETE', `/pieces/${this.p.id}`, undefined, hard ? { hard: true } : undefined);
-    if (r.ok) { this.host.toast(hard ? tr('Deleted') : tr('Archived'), 'success'); this.host.navigate(this.p.kind === 'accessory' ? 'accessori' : 'capi'); }
+    if (r.ok) { this.host.toast(hard ? tr('Deleted') : tr('Archived'), 'success'); this.host.navigate(this.p.kind === 'accessory' ? 'accessories' : 'pieces'); }
   }
 
   render() {
     const p = this.p, m = this.m;
     if (p === undefined) return html`<div class="page"><hxk-state kind="loading"></hxk-state></div>`;
     if (p === null) return html`<div class="page"><hxk-state kind="empty" text=${tr("Item not found.")}></hxk-state></div>`;
-    const back = p.kind === 'accessory' ? 'accessori' : 'capi';
+    const back = p.kind === 'accessory' ? 'accessories' : 'pieces';
     const cur = m?.currency || 'EUR';
     const info: Array<[string, any]> = [
       [tr('Category'), p.subcategory_label || p.category_label], [tr('Brand'), [p.brand, p.model].filter(Boolean).join(' ')], [tr('Size'), p.size],
@@ -205,7 +205,7 @@ export class WardrobePiece extends WardrobeElement {
       [tr('Notes'), p.notes],
     ];
     return html`<div class="page">
-      <div class="head"><hxk-button variant="ghost" size="sm" @click=${() => this.host.navigate(back)}>‹ ${back === 'capi' ? tr('Wardrobe') : tr('Accessories')}</hxk-button></div>
+      <div class="head"><hxk-button variant="ghost" size="sm" @click=${() => this.host.navigate(back)}>‹ ${back === 'pieces' ? tr('Wardrobe') : tr('Accessories')}</hxk-button></div>
       <div class="layout">
         <div class="gallery">
           <div class="main">${this.cover ? html`<img src=${photo(this.host, this.cover, 'medium')} alt=${p.name}>` : html`<hxk-icon name="shirt" size="64"></hxk-icon>`}</div>

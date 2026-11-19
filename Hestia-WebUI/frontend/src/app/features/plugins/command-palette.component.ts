@@ -13,9 +13,9 @@ interface Entry { id: string; label: string; hint: string; icon: string; group: 
   /** Extra text the search reads (help, key…). */ more?: string; }
 
 /**
- * Ctrl/⌘+K palette: «Adesso» (what makes sense now, from Metis), every quick action (one tap, same as the Home
+ * Ctrl/⌘+K palette: «Now» (what makes sense now, from Metis), every quick action (one tap, same as the Home
  * strip), module pages, dashboards and the WebUI's own pages. Type to filter, ↑/↓ + Enter to run. Also opened by
- * the sidebar «Cerca» (`open()`).
+ * the sidebar «Search» (`open()`).
  */
 @Component({
   selector: 'hx-command-palette',
@@ -68,7 +68,7 @@ export class CommandPaletteComponent {
   private readonly entries = computed<Entry[]>(() => {
     const mod = (m: string) => this.plugins.modules().get(m)?.title ?? m;
     return [
-      ...this.metis.adesso().map(a => ({ id: 'now:' + a.tool + a.title, label: a.title, hint: a.reason || mod(a.module), icon: 'zap',
+      ...this.metis.now().map(a => ({ id: 'now:' + a.tool + a.title, label: a.title, hint: a.reason || mod(a.module), icon: 'zap',
         group: tr('Now'), run: () => this.metis.open(a.tool, a.args ?? {}, a.title) })),
       ...this.qa.sorted().map(c => ({ id: 'qa:' + c.key, label: c.label, hint: [c.hint, mod(c.action.module)].filter(Boolean).join(' · '),
         icon: c.state === 'done' ? 'check' : c.icon || 'zap', group: tr('Quick actions'), run: () => void this.qa.run(c) })),
@@ -105,7 +105,7 @@ export class CommandPaletteComponent {
     effect(() => { if (this.open()) queueMicrotask(() => this.input()?.nativeElement.focus()); });
   }
 
-  /** The sidebar «Cerca» button. */
+  /** The sidebar «Search» button. */
   @HostListener('window:hestia:palette')
   fromSidebar() { if (!this.open()) this.show(); }
 
@@ -128,8 +128,8 @@ export class CommandPaletteComponent {
   show() {
     this.query.set(''); this.sel.set(0); this.open.set(true);
     void this.qa.reload();
-    void this.metis.loadAdesso();
-    if (!this.settings.items().length) void this.settings.loadItems();   // one read; the Impostazioni page keeps it fresh
+    void this.metis.loadNow();
+    if (!this.settings.items().length) void this.settings.loadItems();   // one read; the Settings page keeps it fresh
   }
 
   exec(e: Entry) { this.close(); e.run(); }

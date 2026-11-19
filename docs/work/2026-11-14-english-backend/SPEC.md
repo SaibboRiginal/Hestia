@@ -2,7 +2,7 @@
 
 | Version | Source | Status |
 |---|---|---|
-| 2.0 | user via external chat (Marko, 2026-11-14: «utente lingua che usa, backend tutto inglese»; 2026-11-16: «togli tutto l'italiano!! e devono usare tutti la lingua!!») | phases 1, 2a–2d and 3 (English source, Italian only in the catalog) done |
+| 3.0 | user via external chat (Marko, 2026-11-14: «utente lingua che usa, backend tutto inglese»; 2026-11-16: «togli tutto l'italiano!! e devono usare tutti la lingua!!»; 2026-11-17: «cambia TUTTO… deve funzionare con italiano e inglese e forse in futuro qualsiasi altra lingua… ogni forma di comunicazione o interazione verso l'utente») | phases 1, 2a–2d, 3 and 4 (nothing Italian in code or data, every channel in the owner's language) done |
 
 ## Goal
 Every text the model reads is English; every fixed text a person reads comes from translation files in the
@@ -81,3 +81,27 @@ Marko: «togli tutto l'italiano!! e devono usare tutti la lingua!!».
 - `check_i18n.py`: every text has its Italian; all module suites green (Echo: only `langdetect` missing here).
 - Angular build and `tsc` of the SDK and every plugin clean.
 - `docs/LANGUAGES.md` rewritten for the English source.
+
+## Phase 4 (v3.0, 2026-11-17): change everything, any language
+
+Marko, for the fourth time: nothing is in production, so nothing stays Italian «for compatibility».
+
+- **Stored values, ids and keys in English**: enums (states, moods, causes, categories, activity kinds, sleep
+  scores, theme ids, recurrence, trigger kinds), page and widget ids, query params, setting keys
+  (`lares.person`), use cases (`telegram.voice_note`, `echo.test.*`), tool names (`presence_status`,
+  `presence_dnd_on/off`, `metis_now`, `metis_discover`, `metis_training_export`…), Telegram commands (`help`), the
+  Athena body field `moment`, file names, dossier folders (`docs/work/*` renamed, every link updated).
+- **The owner's words in every language**: every parser reads `locales/<code>/words.json` through
+  `word_regex` / `word_set` / `is_yes` / `weekday_of`; a value he types is also matched against its label in every
+  catalog (Psyche moods and causes, Kairos categories, Oracle chat modes).
+- **Every channel in his language**: WebUI backend `Texts.Tr` (C#), host tools `tools/_texts.py` (system language),
+  installers and `up-all` (`locales/<code>/installer.tsv`, `--lang`), cloud bench report, OAuth pages
+  (`<html lang>`), the WebUI `<html lang>`; tool summaries all translated in `locales/it/tools.json`.
+- **A language is a folder**: `locales/<code>/language.json` (`english`, `native`) builds `identity.LANGUAGES`
+  and the options of «Language» (Themis, setup and settings page read them); no list of languages in the code.
+- **Whole sentences** where a noun used to be glued into a sentence (Hercules activities), so the grammar of every
+  language holds.
+- Comments and docstrings in English; module docs quote the English source labels.
+
+Out of scope, not ours: markup and URLs of external listing sites read by Scout; test inputs keep the owner's own
+phrases next to English ones.

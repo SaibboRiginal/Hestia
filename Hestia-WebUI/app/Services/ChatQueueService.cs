@@ -15,7 +15,7 @@ using Hestia.WebUI.Hubs;
 public class ChatQueueService
 {
     public const string Client = "webui";
-    public const string QueuedText = "⏳ Non posso rispondere adesso: messaggio in coda, ti rispondo appena possibile.";
+    public static string QueuedText => "⏳ " + Texts.Tr("I can't answer right now: message queued, I'll answer as soon as I can.");
 
     private readonly IServiceScopeFactory _scopes;
     private readonly IHubContext<ChatHub> _browsers;

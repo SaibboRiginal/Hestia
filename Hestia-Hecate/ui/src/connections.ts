@@ -1,10 +1,10 @@
 /**
  * <hecate-connections> — every account and device Hestia links, as ONE list with the same card for each (Marko
- * 2026-11-07: «averne N come un marketplace», not Google and Garmin each with its own mechanism). A row shows the
+ * 2026-11-07: «have N of them like a marketplace», not Google and Garmin each with its own mechanism). A row shows the
  * service, one line on what it gives and its state; opening it shows what to do now right away, drawn from the step
  * Hecate sends (`GET /api/gateway/connections`): fields to fill and one button, a page opened in another tab that the
  * card waits for, or a few steps to follow. Buttons of a connected service come from `actions`. A search box appears
- * when the list is long. Used by the Dispositivi page and by the guided setup (`place="setup"`).
+ * when the list is long. Used by the Devices page and by the guided setup (`place="setup"`).
  */
 import { HestiaElement, html, css, nothing, tr } from '@hestia/webui-sdk';
 

@@ -74,7 +74,7 @@ export interface CalEvent {
   color: string;
   source: string;           // layer id ('hestia' now; external calendars later)
   cls?: EventClass;
-  /** Past failures of the same rule collapsed into this one (dedupe), e.g. 3 → "fallito ×3". */
+  /** Past failures of the same rule collapsed into this one (dedupe), e.g. 3 → "failed ×3". */
   failedCount?: number;
   /** Summary chip of a frequent rule on one day: every occurrence it stands for. */
   group?: CalEvent[];

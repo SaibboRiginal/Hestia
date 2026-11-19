@@ -1,16 +1,16 @@
 """Oracle watch — Oracle (the only LLM core) down for longer than ``argus.oracle.grace``.
 
 SPEC docs/work/2026-10-19-oracle-offline §1. Fed by the monitor cycle (no loop of its own):
-- offline → presence signal ``oracle.offline`` (Chronos overlay «Non disponibile», effect ``chat.reply=queued``;
+- offline → presence signal ``oracle.offline`` (Chronos overlay «Unavailable», effect ``chat.reply=queued``;
   when it relaxes Chronos asks the chat clients to answer their queues) + one Hermes notice with fixed text
   (``replaces: system.oracle``, one live notice);
-- back → signal cleared + the notice closed with «di nuovo online».
+- back → signal cleared + the notice closed with «back online».
 While offline Argus never asks Oracle to narrate (fixed texts at once). A shorter outage (restart, deploy) says
 nothing: chat clients queue their messages anyway.
 
 v3 E — Oracle's ``/health`` also says how it can answer (``models``): ``none`` (no model usable: Oracle refuses chats
 with 503, clients queue) counts as offline; ``limited`` (only fallback models) for longer than the same grace →
-presence signal ``oracle.limited`` (Chronos overlay «Limitato») + one notice on the same key; back to ``ok`` → cleared.
+presence signal ``oracle.limited`` (Chronos overlay «Limited») + one notice on the same key; back to ``ok`` → cleared.
 """
 from __future__ import annotations
 
@@ -112,7 +112,7 @@ def observe(status: str | None, error: str | None = None, *, now: float | None =
 
 
 def _observe_limited(limited: bool, now: float) -> str | None:
-    """Only fallback models answer (v3 E): «Limitato» after the grace, cleared when the first model is back."""
+    """Only fallback models answer (v3 E): «Limited» after the grace, cleared when the first model is back."""
     with _lock:
         if not limited:
             was = _state["limited"]
@@ -154,7 +154,7 @@ def _limited_signal(since: float) -> None:
 
 
 def _end_limited(now: float, notify: bool) -> None:
-    """Leave «Limitato» (back to full, or worse: offline takes over the same notice)."""
+    """Leave «Limited» (back to full, or worse: offline takes over the same notice)."""
     with _lock:
         was = _state["limited"]
         _state.update(limited_since=None, limited=False, limited_signal_at=0.0)

@@ -1,5 +1,5 @@
 /**
- * <oracle-memory> — "Memoria": what Hestia remembers about the user and where each memory came from (learnt in chat
+ * <oracle-memory> — "Memory": what the assistant remembers about the user and where each memory came from (learnt in chat
  * or noted by an external AI through memory_note). Search, filter by origin, forget.
  * Reads/acts on /api/ui/memory… (Oracle → Archive through Hub). SPEC docs/work/2026-10-20-memory-note.
  */

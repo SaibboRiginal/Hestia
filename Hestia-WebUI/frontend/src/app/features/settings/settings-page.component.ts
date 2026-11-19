@@ -11,15 +11,15 @@ import { TransferSettingsComponent } from './transfer-settings.component';
 import { TrPipe } from '../../core/i18n';
 
 /**
- * Impostazioni, VS Code-like: one search box over every setting (personal and system), a
- * resizable sidebar (Personali sections, then Sistema: overview + modules with their state and
+ * Settings, VS Code-like: one search box over every setting (personal and system), a
+ * resizable sidebar (Personal sections, then System: overview + modules with their state and
  * the number of matches while searching), and the content in the same rows everywhere.
- * Deep links: /settings?tab=system&module=oracle · /settings?section=assistente · /settings?key=<central setting>
- * and /settings?section=messaggi&row=notice_mode: the last two open the right view, scroll to that one setting and
+ * Deep links: /settings?tab=system&module=oracle · /settings?section=assistant · /settings?key=<central setting>
+ * and /settings?section=messages&row=notice_mode: the last two open the right view, scroll to that one setting and
  * highlight it (the target of every <hx-setting-link>, the palette and the modules' host.openSetting).
  */
 
-/** Central settings that Personali edits with its own row. */
+/** Central settings that Personal edits with its own row. */
 const KEY_ROWS: Record<string, string> = { 'oracle.chat.tone': 'tone', 'oracle.chat.instructions': 'instructions' };
 
 @Component({
@@ -33,7 +33,7 @@ const KEY_ROWS: Record<string, string> = { 'oracle.chat.tone': 'tone', 'oracle.c
         <hx-icon name="search" [size]="16" />
         <input #q class="hx-input" type="search"  [placeholder]="'Search in all the settings (Ctrl+F)' | tr" [value]="store.query()"
                (input)="store.search($any($event.target).value)" (keydown.escape)="store.search('')"  [attr.aria-label]="'Search settings' | tr" />
-        @if (store.query()) { <span class="count">{{ totalHits() === 1 ? '1 risultato' : totalHits() + ' risultati' }}</span> }
+        @if (store.query()) { <span class="count">{{ totalHits() === 1 ? ('1 result' | tr) : ('{0} results' | tr: totalHits()) }}</span> }
       </label>
     </header>
 
@@ -130,12 +130,12 @@ export class SettingsPageComponent implements OnInit, OnDestroy {
 
   readonly personal = PERSONAL_SECTIONS;
   /** 'p:<section>' (personal) · 'system' (overview) · module id */
-  readonly view = signal('p:aspetto');
+  readonly view = signal('p:look');
   readonly searching = computed(() => !!this.store.query().trim());
   readonly pHits = computed(() => {
     const hits = personalHits(this.store.query());
     const extra = this.store.personalExtra().length;
-    if (extra) hits.set('assistente', (hits.get('assistente') ?? 0) + extra);
+    if (extra) hits.set('assistant', (hits.get('assistant') ?? 0) + extra);
     return hits;
   });
   readonly pTotal = computed(() => this.store.onlyModified() ? 0 : [...this.pHits().values()].reduce((a, b) => a + b, 0));
@@ -163,7 +163,7 @@ export class SettingsPageComponent implements OnInit, OnDestroy {
     }
   }
 
-  /** One central setting: its module (or Personali for a personal one), filters out of the way, highlighted. */
+  /** One central setting: its module (or Personal for a personal one), filters out of the way, highlighted. */
   private async goToKey(key: string) {
     await this.store.init();
     if (!this.store.items().length) await this.store.loadItems();
@@ -171,9 +171,9 @@ export class SettingsPageComponent implements OnInit, OnDestroy {
     const personal = item?.scope === 'user';
     const module = item?.module ?? key.split('.')[0];
     if (item) this.store.reveal(item);
-    const view = personal ? 'p:assistente' : this.store.modules().some(m => m.module === module) ? module : 'system';
+    const view = personal ? 'p:assistant' : this.store.modules().some(m => m.module === module) ? module : 'system';
     this.open(view, false);
-    const queryParams = personal ? { key: null, section: 'assistente', tab: null, module: null }
+    const queryParams = personal ? { key: null, section: 'assistant', tab: null, module: null }
       : { key: null, tab: 'system', module: view === 'system' ? null : view, section: null };
     void this.router.navigate([], { queryParams, queryParamsHandling: 'merge', replaceUrl: true });
     if (item) this.flash(KEY_ROWS[key] ? `[data-row="${KEY_ROWS[key]}"]` : `[data-setting="${key}"]`);

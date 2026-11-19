@@ -22,13 +22,13 @@ export function personalHits(query: string): Map<string, number> {
   const out = new Map<string, number>();
   for (const r of PERSONAL_ROWS) {
     const s = PERSONAL_SECTIONS.find(x => x.id === r.section)!;
-    if (matches(query, r.label, r.help, r.keywords, s.label, 'personali')) out.set(r.section, (out.get(r.section) ?? 0) + 1);
+    if (matches(query, r.label, r.help, r.keywords, s.label, 'personal')) out.set(r.section, (out.get(r.section) ?? 0) + 1);
   }
   return out;
 }
 
 /**
- * Impostazioni → Personali: this client and your way of using Hestia, in the same rows as the
+ * Settings → Personal: this client and your way of using the assistant, in the same rows as the
  * system settings. `section` shows one section; `query` shows every match (search).
  */
 @Component({
@@ -138,7 +138,7 @@ export function personalHits(query: string): Map<string, number> {
             }
           </hx-setting-shell>
         }
-        @if (s.section.id === 'assistente') { @for (it of store.personalExtra(); track it.key) { <hx-setting [item]="it" /> } }
+        @if (s.section.id === 'assistant') { @for (it of store.personalExtra(); track it.key) { <hx-setting [item]="it" /> } }
       </div>
     }`,
   styles: [`
@@ -170,11 +170,11 @@ export function personalHits(query: string): Map<string, number> {
     .spv i { position: absolute; left: 8px; top: 8px; bottom: 8px; width: 28%; background: var(--surface); border: 1px solid var(--border); border-radius: 8px; }
     .spv b { position: absolute; left: 40%; right: 8px; top: 8px; height: 22px; background: var(--surface); border: 1px solid var(--border); border-radius: 8px; box-shadow: var(--shadow-1); }
     .spv u { position: absolute; right: 8px; bottom: 8px; width: 30px; height: 12px; background: var(--accent); border-radius: 6px; }
-    .st[data-look=vetro] .spv { border-radius: 16px; background: radial-gradient(ellipse at 15% 10%, var(--accent-soft), transparent 60%), radial-gradient(ellipse at 90% 90%, var(--info-soft), transparent 60%), var(--bg); }
-    .st[data-look=vetro] .spv i, .st[data-look=vetro] .spv b { background: color-mix(in srgb, var(--surface) 60%, transparent); border-color: color-mix(in srgb, var(--border) 50%, transparent); border-radius: 12px; }
-    .st[data-look=netto] .spv { border-radius: 4px; }
-    .st[data-look=netto] .spv i, .st[data-look=netto] .spv b { border-radius: 2px; border-color: var(--text-3); box-shadow: none; }
-    .st[data-look=netto] .spv u { border-radius: 1px; }
+    .st[data-look=glass] .spv { border-radius: 16px; background: radial-gradient(ellipse at 15% 10%, var(--accent-soft), transparent 60%), radial-gradient(ellipse at 90% 90%, var(--info-soft), transparent 60%), var(--bg); }
+    .st[data-look=glass] .spv i, .st[data-look=glass] .spv b { background: color-mix(in srgb, var(--surface) 60%, transparent); border-color: color-mix(in srgb, var(--border) 50%, transparent); border-radius: 12px; }
+    .st[data-look=net] .spv { border-radius: 4px; }
+    .st[data-look=net] .spv i, .st[data-look=net] .spv b { border-radius: 2px; border-color: var(--text-3); box-shadow: none; }
+    .st[data-look=net] .spv u { border-radius: 1px; }
     .knobs { display: flex; flex-direction: column; gap: 10px; width: 100%; }
     .knob { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
     .kl { width: 110px; font-size: 13px; color: var(--text-2); }
@@ -216,8 +216,8 @@ export class PersonalSettingsComponent implements OnInit {
     return PERSONAL_SECTIONS
       .filter(s => q || s.id === this.section())
       .map(s => ({ section: s, rows: PERSONAL_ROWS.filter(r => r.section === s.id
-        && (!q || matches(q, r.label, r.help, r.keywords, s.label, 'personali'))) }))
-      .filter(s => s.rows.length || (s.section.id === 'assistente' && this.store.personalExtra().length));
+        && (!q || matches(q, r.label, r.help, r.keywords, s.label, 'personal'))) }))
+      .filter(s => s.rows.length || (s.section.id === 'assistant' && this.store.personalExtra().length));
   });
 
   readonly tones: SegmentOption[] = [

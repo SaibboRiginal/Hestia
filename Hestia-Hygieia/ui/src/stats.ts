@@ -29,7 +29,7 @@ export class HygieiaStats extends HestiaElement {
     .adh { width: 70px; height: 6px; border-radius: 3px; background: var(--surface-3); overflow: hidden; flex: none; }
     .adh > span { display: block; height: 100%; background: var(--success); }
   `];
-  constructor() { super(); this.tab = 'panoramica'; this.days = 90; this.st = undefined; this.tl = undefined; this.day = addDays(today(), -30); this.period = null; this.m = null; }
+  constructor() { super(); this.tab = 'overview'; this.days = 90; this.st = undefined; this.tl = undefined; this.day = addDays(today(), -30); this.period = null; this.m = null; }
   connectedCallback() {
     super.connectedCallback();
     if (this.ctx?.query?.tab) this.tab = this.ctx.query.tab;
@@ -38,9 +38,9 @@ export class HygieiaStats extends HestiaElement {
   }
   private async load() {
     this.m = await meta(this.host);
-    if (this.tab === 'panoramica') { const r = await this.host.api('GET', `${API}/stats`, { query: { days: this.days } }); this.st = r.ok ? r.data : null; }
-    if (this.tab === 'storia') { const r = await this.host.api('GET', `${API}/timeline`, { query: { days: 730 } }); this.tl = r.ok ? r.data.items : null; }
-    if (this.tab === 'giorno') { const r = await this.host.api('GET', `${API}/period`, { query: { date: this.day } }); this.period = r.ok ? r.data : null; }
+    if (this.tab === 'overview') { const r = await this.host.api('GET', `${API}/stats`, { query: { days: this.days } }); this.st = r.ok ? r.data : null; }
+    if (this.tab === 'history') { const r = await this.host.api('GET', `${API}/timeline`, { query: { days: 730 } }); this.tl = r.ok ? r.data.items : null; }
+    if (this.tab === 'day') { const r = await this.host.api('GET', `${API}/period`, { query: { date: this.day } }); this.period = r.ok ? r.data : null; }
   }
   private heat(items: any[]) {
     if (!items.length) return nothing;
@@ -115,11 +115,11 @@ export class HygieiaStats extends HestiaElement {
     </div>`;
   }
   render() {
-    const tabs: Array<[string, string]> = [['panoramica', tr('Overview')], ['storia', tr('Change history')], ['giorno', tr('A day has passed')]];
+    const tabs: Array<[string, string]> = [['overview', tr('Overview')], ['history', tr('Change history')], ['day', tr('A day has passed')]];
     return html`<div class="page">
       <div class="head"><button class="link" @click=${() => this.host.navigate('today')}>${tr("‹ Today")}</button><h1>${tr("Statistics")}</h1></div>
       <div class="tabs">${tabs.map(([k, l]) => html`<button class="tab" aria-pressed=${this.tab === k} @click=${() => { this.tab = k; this.load(); }}>${l}</button>`)}</div>
-      ${this.tab === 'panoramica' ? this.overview() : this.tab === 'storia' ? this.history() : this.pastDay()}
+      ${this.tab === 'overview' ? this.overview() : this.tab === 'history' ? this.history() : this.pastDay()}
     </div>`;
   }
 }

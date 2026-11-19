@@ -1,6 +1,6 @@
 /**
- * <wardrobe-outfits>        — saved outfits as tiles: search, filters, «oggi» (check) in one tap, new outfit builder.
- * <wardrobe-outfit>         — one outfit: pieces by slot, «Indossato» (today or another day), rating, tags, photos, history.
+ * <wardrobe-outfits>        — saved outfits as tiles: search, filters, «today» (check) in one tap, new outfit builder.
+ * <wardrobe-outfit>         — one outfit: pieces by slot, «Worn» (today or another day), rating, tags, photos, history.
  * <wardrobe-outfit-builder> — pick pieces (tap = added in its usual slot), change slot, name it, save.
  */
 import { HestiaElement, css, html, nothing, plural, tr } from '@hestia/webui-sdk';

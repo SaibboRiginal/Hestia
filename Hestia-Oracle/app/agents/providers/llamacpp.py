@@ -1,7 +1,7 @@
 """Provider type ``llamacpp`` — llama.cpp ``llama-server`` with slots and saved context (brainstorm D17).
 
 Same OpenAI-compatible API as ``openai`` plus what makes local chats fast when you switch between them
-(evaluation ``valutazioni/contesto-chat-e-alternative-ollama.md``):
+(evaluation of the chat context and the Ollama alternatives, in the project files):
 
 - **slots**: every chat session gets its own server slot (``id_slot``), so up to ``oracle.provider.llamacpp.slots``
   conversations keep their KV cache warm at the same time; calls without a session (classifier, memory, module use

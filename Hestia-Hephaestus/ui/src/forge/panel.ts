@@ -1,5 +1,5 @@
 /**
- * <hephaestus-task-panel> — context panel of a task: Panoramica · File · Diff · Dossier · Test · Log · Ramo.
+ * <hephaestus-task-panel> — context panel of a task: Overview · File · Diff · Dossier · Test · Log · Branch.
  * Port of the WebUI forge/task-panel.component. Emits 'open-repo' (detail = RepoNav) for commit/compare/branches.
  */
 import { LitElement, css, html, nothing, kitStyles, tokens, tr } from '@hestia/webui-sdk';
@@ -124,10 +124,10 @@ export class HephaestusTaskPanel extends LitElement {
   private review(t: ForgeTask) {
     const r = t.review;
     if (!r) return nothing;
-    const tone = r.verdict === 'ok' ? 'success' : r.verdict === 'non_disponibile' ? 'neutral' : r.blocking ? 'danger' : 'warning';
-    const head = r.verdict === 'ok' ? tr('No problem found') : r.verdict === 'non_disponibile' ? tr('Not available now')
+    const tone = r.verdict === 'ok' ? 'success' : r.verdict === 'unavailable' ? 'neutral' : r.blocking ? 'danger' : 'warning';
+    const head = r.verdict === 'ok' ? tr('No problem found') : r.verdict === 'unavailable' ? tr('Not available now')
       : `${r.issues.length === 1 ? tr('1 point') : tr('{0} points', r.issues.length)}${r.blocking ? tr(', {0} important', r.blocking) : ''}`;
-    const ptone: Record<string, string> = { alta: 'danger', media: 'warning', bassa: 'neutral' };
+    const ptone: Record<string, string> = { high: 'danger', medium: 'warning', low: 'neutral' };
     return html`<h4>${tr("Automatic review")}</h4>
       <div class="review"><div class="tsum"><hxk-badge tone=${tone}>${head}</hxk-badge>
         ${r.rounds ? html`<span class="small muted">${tr("after a round of fixes (")}${r.first?.length ?? 0} ${tr("points found the first time)")}</span>` : nothing}</div>

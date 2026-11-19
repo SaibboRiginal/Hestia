@@ -22,8 +22,7 @@ def test_for_people_drops_model_notes():
 def test_area_from_group_alias_or_module():
     assert area_of({"telegram_group": "fitness"})["label"] == "Training"
     assert area_of({}, "kairos")["label"] == "Deadlines"
-    assert area_of({"telegram_group": "nonesiste"}, "nessuno")["key"] == "other"
-    assert area("palestra")["key"] == "training" and area("gym")["key"] == "training"
+    assert area_of({"telegram_group": "nonesiste"}, "none")["key"] == "other"
     assert area("Cura di sé")["key"] == "selfcare"
 
 

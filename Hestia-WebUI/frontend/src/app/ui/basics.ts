@@ -1,6 +1,7 @@
 /** Small presentational components: badge, spinner, empty state, field, page header, toggle, segmented. */
 import { ChangeDetectionStrategy, Component, booleanAttribute, input, model, output } from '@angular/core';
 import { IconComponent } from './icon.component';
+import { tr } from '../core/i18n';
 
 export type Tone = 'neutral' | 'accent' | 'success' | 'danger' | 'warning' | 'info';
 
@@ -32,14 +33,14 @@ export class BadgeComponent {
 @Component({
   selector: 'hx-spinner',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  host: { '[style.width.px]': 'size()', '[style.height.px]': 'size()', role: 'status', 'aria-label': 'Caricamento' },
+  host: { '[style.width.px]': 'size()', '[style.height.px]': 'size()', role: 'status', '[attr.aria-label]': 'loadingLabel' },
   template: ``,
   styles: [`:host { display: inline-block; border: 2px solid var(--border-strong); border-top-color: var(--accent);
                     border-radius: 50%; animation: hx-spin .8s linear infinite; }`],
 })
-export class SpinnerComponent { size = input(18); }
+export class SpinnerComponent { size = input(18); readonly loadingLabel = tr('Loading'); }
 
-/** <hx-empty icon="calendar" title="Niente qui">testo + azioni</hx-empty> */
+/** <hx-empty icon="calendar" title="Nothing here">text + actions</hx-empty> */
 @Component({
   selector: 'hx-empty',
   imports: [IconComponent],
@@ -61,7 +62,7 @@ export class EmptyStateComponent {
   title = input('');
 }
 
-/** <hx-field label="Titolo" hint="..." [error]="err"> <input class="hx-input"> </hx-field> */
+/** <hx-field label="Title" hint="..." [error]="err"> <input class="hx-input"> </hx-field> */
 @Component({
   selector: 'hx-field',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -84,7 +85,7 @@ export class FieldComponent {
   required = input(false, { transform: booleanAttribute });
 }
 
-/** <hx-page-header title="Calendario" subtitle="..."> <button hx-btn>…</button> </hx-page-header> */
+/** <hx-page-header title="Calendar" subtitle="..."> <button hx-btn>…</button> </hx-page-header> */
 @Component({
   selector: 'hx-page-header',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -108,7 +109,7 @@ export class PageHeaderComponent {
   subtitle = input('');
 }
 
-/** <hx-toggle [(checked)]="x" label="Attivo" /> */
+/** <hx-toggle [(checked)]="x" label="On" /> */
 @Component({
   selector: 'hx-toggle',
   changeDetection: ChangeDetectionStrategy.OnPush,

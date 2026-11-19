@@ -9,7 +9,7 @@ async function loadStats(el: HestiaElement, city = ''): Promise<{ data?: Stats; 
 const stateOf = (error: string, retry: () => void) =>
   html`<hxk-state kind=${error === 'offline' ? 'offline' : 'error'} @retry=${retry}></hxk-state>`;
 
-/** Page «Statistiche case». */
+/** Page «House statistics». */
 export class ScoutStats extends HestiaElement {
   static properties = { ...HestiaElement.properties, s: { state: true }, city: { state: true }, error: { state: true } };
   declare s: Stats | null; declare city: string; declare error: string;
@@ -64,7 +64,7 @@ export class ScoutStats extends HestiaElement {
   }
 }
 
-/** Widget «Case in numeri». */
+/** Widget «Houses in numbers». */
 export class ScoutKpiWidget extends HestiaElement {
   static properties = { ...HestiaElement.properties, s: { state: true }, error: { state: true } };
   declare s: Stats | null; declare error: string;
@@ -84,7 +84,7 @@ export class ScoutKpiWidget extends HestiaElement {
   }
 }
 
-/** Widget «Prezzi per città»: €/m² medio, barre. */
+/** Widget «Prices per city»: average €/m², bars. */
 export class ScoutPricesWidget extends HestiaElement {
   static properties = { ...HestiaElement.properties, s: { state: true }, error: { state: true } };
   declare s: Stats | null; declare error: string;
@@ -101,7 +101,7 @@ export class ScoutPricesWidget extends HestiaElement {
   }
 }
 
-/** Widgets «Nuove case» (param city, days) and «Case preferite»: compact list, tap = open the listing. */
+/** Widgets «New houses» (param city, days) and «Favourite houses»: compact list, tap = open the listing. */
 abstract class ListWidget extends HestiaElement {
   static properties = { ...HestiaElement.properties, items: { state: true }, total: { state: true }, error: { state: true } };
   declare items: Listing[] | null; declare total: number; declare error: string;

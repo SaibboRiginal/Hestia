@@ -58,7 +58,7 @@ def user_events(start: datetime, end: datetime) -> list[dict]:
 
 def busy(start: datetime, end: datetime) -> list[tuple[datetime, datetime, str]]:
     """Timed (not all-day) user events overlapping [start, end) as ``(start, end, title)``."""
-    return [(r["_start"], r["_end"], str(r.get("title") or "impegno"))
+    return [(r["_start"], r["_end"], str(r.get("title") or "commitment"))
             for r in user_events(start, end) if not r.get("all_day")]
 
 

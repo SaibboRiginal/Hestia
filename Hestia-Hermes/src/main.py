@@ -55,7 +55,7 @@ app.add_middleware(CORSMiddleware, allow_origins=[
 app.include_router(hermes_settings.router())
 service = HermesService()
 
-# ── WebUI plugin (core module, Sistema section): Notifiche (inbox) + Consegne ────────────────────
+# ── WebUI plugin (core module, System section): Notifications (inbox) + Deliveries ────────────────────
 # Routes of Hermes are spread over /api/notifications, /api/events…: the plugin reads /api/ui/* only.
 ui = PluginClient("hermes", title="Notifications", icon="bell", color="teal", kind="core", dist=UI_DIST,
                   description="Notifications and where they arrived: held back, silent, withdrawn, answered.",
@@ -505,7 +505,7 @@ def update_outbound_event_state(req: OutboundEventStateUpdateRequest):
     return {"status": "ok", "updated": bool(updated)}
 
 
-# ── Inside view (WebUI plugin «Consegne»): read-only ─────────────────────────
+# ── Inside view (WebUI plugin «Deliveries»): read-only ─────────────────────────
 
 def _ui_guard(fn, *args, **kwargs):
     try:
@@ -548,7 +548,7 @@ def ui_clients():
     return notification_clients()
 
 
-# ── Inbox (WebUI plugin «Notifiche»): thin /api/ui/ doors on the routes above ──
+# ── Inbox (WebUI plugin «Notifications»): thin /api/ui/ doors on the routes above ──
 # The WebUI proxy only lets a plugin call its api_prefix (/api/ui/), so the inbox page reaches the same logic
 # here. The plugin is a WebUI surface: the client is "webui" unless told otherwise (read on WebUI = read everywhere).
 
@@ -572,7 +572,7 @@ def ui_inbox(filter: str = "all", source: str = "", before: str = "", limit: int
 
 @app.get("/api/ui/inbox/counts")
 def ui_inbox_counts(client: str = UI_CLIENT):
-    """``{unread, pending}`` — also the sidebar badge source of the Notifiche page."""
+    """``{unread, pending}`` — also the sidebar badge source of the Notifications page."""
     return notification_counts(client or UI_CLIENT)
 
 

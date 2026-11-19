@@ -1,6 +1,6 @@
 /**
- * <plutus-transactions> — every movement of a month: search, category, account, «da rivedere»; add by hand.
- * <plutus-transaction>  — one movement: edit, change category (and «sempre per questo esercente»), links, delete.
+ * <plutus-transactions> — every movement of a month: search, category, account, «to review»; add by hand.
+ * <plutus-transaction>  — one movement: edit, change category (and «always for this merchant»), links, delete.
  * <plutus-tx-form>      — add / edit sheet (event 'close', detail = saved row or null).
  */
 import { HestiaElement, html, nothing, plural, tr } from '@hestia/webui-sdk';
@@ -18,7 +18,7 @@ export class PlutusTxForm extends HestiaElement {
     super.connectedCallback();
     const t = this.tx || {};
     this.f = { type: t.amount > 0 ? 'income' : 'expense', amount: t.amount ? String(Math.abs(t.amount)).replace('.', ',') : '',
-      merchant: t.merchant || '', category: t.category || '', date: t.date || today(), account: t.account || 'contanti',
+      merchant: t.merchant || '', category: t.category || '', date: t.date || today(), account: t.account || 'cash',
       notes: t.notes || '', learn: false };
     this.m = await meta(this.host);
   }
@@ -77,8 +77,8 @@ export class PlutusTransactions extends HestiaElement {
   connectedCallback() {
     super.connectedCallback();
     const q = this.ctx?.query || {};
-    this.cat = q.categoria || ''; this.q = q.q || ''; this.review = q.rivedere === '1'; this.month = q.mese || ''; this.account = q.conto || '';
-    if (q.nuovo === '1') this.form = true;
+    this.cat = q.category || ''; this.q = q.q || ''; this.review = q.review === '1'; this.month = q.month || ''; this.account = q.account || '';
+    if (q.new === '1') this.form = true;
     this.load();
     this.onHost('refresh', () => this.load());
   }

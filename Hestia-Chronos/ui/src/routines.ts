@@ -1,7 +1,7 @@
 /**
  * <chronos-routines> — «Routine»: what the assistant does by itself, written in words, by time or when a mail
- * arrives; the ready-made gallery (radar notizie, case nuove, spese, settimana, mail da un mittente); «Esegui
- * adesso», pause, delete. The result goes as a notification or into the evening recap.
+ * arrives; the ready-made gallery (news radar, new houses, expenses, week, mail from a sender); «Run
+ * now», pause, delete. The result goes as a notification or into the evening recap.
  * Reads GET /api/agenda/routines(+/templates); POST /api/agenda/routines, /routines/from-template/{id};
  * the agenda item routes for run / pause / delete. Dossier 2026-10-24-whole-cindy-brainstorm W2 + W7.
  */
@@ -13,7 +13,7 @@ const DELIVER = [{ value: 'hermes', label: tr('Notification') }, { value: 'recap
 const TRIGGER = [{ value: 'daily', label: tr('Every day') }, { value: 'weekly', label: tr('Every week') },
                  { value: 'mail', label: tr('When an email arrives') }];
 
-/** «Ogni giorno alle 07:30», «Ogni lun, ven alle 18:00», «Quando arriva una mail da …». */
+/** «Every day at 07:30», «Every Mon, Fri at 18:00», «When a mail from … arrives». */
 export function describeRoutine(r: any): string {
   if (r.on?.mail) return tr("When an email arrives from {0}", r.on.mail.senders || tr('a sender'));
   if (r.on) return tr('When something happens');
@@ -159,7 +159,7 @@ export class ChronosRoutines extends HestiaElement {
     const paused = r.status === 'paused';
     const last = r.last_run;
     return html`<div class="r">
-      <hxk-icon name=${r.trigger === 'evento' ? 'mail' : 'repeat'} tone=${paused ? 'neutral' : 'accent'} size="16"></hxk-icon>
+      <hxk-icon name=${r.trigger === 'event' ? 'mail' : 'repeat'} tone=${paused ? 'neutral' : 'accent'} size="16"></hxk-icon>
       <div class="grow col" style="gap:3px">
         <div class="row wrap"><span class="t">${r.title}</span>
           ${paused ? html`<hxk-badge tone="warning">${tr("Paused")}</hxk-badge>` : nothing}

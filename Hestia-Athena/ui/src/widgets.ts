@@ -1,4 +1,4 @@
-/** <athena-last-widget> — "Ultimo pensiero": the latest Athena cycle and what came out of it. */
+/** <athena-last-widget> — "Latest thought": the latest Athena cycle and what came out of it. */
 import { HestiaElement, html, css, nothing, tr } from '@hestia/webui-sdk';
 import { API, KINDS, OUTCOMES, ago } from './util';
 
@@ -25,7 +25,7 @@ export class AthenaLastWidget extends HestiaElement {
     if (this.data === undefined) return html`<hxk-state kind="loading"></hxk-state>`;
     if (this.data === null) return html`<hxk-state kind="offline" text=${tr("Thoughts not reachable")} @retry=${() => this.load()}></hxk-state>`;
     const c = this.data.cycles?.[0];
-    const go = () => this.host.navigate('pensieri');
+    const go = () => this.host.navigate('thoughts');
     if (!c) return html`<div class="w" @click=${go}><span class="small muted">${tr("Latest thought")}</span>
       <div class="muted">${this.data.running ? tr('Athena is thinking…') : tr('No cycle yet.')}</div></div>`;
     const cands: any[] = c.candidates || [];

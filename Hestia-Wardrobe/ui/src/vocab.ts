@@ -70,7 +70,7 @@ export class WardrobeVocab extends WardrobeElement {
           <hxk-button size="sm" variant="primary" ?disabled=${!this.dirty} ?loading=${this.busy} @click=${() => this.save()}>${tr("Save")}</hxk-button></div>
         <span class="small muted">${tr("Items used by clothes can't be removed: hide them.")}${isCat ? tr(' The position says where the item goes in an outfit (top, bottom, outerwear…).') : ''}</span>
       </div>
-      <span class="small muted">${tr("Export / import the whole wardrobe:")} <button class="link" @click=${() => this.host.navigate('statistics')}>${tr("Statistics")}</button>${' · '}
+      <span class="small muted">${tr("Export / import the whole wardrobe:")} <button class="link" @click=${() => this.host.navigate('stats')}>${tr("Statistics")}</button>${' · '}
         <button class="link" @click=${() => this.importFile()}>${tr("Import JSON")}</button></span>
     </div>`;
   }

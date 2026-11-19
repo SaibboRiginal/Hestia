@@ -156,9 +156,9 @@ def test_statement_rows_and_merchant():
 # ── transactions ─────────────────────────────────────────────────────────────
 def test_manual_amount_is_expense_and_rules_categorize(pl):
     t = pl.add_tx({"amount": "12,50", "merchant": "Esselunga"})
-    assert t["amount"] == -12.5 and t["category"] == "spesa" and t["status"] == "confirmed" and t["counted"]
+    assert t["amount"] == -12.5 and t["category"] == "groceries" and t["status"] == "confirmed" and t["counted"]
     inc = pl.add_tx({"amount": 100, "type": "income", "merchant": "Rimborso amico"})
-    assert inc["amount"] == 100 and inc["category"] == "entrate"
+    assert inc["amount"] == 100 and inc["category"] == "income"
     with pytest.raises(Invalid):
         pl.add_tx({"amount": 0})
 
@@ -167,7 +167,7 @@ def test_dedupe_by_external_ref(pl):
     a = pl.add_tx({"amount": -9, "merchant": "X", "external_ref": "paypal:ABC"}, source="email")
     b = pl.add_tx({"amount": -9, "merchant": "X", "external_ref": "paypal:ABC"}, source="email")
     assert b["duplicate"] and b["id"] == a["id"] and len(pl.transactions()) == 1
-    assert a["status"] == "to_review" and a["category"] == "altro"
+    assert a["status"] == "to_review" and a["category"] == "other"
 
 
 def test_correction_learns_rule(pl):
@@ -175,7 +175,7 @@ def test_correction_learns_rule(pl):
     assert t["status"] == "to_review"
     pl.update_tx(t["id"], {"category": "Salute"}, learn=True)
     again = pl.add_tx({"amount": -30, "merchant": "PALESTRA ESEMPIO"}, source="statement")
-    assert again["category"] == "salute" and again["status"] == "confirmed"
+    assert again["category"] == "health" and again["status"] == "confirmed"
     assert pl.get("tx", t["id"])["amount"] == -30
 
 
@@ -208,18 +208,18 @@ def test_month_start_day(pl):
 
 # ── budgets / alerts / review / context ──────────────────────────────────────
 def test_budgets_and_alerts(pl):
-    pl.set_budget("spesa", 100)
+    pl.set_budget("groceries", 100)
     pl.set_budget("total", "500")
     pl.add_tx({"amount": 85, "merchant": "Lidl"})
     s = pl.summary()
-    spesa = next(c for c in s["categories"] if c["id"] == "spesa")
+    spesa = next(c for c in s["categories"] if c["id"] == "groceries")
     assert spesa["pct"] == 85 and s["budget"] == 500 and s["left"] == 415
     alerts = pl.budget_alerts()
-    assert [a["category"] for a in alerts] == ["spesa"] and alerts[0]["level"] == 80
+    assert [a["category"] for a in alerts] == ["groceries"] and alerts[0]["level"] == 80
     pl.add_tx({"amount": 20, "merchant": "Lidl"})
     assert pl.budget_alerts()[0]["level"] == 100
-    pl.set_budget("spesa", 0)
-    assert "spesa" not in pl.budgets()
+    pl.set_budget("groceries", 0)
+    assert "groceries" not in pl.budgets()
     with pytest.raises(Invalid):
         pl.set_budget("inesistente", 10)
 
@@ -355,11 +355,11 @@ class _QuietSignals:
 @pytest.mark.api
 def test_api_quick_expense_and_undo(api):
     c, *_ = api
-    r = c.post("/api/finance/quick/expense/ristoranti", json={"amount": "3,20", "note": "caffè"})
+    r = c.post("/api/finance/quick/expense/restaurants", json={"amount": "3,20", "note": "caffè"})
     assert r.status_code == 200 and r.json()["amount"] == -3.2 and "Ristoranti" in r.json()["label"]
     assert c.get("/api/finance/summary").json()["spent"] == 3.2
-    assert c.delete("/api/finance/quick/expense/ristoranti").json()["deleted"]
-    assert c.delete("/api/finance/quick/expense/ristoranti").status_code == 404
+    assert c.delete("/api/finance/quick/expense/restaurants").json()["deleted"]
+    assert c.delete("/api/finance/quick/expense/restaurants").status_code == 404
 
 
 @pytest.mark.api
@@ -369,9 +369,9 @@ def test_api_crud_errors_and_tool(api):
     assert c.get("/api/finance/transactions/tx_nope").status_code == 404
     r = c.post("/api/finance/tools/add", json={"amount": "8.5", "merchant": "Farmacia Esempio"})
     assert r.status_code == 200 and r.json()["saved"]
-    items = c.get("/api/finance/transactions", params={"category": "salute"}).json()["items"]
+    items = c.get("/api/finance/transactions", params={"category": "health"}).json()["items"]
     assert len(items) == 1 and items[0]["source"] == "chat"
-    assert c.put(f"/api/finance/budgets/salute", json={"amount": 50}).json() == {"category": "salute", "amount": 50.0}
+    assert c.put(f"/api/finance/budgets/health", json={"amount": 50}).json() == {"category": "health", "amount": 50.0}
 
 
 @pytest.mark.api
@@ -421,8 +421,8 @@ def test_api_chat_attachment_handoff(api):
 
 # ── daily recap piece (docs/work/2026-10-20-daily-recap) ─────────────
 def test_recap_spent_today_by_category_and_budget(pl):
-    pl.add_tx({"amount": "12,50", "merchant": "Esselunga", "category": "spesa"})
-    pl.add_tx({"amount": 30, "merchant": "Esselunga", "category": "spesa"})
+    pl.add_tx({"amount": "12,50", "merchant": "Esselunga", "category": "groceries"})
+    pl.add_tx({"amount": 30, "merchant": "Esselunga", "category": "groceries"})
     pl.set_budget("total", "500")
     today = pl.today()
     facts = pl.recap(today, today + timedelta(days=1))
@@ -438,7 +438,7 @@ def test_recap_quiet_day(pl):
 @pytest.mark.api
 def test_api_recap_piece(api):
     c, *_ = api
-    c.post("/api/finance/quick/expense/ristoranti", json={"amount": "3,20"})
+    c.post("/api/finance/quick/expense/restaurants", json={"amount": "3,20"})
     body = c.get("/api/module/recap").json()
     assert body["module"] == "plutus" and body["title"] == "Spese" and "3,20" in body["done"][0]["text"]
 
@@ -476,15 +476,15 @@ def test_signals_budget_week_subscription_review(pl):
         pl.add_tx({"amount": 50, "merchant": "Lidl", "date": (today - timedelta(weeks=i)).isoformat()})
     pl.add_tx({"amount": 200, "merchant": "Pizzeria Esempio", "date": today.isoformat()})
     pl.set_budget("ristoranti", 150)               # over → alta
-    pl.set_budget("spesa", 100)                    # 50 € by day 14 → pace ~111 > 100 → attenzione
+    pl.set_budget("groceries", 100)                    # 50 € by day 14 → pace ~111 > 100 → attenzione
     for i in range(3):                             # monthly subscription, first seen today
         pl.add_tx({"amount": 9.99, "merchant": "Spotify", "date": (today - timedelta(days=60 - 30 * i)).isoformat()})
     for i in range(5):
         pl.add_tx({"amount": -3, "merchant": f"Boh {i}", "date": today.isoformat(), "status": "to_review"})
     sigs, mets = pl.signals()
     by = {s["key"]: s for s in sigs}
-    assert by["budget_pace:ristoranti"]["severity"] == "high" and by["budget_pace:ristoranti"]["page"] == "budget"
-    assert by["budget_pace:spesa"]["severity"] == "warning"
+    assert by["budget_pace:restaurants"]["severity"] == "high" and by["budget_pace:restaurants"]["page"] == "budget"
+    assert by["budget_pace:groceries"]["severity"] == "warning"
     assert by["unusual_week"]["severity"] == "warning" and by["unusual_week"]["metrics"]["median_8w"] == 50
     assert any(k.startswith("new_subscription:rec_") for k in by)
     assert by["to_review"]["metrics"]["count"] == 5
@@ -493,8 +493,8 @@ def test_signals_budget_week_subscription_review(pl):
     assert len(spent) == 12 and spent[-1]["week"] == "2026-W42" and spent[-1]["label"] == "Spesa settimanale"
     assert spent[-1]["value"] == round(200 + 9.99 + 5 * 3, 4)
     names = {m["name"] for m in mets}
-    assert "finance.spent.ristoranti" in names and len(names) <= 5
-    assert next(m for m in mets if m["name"] == "finance.spent.ristoranti")["label"] == "Ristoranti e bar"
+    assert "finance.spent.restaurants" in names and len(names) <= 5
+    assert next(m for m in mets if m["name"] == "finance.spent.restaurants")["label"] == "Ristoranti e bar"
     assert all(m["name"] != "finance.spent.income" for m in mets)          # expenses only
 
 
@@ -515,7 +515,7 @@ def test_topic_details(pl):
     pl.add_tx({"amount": 200, "merchant": "Pizzeria Esempio", "date": today.isoformat()})
     pl.set_budget("ristoranti", 150)
     pl.set_budget("total", 300)
-    t = pl.topic_text("budget_pace:ristoranti")
+    t = pl.topic_text("budget_pace:restaurants")
     assert "Ristoranti" in t and "200/150" in t and "Pizzeria Esempio" in t
     assert "Budget mese" in pl.topic_text("budget_pace:month")
     w = pl.topic_text("unusual_week")
@@ -531,7 +531,7 @@ def test_api_context_topic_and_signals_run(api, monkeypatch):
     c.put("/api/finance/budgets/ristoranti", json={"amount": 100})
     normal = c.get("/api/module/context").json()
     assert set(normal) == {"module", "domain", "updated_at", "text"} and normal["text"].startswith("Spese ")
-    detail = c.get("/api/module/context", params={"topic": "budget_pace:ristoranti", "budget": 300}).json()
+    detail = c.get("/api/module/context", params={"topic": "budget_pace:restaurants", "budget": 300}).json()
     assert "120/100" in detail["text"] and detail["domain"] == "finance"
     assert c.get("/api/module/context", params={"topic": "boh"}).json()["text"] == normal["text"]
     # /signals/run → evaluate + sync through the (mocked) signals-store transport
@@ -546,7 +546,7 @@ def test_api_context_topic_and_signals_run(api, monkeypatch):
     out = c.post("/api/finance/signals/run").json()
     assert out["signals"] >= 1 and out["metrics"] >= 12 and out["written"] == out["signals"] + out["metrics"]
     put = [b for m, _, b in calls if m == "PUT"][0]
-    assert any(r["id"] == "plutus:budget_pace:ristoranti" for r in put["rows"])
+    assert any(r["id"] == "plutus:budget_pace:restaurants" for r in put["rows"])
     job = next(r for r in main._agenda_rules() if r["key"] == "plutus.signals")
     assert "/api/finance/signals/run" in str(job)
 
@@ -559,10 +559,10 @@ def test_coach_budget_targets_and_review_block(pl):
     coach = PlutusCoach(pl)
     start = pl.today()
     assert coach.needs(start, start + timedelta(days=7))["needs"] == []       # no budget, nothing to review
-    pl.set_budget("spesa", 100)
+    pl.set_budget("groceries", 100)
     pl.add_tx({"amount": 40, "merchant": "Lidl"})
     needs = coach.needs(start, start + timedelta(days=7))["needs"]
-    t = next(n for n in needs if n["id"] == "finance.budget.spend")
+    t = next(n for n in needs if n["id"] == "finance.budget.groceries")
     assert t["kind"] == "target" and t["progress"] == 0.4 and 0 < t["value"] <= 60 and validate_need(t)
     SETTINGS["plutus.coach.review_threshold"] = 2
     for i in range(2):
@@ -571,7 +571,7 @@ def test_coach_budget_targets_and_review_block(pl):
     block = next(n for n in coach.needs(start, start + timedelta(days=7))["needs"] if n["id"] == REVIEW_NEED)
     assert block["kind"] == "block" and block["minutes"] == 15 and validate_need(block)
     tx = next(t for t in pl.transactions() if t["status"] == "to_review")
-    pl.update_tx(tx["id"], {"category": "spesa"})
+    pl.update_tx(tx["id"], {"category": "groceries"})
     assert coach.check() == "done"
     r = coach.review(*pl.month_range())
     assert r["done"] == 1 and r["missed"] == 0 and r["adherence"] == 1.0

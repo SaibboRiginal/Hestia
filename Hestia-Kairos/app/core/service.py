@@ -17,32 +17,36 @@ from typing import Any, Callable
 from zoneinfo import ZoneInfo
 
 from hestia_common.module_kit import Invalid, NotFound, new_id, now_iso
-from hestia_common import i18n
-from hestia_common.i18n import t as tr  # fixed texts in the owner's language
+from hestia_common.i18n import t as tr, word_regex, word_set  # owner language; owner words per language
 
 logger = logging.getLogger("hestia_kairos.service")
 
 CATEGORIES = {
-    "bill": ("alt::Bill", 5, "Check the reading and that the charge went through; compare with the same month last year."),
+    "bill": ("Bill", 5, "Check the reading and that the charge went through; compare with the same month last year."),
     "insurance": ("Insurance", 30, "A month before, ask for two quotes: the automatic renewal often costs more."),
     "car_tax": ("Car tax", 15, "You pay online (PagoPA) or at the tobacconist; check the region and the amount."),
-    "inspection": ("Car inspection", 30, "Book the centre in time; bring the logbook and the previous certificate."),
+    "inspection": ("Review", 30, "Book the centre in time; bring the logbook and the previous certificate."),
     "service": ("Car service", 21, "Ask for the quote first and check what the service booklet foresees."),
     "document": ("Document", 60, "ID card and passport: the appointment at the town hall or police station can take weeks."),
     "subscription": ("Subscription", 7, "Decide whether to keep it before the renewal: cancelling afterwards costs a month."),
-    "tax": ("pl::Taxes", 15, "Check the F24 or the notice; record the receipt after paying."),
+    "tax": ("Taxes", 15, "Check the F24 or the notice; record the receipt after paying."),
     "other": ("Deadline", 7, ""),
 }
 RECURRENCES = ("none", "monthly", "bimonthly", "quarterly", "semiannual", "yearly", "biennial")
 _MONTHS = {"none": 0, "monthly": 1, "bimonthly": 2, "quarterly": 3, "semiannual": 6, "yearly": 12, "biennial": 24}
+_NUMERIC_DATE = re.compile(r"\b(\d{1,2})[/.-](\d{1,2})[/.-](\d{2,4})\b")
 _AMOUNT = re.compile(r"(?:€|EUR)\s?(\d[\d.]*,\d{2}|\d+(?:\.\d{2})?)|(\d[\d.]*,\d{2})\s?(?:€|EUR|euro)", re.I)
-# The words of deadlines, months and categories in every language: locales/<lang>/words.json («kairos.*», «months»).
 
 
-def _date_res() -> tuple[re.Pattern, ...]:
-    months = "|".join(re.escape(m) for names in i18n.word_tables("months").values() for m in names)
-    return (re.compile(r"\b(\d{1,2})[/.-](\d{1,2})[/.-](\d{2,4})\b"),
-            re.compile(r"\b(\d{1,2})\s+(" + (months or r"(?!x)x") + r")\s+(\d{4})\b", re.I))
+def _named_dates() -> "re.Pattern[str]":
+    """«12 March 2027» or the same in another language: month names of every language (``date.month.<n>``)."""
+    return word_regex(r"\b(\d{{1,2}})\s+(" + "|".join(f"{{{n}}}" for n in range(12)) + r")\s+(\d{{4}})\b",
+                      *(f"date.month.{n}" for n in range(1, 13)))
+
+
+def _month_number(name: str) -> int:
+    low = name.lower()
+    return next(n for n in range(1, 13) if any(re.fullmatch(w, low) for w in word_set(f"date.month.{n}")))
 
 
 def add_months(d: date, months: int) -> date:
@@ -53,20 +57,17 @@ def add_months(d: date, months: int) -> date:
 
 def guess_category(text: str) -> str:
     low = (text or "").lower()
-    for cat in CATEGORIES:
-        if re.search(i18n.words_pattern(f"kairos.category_re.{cat}", whole=False), low):
-            return cat
-    return "other"
+    return next((c for c in CATEGORIES if c != "other" and word_regex("{0}", f"kairos.category.{c}").search(low)), "other")
 
 
 def find_due(text: str, today: date) -> date | None:
     """The first future date in a text that talks about a deadline (deterministic; None when unsure)."""
-    if not re.search(i18n.words_pattern("kairos.due_re", whole=False), text or "", re.I):
+    if not word_regex("{0}", "kairos.due").search(text or ""):
         return None
-    for rx in _date_res():
+    for rx in (_NUMERIC_DATE, _named_dates()):
         for m in rx.finditer(text):
             d, mo, y = m.group(1), m.group(2), m.group(3)
-            mo = i18n.month_number(mo) if not mo.isdigit() else int(mo)
+            mo = _month_number(mo) if not mo.isdigit() else int(mo)
             y = int(y) + (2000 if len(y) == 2 else 0)
             try:
                 when = date(y, mo, int(d))
@@ -105,8 +106,8 @@ class Deadlines:
     def view(self, d: dict) -> dict:
         due = date.fromisoformat(d["due"])
         label, lead, advice = CATEGORIES.get(d.get("category") or "other", CATEGORIES["other"])
-        return {**d, "category_label": tr(label), "in_days": (due - self.today()).days,
-                "advice": d.get("advice") or (tr(advice) if advice else ""),
+        return {**d, "category_label": label, "in_days": (due - self.today()).days,
+                "advice": d.get("advice") or advice,
                 "lead_days": d.get("lead_days") if d.get("lead_days") is not None else lead}
 
     def list(self, status: str = "open", days: int | None = None, category: str = "") -> list[dict]:
@@ -142,7 +143,8 @@ class Deadlines:
         except ValueError:
             raise Invalid(tr("due date YYYY-MM-DD")) from None
         category = body.get("category") or old.get("category") or guess_category(title)
-        category = category if category in CATEGORIES else "other"
+        # The owner's word for a category («car tax», «tax») → its stored id, in any language of the words files.
+        category = category if category in CATEGORIES else guess_category(str(category).replace("_", " "))
         recurrence = body.get("recurrence") or old.get("recurrence") or "none"
         if recurrence not in RECURRENCES:
             raise Invalid(tr("recurrence: ") + ", ".join(RECURRENCES))

@@ -446,7 +446,7 @@ class Hercules:
         return self.save("set", data, id=body.get("id"))
 
     def log_sets_text(self, session_id: str | None, text: str) -> dict:
-        """Natural logging: 'panca 80x8, 80x8, 77.5x7; trazioni 8, 7, 6' (into the active session, or a new one)."""
+        """Natural logging: 'bench 80x8, 80x8, 77.5x7; pull up 8, 7, 6' (into the active session, or a new one)."""
         import re
         sess = self.get("session", session_id) if session_id else self.active_session()
         if not sess:
@@ -527,7 +527,7 @@ class Hercules:
         return self.update_session(id, {"status": "discarded", "ended_at": now_iso()})
 
     def quick_done(self, template_id: str, *, day: str | None = None) -> dict:
-        """'Segna fatto': a done session with the template's suggested values, editable later (undo = delete)."""
+        """'Mark done': a done session with the template's suggested values, editable later (undo = delete)."""
         t = self.get("template", template_id)
         when = datetime.now(self.tz)
         if day:
@@ -789,8 +789,8 @@ class Hercules:
             lines.append(f"{g['label']}: {g['hint']}" + (tr(" (behind)") if g["behind"] else ""))
         else:
             lines.append(tr("Week: {0} workouts", week[-1]['sessions']))
-        # Runs, walks, rides logged this week count too (bench 2026-10-30: «5 km di corsa» logged, then
-        # «come sto andando?» → «nessuna sessione questa settimana»).
+        # Runs, walks, rides logged this week count too (bench 2026-10-30: «5 km run» logged, then
+        # «how am I doing?» → «no session this week»).
         week_start = str(week[-1].get("start") or "")[:10]
         acts = [a for a in self.store.items("activity") if a.get("status", "done") == "done"
                 and str(a.get("date") or "")[:10] >= week_start] if week_start else []
@@ -849,7 +849,7 @@ class Hercules:
                                    "tone": "warning"})
         nw = self.next_workout(nxt)
         planned_for_next = nw.get("template") and (nw.get("planned_date") == nxt.isoformat()
-                                                   or nw.get("reason") in (tr("Moved to today."), "Spostato a oggi."))
+                                                   or nw.get("reason") == tr("Moved to today."))
         if planned_for_next and not nw.get("skipped"):
             mins = nw.get("estimated_minutes")
             upcoming.append({"text": f"{nw['template']['name']}" + (tr(" · about {0} min", mins) if mins else "")})

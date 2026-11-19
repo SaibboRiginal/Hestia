@@ -147,8 +147,8 @@ def test_standard_lists_module_defaults_with_state_and_restore_brings_them_back(
                                                    "title": "Promemoria routine"}}
     out = A.standard()
     states = {r["key"]: r["state"] for r in out["activities"]}
-    assert states == {"athena.recap.evening": "eliminata", "hygieia.reminder": "modificata"}
-    assert out["counts"]["eliminata"] == 1
+    assert states == {"athena.recap.evening": "deleted", "hygieia.reminder": "edited"}
+    assert out["counts"]["deleted"] == 1
 
     A.restore("athena.recap.evening")
     assert rows["athena.recap.evening"]["status"] == "confirmed"
@@ -156,7 +156,7 @@ def test_standard_lists_module_defaults_with_state_and_restore_brings_them_back(
     meta = rows["hygieia.reminder"]["meta"]
     assert not meta["user_modified"] and rows["hygieia.reminder"]["title"] == "Promemoria routine"
     assert rows["hygieia.reminder"]["start_at"].startswith("2026-10-01T20:00")
-    assert {r["state"] for r in A.standard()["activities"]} == {"attiva"}
+    assert {r["state"] for r in A.standard()["activities"]} == {"active"}
     with pytest.raises(A.AgendaError):
         A.restore("mine")
 

@@ -27,8 +27,8 @@ def test_build_keeps_what_the_model_saw_and_did():
     log = [{"tool": "memory_save", "params": {"fact": "x"}, "ok": True, "writes": True, "turn": 0,
             "result_preview": "short", "result_text": "full result"}]
     t = turn_trace.build(trace_id="abc", session_id="s1", client="telegram", route="agent", mode="auto",
-                         use_case="oracle.general", model="m", provider="ollama", origin={"kind": "", "level": "utente"},
-                         user_message="ciao", answer="fatto", history_text="H", system="SYS",
+                         use_case="oracle.general", model="m", provider="ollama", origin={"kind": "", "level": "user"},
+                         user_message="ciao", answer="done", history_text="H", system="SYS",
                          tools=[{"name": "memory_save", "description": "d", "parameters": {}}, {"bad": 1}],
                          tool_log=log, domains=["memory"], total_ms=12)
     assert t["trace_id"] == "abc" and t["system"] == "SYS" and t["history"] == "H"
@@ -49,11 +49,11 @@ def test_build_cuts_long_fields():
 
 @pytest.mark.unit
 @pytest.mark.parametrize("origin,save,sid,expected", [
-    ({"level": "utente", "kind": ""}, True, "s", True),
+    ({"level": "user", "kind": ""}, True, "s", True),
     ({"level": "routine", "kind": "routine"}, True, "s", False),
-    ({"level": "utente", "kind": "esterno"}, True, "s", False),
-    ({"level": "utente"}, False, "s", False),
-    ({"level": "utente"}, True, "", False),
+    ({"level": "user", "kind": "external"}, True, "s", False),
+    ({"level": "user"}, False, "s", False),
+    ({"level": "user"}, True, "", False),
 ])
 def test_only_owner_turns_in_real_chats(origin, save, sid, expected):
     assert turn_trace.wanted(origin=origin, save_history=save, session_id=sid) is expected

@@ -104,7 +104,7 @@ def routines_answer(key: str, req: AnswerIn) -> dict:
 
 @router.post("/api/routines/{key}/run")
 def routines_run(key: str) -> dict:
-    """Agenda action and «Esegui adesso»."""
+    """Agenda action and «Run now»."""
     return _guard(routines.run, key, by="agenda")
 
 
@@ -118,7 +118,7 @@ class SpecialIn(BaseModel):
     person_id: str = ""
     note: str = ""
     yearly: bool | None = None
-    source: str = "utente"
+    source: str = "user"
     key: str = ""
     by: str = "user"
 
@@ -200,7 +200,7 @@ def presence_manual_clear() -> dict:
 
 
 # ── agenda rules ─────────────────────────────────────────────────────────────
-# The WebUI plugin calls only under its api_prefix /api/agenda/: the pages «Routine» and «Eventi speciali» reach
+# The WebUI plugin calls only under its api_prefix /api/agenda/: the pages «Routines» and «Special events» reach
 # the same handlers there (W7). The /api/routines and /api/special paths stay for modules and the tools.
 for _path, _fn, _method in [("/api/agenda/routines", routines_list, "GET"), ("/api/agenda/routines", routines_create, "POST"),
                             ("/api/agenda/routines/templates", routines_templates, "GET"),

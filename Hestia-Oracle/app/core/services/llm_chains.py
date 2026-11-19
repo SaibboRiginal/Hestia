@@ -67,7 +67,7 @@ ORACLE_USECASES: dict[str, tuple[str, str, str, str]] = {
     "oracle.documents": ("Documents and images", "vision", "false", "Reading documents, images and audio."),
     "oracle.describe_image": ("Image description", "vision", "false",
                                  "When the answering model can't see images, a model that sees them describes them first."),
-    "oracle.loop_check": ("Idle-loop check", "fast", "false",
+    "oracle.check_rounds": ("Idle-loop check", "fast", "false",
                               "When the assistant repeats the same calls: a quick look to understand whether it is waiting or looping."),
     "oracle.embedding": ("Embedding (search)", "embedding", "false",
                          "Vectors for memory and documents. Changing it makes the vectors already saved different."),
@@ -75,7 +75,7 @@ ORACLE_USECASES: dict[str, tuple[str, str, str, str]] = {
 SLOTS = {"generic": "oracle.general", "reasoning": "oracle.reasoning", "code": "oracle.code",
          "documents": "oracle.documents", "embedding": "oracle.embedding"}
 GENERAL = "oracle.general"
-MODES = [("segui", "Like the Brain"), ("interna", "Internal"), ("esterna", "External")]
+MODES = [("follow", "Like the Brain"), ("internal", "Internal"), ("external", "External")]
 
 # ── Quota state (memory: a restart costs at most one extra 429 per pair) ────────
 
@@ -236,7 +236,7 @@ def models_state(use_case: str = GENERAL) -> dict:
     with _lock:
         row = dict(_outcomes.get(use_case) or {"ok_at": 0.0, "ok_index": 0, "failed_at": 0.0})
     from core.services import oracle_settings
-    # A failure on every step reads «none» for one cooldown (Argus: «Non disponibile»); the chat still tries the
+    # A failure on every step reads «none» for one cooldown (Argus: «Unavailable»); the chat still tries the
     # chain (it refuses only when no step is usable) and the first success clears it.
     failed_recently = row["failed_at"] > row["ok_at"] and \
         time.time() - row["failed_at"] < 60 * oracle_settings.get_int(oracle_settings.CHAIN_COOLDOWN, 1)
@@ -293,7 +293,7 @@ def register_agent_usecases(specs) -> None:
 def declared_usecases() -> dict[str, dict]:
     """Oracle's use cases + the ones modules declare in their Hub registration (``llm_usecases``)."""
     out = {uc: {"id": uc, "module": "oracle", "label": label, "chain": chain, "thinking": thinking, "help": help_,
-                "mode": "segui"}
+                "mode": "follow"}
            for uc, (label, chain, thinking, help_) in ORACLE_USECASES.items()}
     for row in _registry_usecases():
         out.setdefault(row["id"], row)
@@ -304,7 +304,7 @@ def declared_usecases() -> dict[str, dict]:
     for uc in seen:
         out.setdefault(uc, {"id": uc, "module": uc.split(".", 1)[0], "label": uc, "chain": "",
                             "thinking": "auto", "help": tr("Not declared by the module: uses the «General use» chain."),
-                            "mode": "segui", "undeclared": True})
+                            "mode": "follow", "undeclared": True})
     return out
 
 
@@ -338,7 +338,7 @@ def _registry_usecases() -> list[dict]:
                     found.append({"id": str(item["id"]).strip().lower(), "module": module,
                                   "label": str(item.get("label") or item["id"]), "chain": str(item.get("chain") or ""),
                                   "thinking": str(item.get("thinking") or "auto"),
-                                  "mode": str(item.get("mode") or "segui"), "help": str(item.get("help") or "")})
+                                  "mode": str(item.get("mode") or "follow"), "help": str(item.get("help") or "")})
         _registry_cache = (time.time(), found)
         return found
     except Exception as exc:
@@ -348,14 +348,14 @@ def _registry_usecases() -> list[dict]:
 
 
 def note_usecase(uc: str) -> None:
-    """Remember an undeclared use case seen in a call, so the Modelli page can list it."""
+    """Remember an undeclared use case seen in a call, so the Models page can list it."""
     with _lock:
         _seen_usecases[uc] = time.time()
 
 
 def usecase_config(uc: str) -> dict:
     """Effective config of a use case: ``{id, chain, thinking, mode, declared}`` (overrides → declaration →
-    «Uso generale»). An unknown chain name falls back to «Uso generale»'s chain."""
+    «General use»). An unknown chain name falls back to «General use»'s chain."""
     from core.services import oracle_settings
     uc = str(uc or GENERAL).strip().lower()
     declared = declared_usecases()
@@ -373,10 +373,10 @@ def usecase_config(uc: str) -> dict:
         logger.warning("[🔄] event=llm_usecase_unknown_chain use_case=%s chain=%s fallback=%s",
                        uc, chain, general["chain"])
         chain = general["chain"]
-    mode = str(own.get("mode") or (decl or {}).get("mode") or "segui")
+    mode = str(own.get("mode") or (decl or {}).get("mode") or "follow")
     return {"id": uc, "chain": chain, "thinking": str(own.get("thinking") or (decl or general).get("thinking")
                                                       or "auto").lower(),
-            "mode": mode if mode in {m for m, _ in MODES} else "segui", "declared": decl is not None}
+            "mode": mode if mode in {m for m, _ in MODES} else "follow", "declared": decl is not None}
 
 
 def chain_steps(uc: str) -> list[dict]:
@@ -733,7 +733,7 @@ def claude_code_model(use_case: str = "forge.code") -> str:
 
 
 def chains_view() -> dict:
-    """Chains with each step's provider state (WebUI Modelli, ``GET /api/llm/chains``)."""
+    """Chains with each step's provider state (WebUI Models, ``GET /api/llm/chains``)."""
     from core.services import llm_providers
     out = {}
     for name, chain in chains().items():

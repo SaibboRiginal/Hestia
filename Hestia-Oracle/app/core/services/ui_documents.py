@@ -1,4 +1,4 @@
-"""Documenti page (Oracle WebUI plugin): the documents Hestia keeps for RAG — list, search, add, keep, delete.
+"""Documents page (Oracle WebUI plugin): the documents the assistant keeps for RAG — list, search, add, keep, delete.
 
 Thin layer over what Oracle already does: documents live in Archive (reached through Hub), search is the same
 semantic search the chat uses (``DocumentRAG``), adding a file runs the same archiving pipeline as a chat
@@ -18,7 +18,7 @@ from hestia_common.i18n import t as tr  # fixed texts in the owner's language
 
 logger = logging.getLogger("hestia_oracle.ui_documents")
 
-SESSION = "webui-documenti"   # Archive needs a session id: documents added from the page share this one
+SESSION = "webui-documents"   # Archive needs a session id: documents added from the page share this one
 _ACCEPTED_PREFIXES = ("image/", "audio/", "video/", "text/")
 _ACCEPTED = {
     "application/pdf", "application/json", "application/xml", "application/yaml", "application/x-yaml",

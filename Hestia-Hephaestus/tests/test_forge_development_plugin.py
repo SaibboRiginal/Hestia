@@ -78,7 +78,7 @@ def test_export_endpoint_short_ids_missing_and_dedup(monkeypatch):
     r = c.get("/api/hephaestus/forge/tasks/export", params={"ids": f"{a['id'][:6]},{a['id']},{b['id']},zzzzzz"})
     body = r.json()
     assert r.status_code == 200 and body["count"] == 2 and body["missing"] == ["zzzzzz"]
-    assert "widget meteo" in body["markdown"] and "calendario" in body["markdown"] and "boom" in body["markdown"]
+    assert "widget meteo" in body["markdown"] and "calendar" in body["markdown"] and "boom" in body["markdown"]
     assert body["filename"].endswith(".md")
     assert c.get("/api/hephaestus/forge/tasks/export").status_code == 400
     assert c.get("/api/hephaestus/forge/tasks/export", params={"ids": "nope99"}).status_code == 404

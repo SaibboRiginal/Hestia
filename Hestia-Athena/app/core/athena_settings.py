@@ -244,8 +244,8 @@ settings.declare([
             help="How many recent answers an audit evaluates if you don't say otherwise."),
 
     # ── Daily recap (docs/work/2026-10-20-daily-recap). WHEN = agenda job, not a setting ──
-    setting(RECAP_STYLE, "Recap tone", "enum", "amichevole", group=_G_RECAP,
-            options=["amichevole", "asciutto"],
+    setting(RECAP_STYLE, "Recap tone", "enum", "friendly", group=_G_RECAP,
+            options=["friendly", "dry"],
             help="How the daily recap is written to you: friendly (a few more words) or dry (just the facts). You move the time in the calendar."),
     setting(RECAP_MAX_CHARS, "Longest recap", "int", 900, group=_G_RECAP, min=200, max=4000,
             unit="characters", help="The recap stays under this length."),

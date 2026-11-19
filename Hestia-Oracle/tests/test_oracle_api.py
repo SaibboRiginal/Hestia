@@ -299,15 +299,15 @@ class TestOracleLlmGenerateEndpoint:
         client, _ = oracle_client
         self._chains(monkeypatch, {
             "fast": {"steps": [{"provider": "ollama", "model": "local"}]},
-            "annunci": {"steps": [{"provider": "gemini", "model": "gemini-2.5-flash"},
+            "listings": {"steps": [{"provider": "gemini", "model": "gemini-2.5-flash"},
                                   {"provider": "gemini", "model": "gemini-2.5-flash-lite"}]}},
-            {"scout.listings": {"chain": "annunci"}})
+            {"scout.listings": {"chain": "listings"}})
         asked = self._fake_agents(monkeypatch, quota={"gemini-2.5-flash"})
 
         resp = client.post("/api/llm/generate", json={"prompt": "x", "use_case": "scout.listings"})
 
         assert resp.status_code == 200
-        assert resp.json()["model"] == "gemini-2.5-flash-lite" and resp.json()["chain"] == "annunci"
+        assert resp.json()["model"] == "gemini-2.5-flash-lite" and resp.json()["chain"] == "listings"
         assert asked == [("gemini", "gemini-2.5-flash"), ("gemini", "gemini-2.5-flash-lite")]
 
     def test_exhausted_step_is_skipped_by_every_chain_until_reset(self, oracle_client, monkeypatch):

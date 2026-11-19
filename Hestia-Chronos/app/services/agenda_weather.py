@@ -1,7 +1,7 @@
 """Weather on the calendar page (dossier docs/work/2026-10-20-weather-hecate §3.7).
 
 For the visible range (only the next ``HORIZON_DAYS`` days: past days and far days get nothing) the page gets:
-- ``days``: Casa's weather per day (min–max, condition, rain hours) — the chip next to the day number;
+- ``days``: Home's weather per day (min–max, condition, rain hours) — the chip next to the day number;
 - ``events``: the weather at the place and hour of located agenda occurrences the page sends
   (``params.place`` of an item, e.g. a planned run);
 - ``external``: Marko's own calendar events (Google/Outlook through Hecate) that have a location, with the weather

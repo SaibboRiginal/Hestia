@@ -23,7 +23,7 @@ export function matches(query: string, ...texts: (string | null | undefined)[]):
   return words.every(w => hay.includes(w));
 }
 
-/** Personal settings that Personali edits with its own rows (profile values via the WebUI settings API). */
+/** Personal settings that Personal edits with its own rows (profile values via the WebUI settings API). */
 const PERSONAL_COVERED = new Set(['oracle.chat.tone', 'oracle.chat.instructions']);
 
 /** True when the setting differs from its declared default. */
@@ -32,7 +32,7 @@ export function isModified(i: SettingItem): boolean {
 }
 
 /**
- * Impostazioni state (system part). Themis is the source of truth: every setting is loaded once
+ * Settings state (system part). Themis is the source of truth: every setting is loaded once
  * (a few hundred rows), search and module selection filter locally (instant, VS Code-like); after
  * every change the store reloads what Themis answers (validated value, status), and a cheap
  * revision poll picks up changes made elsewhere (Telegram, an approved proposal, another browser).
@@ -57,9 +57,9 @@ export class CentralSettingsStore {
   private revision = '';
   private timer: ReturnType<typeof setInterval> | null = null;
 
-  /** Personal (scope user) settings live in Impostazioni → Personali, not in a module page. */
+  /** Personal (scope user) settings live in Settings → Personal, not in a module page. */
   readonly systemItems = computed(() => this.items().filter(i => i.scope !== 'user'));
-  /** Personal settings without a dedicated row in Personali (shown there as generic rows). */
+  /** Personal settings without a dedicated row in Personal (shown there as generic rows). */
   readonly personalExtra = computed(() => this.items().filter(i => i.scope === 'user' && !PERSONAL_COVERED.has(i.key)
     && matches(this.query(), i.label, i.help, i.key, i.group, moduleLabel(i.module))));
 
@@ -71,7 +71,7 @@ export class CentralSettingsStore {
     return m ? this.systemItems().filter(i => i.module === m) : [];
   });
 
-  /** Items after the "solo modificate" / "avanzate" filters. */
+  /** Items after the "changed only" / "advanced" filters. */
   readonly visible = computed(() => this.scoped().filter(i =>
     (this.showAdvanced() || !i.advanced || isModified(i)) && (!this.onlyModified() || isModified(i))));
 

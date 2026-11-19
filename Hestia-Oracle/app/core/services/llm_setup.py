@@ -1,4 +1,4 @@
-"""Guided setup of the brain (docs/work/2026-10-30-one-click-setup §4.2 «Cervello»).
+"""Guided setup of the brain (docs/work/2026-10-30-one-click-setup §4.2 «Brain»).
 
 What the setup screen needs from Oracle, and only from Oracle (it owns the providers):
 - ``runtimes(vram_gb, hosts)``: the programs that run models at home (Ollama, LM Studio, Jan, llama.cpp, vLLM), on
@@ -41,7 +41,7 @@ CATALOG: list[dict[str, Any]] = [
         {"model": "qwen3:8b", "size_gb": 5.2, "good": "Faster, a bit less accurate."}]},
 ]
 EMBEDDING_MODEL = {"model": "qwen3-embedding:0.6b", "size_gb": 0.6, "good": "Memory needs it to find things again."}
-RECIPES = ("locale", "cloud", "entrambi", "claude")
+RECIPES = ("locale", "cloud", "both", "claude")
 CHAT_CHAINS = ("fast", "strong", "code", "vision")
 
 
@@ -49,7 +49,7 @@ def recommend(vram_gb: float = 0, ram_gb: float = 0) -> dict[str, Any]:
     """Tier for the detected hardware, its preselected chat model and the recipe to preselect."""
     vram = float(vram_gb or 0)
     tier = next(t for t in CATALOG if vram <= t["max_vram"])
-    recipe = "entrambi" if vram >= 8 else ("cloud" if float(ram_gb or 0) and float(ram_gb) < 12 else "entrambi")
+    recipe = "both" if vram >= 8 else ("cloud" if float(ram_gb or 0) and float(ram_gb) < 12 else "both")
     return {"tier": tier["tier"], "label": tier["label"], "chat": tier["chat"], "model": tier["chat"][0]["model"],
             "embedding": EMBEDDING_MODEL, "recipe": recipe}
 
@@ -259,11 +259,11 @@ def _ollama_up() -> bool:
         return False
 
 
-# ── Prova ───────────────────────────────────────────────────────────────────
+# ── Test ────────────────────────────────────────────────────────────────────
 
 def _pick_model(provider: str, wanted: str, listed: list[str]) -> str:
     """The model to try: the one asked if the provider lists it (or lists nothing), else Hestia's default for it if
-    listed, else the provider's first chat model. So a retired name never blocks the «Prova»."""
+    listed, else the provider's first chat model. So a retired name never blocks the «Test»."""
     chat = [m for m in listed if not _is_embedding(m)]
     if wanted and (not listed or wanted in listed):
         return wanted
@@ -315,7 +315,7 @@ def _list_checked(provider: str) -> tuple[list[str] | None, str]:
 
 
 def test(provider: str, model: str = "") -> dict[str, Any]:
-    """«Prova» without spending tokens: reading the model list with the key proves the key works and gives the models
+    """«Test» without spending tokens: reading the model list with the key proves the key works and gives the models
     for the picker. Returns ``{ok, detail, model, models}`` in words a person understands; ``model`` = the one to
     preselect (the one asked, else Hestia's default, else the cheapest-looking listed). Only a service with no list
     to read gets one tiny real call."""
@@ -328,7 +328,7 @@ def test(provider: str, model: str = "") -> dict[str, Any]:
     listed, error = _list_checked(provider)
     if error:
         return {"ok": False, "detail": error, "models": []}
-    # only chat models for «Modelli» (no speech, pictures, live audio); the embedding ones go to «Memoria»
+    # only chat models for «Models» (no speech, pictures, live audio); the embedding ones go to «Memory»
     models = None if listed is None else [m for m in listed if is_chat(m)]
     embed = [m for m in listed or [] if _is_embedding(m)]
     if models is not None:
@@ -402,13 +402,13 @@ def _default_model(provider: str) -> str:
     return models[0] if models else ""
 
 
-# ── Applica la scelta ───────────────────────────────────────────────────────
+# ── Apply the choice ────────────────────────────────────────────────────────
 
 def plan_chains(recipe: str, local_model: str, cloud: list[str], current: dict[str, dict],
                 local_provider: str = "ollama", cloud_models: dict[str, list[str] | str] | None = None,
                 embedding: dict | None = None, modes: dict[str, dict] | None = None,
                 order: list[dict] | None = None) -> dict[str, dict]:
-    """New ``oracle.chains`` for a recipe. ``order``: the setup's «Scelti» list (``{provider, model}``, model empty =
+    """New ``oracle.chains`` for a recipe. ``order``: the setup's «Chosen» list (``{provider, model}``, model empty =
     every model of that service) to put the chosen steps in the user's order, the local one included; a step it does
     not name keeps its place after the named ones. ``modes``: per chat chain (``strong``, ``code``, ``vision``) a model
     chosen for that mode only (``{provider, model}``): it answers first there, the general choice follows as fallback. Pure function (tests): local steps use ``local_provider``/``local_model``;
@@ -441,7 +441,7 @@ def plan_chains(recipe: str, local_model: str, cloud: list[str], current: dict[s
             steps = local_steps
         elif recipe == "cloud":
             steps = cloud_steps
-        else:   # entrambi, claude (the chains stay the fallback of the external brain)
+        else:   # both, claude (the chains stay the fallback of the external brain)
             steps = local_steps + cloud_steps
         steps = _in_order(steps, order)
         own = (modes or {}).get(name) or {}
@@ -484,7 +484,7 @@ def embedding_steps(embedding: dict | None) -> list[dict]:
 
 
 def _in_order(steps: list[dict], order: list[dict] | None) -> list[dict]:
-    """``steps`` sorted by the user's «Scelti» order; steps it does not name stay after, in their own order."""
+    """``steps`` sorted by the user's «Chosen» order; steps it does not name stay after, in their own order."""
     wanted = [o for o in (order or []) if isinstance(o, dict) and o.get("provider")]
     if not wanted:
         return steps
@@ -510,7 +510,7 @@ def _as_lists(cloud_models: dict | None) -> dict[str, list[str]]:
 
 
 def summary(chains: dict[str, dict]) -> str:
-    """One sentence: who answers first, and who if not («Ti risponde X sul tuo computer; se non c'è, Y.»)."""
+    """One sentence: who answers first, and who if not («X answers you on your computer; if it is not there, Y.»)."""
     from core.services import llm_providers
     steps = (chains.get("fast") or {}).get("steps") or []
     if not steps:
@@ -571,8 +571,8 @@ def apply(recipe: str, local_model: str = "", cloud: list[str] | None = None, lo
     if not oracle_settings.settings.put(oracle_settings.CHAINS_KEY, chains, actor="user", reason=tr("Guided setup")):
         return {"ok": False, "detail": tr("The settings did not accept the choice.")}
     if recipe == "claude":
-        for key, value in ((oracle_settings.BRAIN_MODE, "esterna"), (oracle_settings.BRAIN_AGENT, "claude"),
-                           (oracle_settings.BRAIN_FALLBACK, "interna")):
+        for key, value in ((oracle_settings.BRAIN_MODE, "external"), (oracle_settings.BRAIN_AGENT, "claude"),
+                           (oracle_settings.BRAIN_FALLBACK, "internal")):
             oracle_settings.settings.put(key, value, actor="user", reason=tr("Guided setup"))
     logger.info("event=llm_setup_applied recipe=%s local=%s/%s cloud=%s", recipe, local_provider, local_model or "-",
                 ",".join(cloud or []) or "-")
@@ -593,7 +593,7 @@ def machine() -> dict[str, Any]:
 
 
 def use_machine(address: str, name: str = "") -> dict[str, Any]:
-    """«Usa la sua scheda video» on the Macchine page: the local provider ``ollama`` points at a satellite's Ollama
+    """«Use its graphics card» on the Machines page: the local provider ``ollama`` points at a satellite's Ollama
     (``http://<address>:11434``); empty address = back to this machine's own (infrastructure env)."""
     import re
     from core.services import llm_providers, oracle_settings
@@ -615,7 +615,7 @@ def use_machine(address: str, name: str = "") -> dict[str, Any]:
             else tr("Local models are back on this machine.")}
 
 
-# ── Download dei modelli (Ollama) — hestia_common.downloads, page «Download» ──────────────
+# ── Model downloads (Ollama) — hestia_common.downloads, page «Download» ──────────────
 
 _downloads = None
 _dlock = threading.Lock()
@@ -648,7 +648,7 @@ def pull(model: str) -> dict[str, Any]:
     have = llm_providers.list_models("ollama") if llm_providers.get("ollama") else []
     if model in have or f"{model}:latest" in have:
         # Already on the computer (also one made from a Modelfile, which is on no registry): nothing to download.
-        return {"ok": True, "id": f"ollama:{model}", "state": "fatto", "already": True}
+        return {"ok": True, "id": f"ollama:{model}", "state": "done", "already": True}
     size = next((int(m["size_gb"] * 1e9) for t in CATALOG for m in t["chat"] if m["model"] == model),
                 int(EMBEDDING_MODEL["size_gb"] * 1e9) if model == EMBEDDING_MODEL["model"] else 0)
     return {"ok": True, **downloads().add(f"ollama:{model}", model, "ollama", {"model": model}, size_hint=size)}

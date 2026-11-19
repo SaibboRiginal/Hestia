@@ -446,8 +446,8 @@ class TestStrategistParsing:
         """kind=setting carries the Themis key and value (proposed to the user, never applied)."""
         from core.strategist import _map_to_action_candidates, _parse_candidates
 
-        raw = ("AZIONE: Meno log\nTIPO: setting\nPRIORITA: normal\nDOMINIO: system\n"
-               "MOTIVO: troppi log\nRIASSUNTO: torna a INFO\nCHIAVE: oracle.log.level\nVALORE: INFO")
+        raw = ("ACTION: Meno log\nTYPE: setting\nPRIORITY: normal\nDOMAIN: system\n"
+               "REASON: troppi log\nSUMMARY: torna a INFO\nKEY: oracle.log.level\nVALUE: INFO")
         parsed = _parse_candidates(raw)
         assert len(parsed) == 1
         c = _map_to_action_candidates(parsed)[0]
@@ -469,25 +469,25 @@ class TestStrategistParsing:
         from core.strategist import _parse_candidates
 
         raw = (
-            "AZIONE: Controlla servizio scout\n"
-            "TIPO: remediation\n"
-            "PRIORITA: elevated\n"
-            "DOMINIO: system\n"
-            "MOTIVO: Scout risulta down\n"
-            "RIASSUNTO: Verificare lo stato di Scout e riavviare"
+            "ACTION: Controlla servizio scout\n"
+            "TYPE: remediation\n"
+            "PRIORITY: elevated\n"
+            "DOMAIN: system\n"
+            "REASON: Scout risulta down\n"
+            "SUMMARY: Verificare lo stato di Scout e riavviare"
         )
         candidates = _parse_candidates(raw)
         assert len(candidates) == 1
         assert candidates[0]["title"] == "Controlla servizio scout"
-        assert candidates[0].get("tipo") == "remediation"
-        assert candidates[0].get("priorita") == "elevated"
+        assert candidates[0].get("type") == "remediation"
+        assert candidates[0].get("priority") == "elevated"
 
     def test_parse_multiple_candidates(self):
         from core.strategist import _parse_candidates
 
         raw = (
-            "AZIONE: Azione 1\nTIPO: advisory\nPRIORITA: low\nDOMINIO: cognition\nMOTIVO: motivo1\nRIASSUNTO: riassunto1\n"
-            "AZIONE: Azione 2\nTIPO: notification\nPRIORITA: normal\nDOMINIO: calendar\nMOTIVO: motivo2\nRIASSUNTO: riassunto2\n"
+            "ACTION: Azione 1\nTYPE: advisory\nPRIORITY: low\nDOMAIN: cognition\nREASON: motivo1\nSUMMARY: riassunto1\n"
+            "ACTION: Azione 2\nTYPE: notification\nPRIORITY: normal\nDOMAIN: calendar\nREASON: motivo2\nSUMMARY: riassunto2\n"
         )
         candidates = _parse_candidates(raw)
         assert len(candidates) == 2
@@ -501,11 +501,11 @@ class TestStrategistParsing:
         parsed = [
             {
                 "title": "Test azione",
-                "tipo": "remediation",
-                "priorita": "high",
-                "dominio": "system",
-                "motivo": "Servizio non raggiungibile",
-                "riassunto": "Riavvia il servizio",
+                "type": "remediation",
+                "priority": "high",
+                "domain": "system",
+                "reason": "Servizio non raggiungibile",
+                "summary": "Riavvia il servizio",
             }
         ]
         candidates = _map_to_action_candidates(parsed)

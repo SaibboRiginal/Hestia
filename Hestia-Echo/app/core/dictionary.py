@@ -3,7 +3,7 @@
 Names and terms the engine gets wrong (people, places, «Hygieia»…) are passed to every listening engine as a hint
 (Whisper ``initial_prompt``, OpenAI-compatible ``prompt``). The dictionary fills itself: when the owner corrects
 a transcript (``learn(heard, corrected)``) the new words become candidates and a word is confirmed after
-``echo.dictionary.confirmations`` corrections (default 2). Words added by hand (page «Voce», tool ``voice_word``) are
+``echo.dictionary.confirmations`` corrections (default 2). Words added by hand (page «Voice», tool ``voice_word``) are
 confirmed at once; the owner removes any word. Rows: Archive ``echo-store`` ``kind=word`` (id = normalised word).
 """
 from __future__ import annotations

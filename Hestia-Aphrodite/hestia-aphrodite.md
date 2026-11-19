@@ -1,6 +1,6 @@
 # Hestia-Aphrodite 🌸
 
-**Role:** How the clients look («Aspetto») — themes of holidays, seasons and special days, light effects, a pet
+**Role:** How the clients look («Look») — themes of holidays, seasons and special days, light effects, a pet
 **Node:** main host (with the other domain modules)
 **Stack:** Python · FastAPI · Docker · `hestia_common.module_kit`
 **Port:** 19023 · Dossier: `docs/work/2026-10-24-whole-cindy-brainstorm/` (W5, brainstorm A2)
@@ -9,8 +9,8 @@
 
 ## Responsibility
 
-- **Profiles**: built-in (`standard, birthday, special_day, new_year, christmas, valentine, easter,
-  halloween, spring, summer, autumn, winter`) plus the owner's own dated ones (`when: {from: MM-DD, to: MM-DD}`). A profile is an
+- **Profiles**: built-in (standard, birthday, special day, new year, christmas, valentines, easter,
+  halloween, the four seasons) plus the owner's own dated ones (`when: {from: MM-GG, to: MM-GG}`). A profile is an
   accent palette over the client's light/dark theme, an effect (`snow, leaves, petals, sun, hearts, confetti,
   pumpkins, stars`) and an optional background picture.
 - **Which one is on** is decided here: today's special moment of the owner (pushed by the calendar,
@@ -35,7 +35,7 @@
 
 ## Tools (Telegram area «Images and look»)
 
-`look_now`, `look_choice`, `look_upcoming`, `look_pet_create`, `look_pets`, `look_generate`.
+`look_now`, `look_choice`, `look_next`, `look_pet`, `look_pets`, `look_generate`.
 
 ## WebUI plugin
 
@@ -48,8 +48,8 @@ Page **Aspetto** (`aphrodite-look`: the look now and why, automatic themes on or
 
 **2026-11-14 (backend English, dossier `docs/work/2026-11-14-english-backend`)**: tool descriptions and the module manual are English (for the model). What people read about the tools comes from `hestia_common/locales/<lang>/tools.json`.
 
-**2026-11-15 (owner's language, dossier `docs/work/2026-11-14-english-backend`)**: the notices, errors and cards this module shows go through `hestia_common.i18n.t` and follow «Lingua».
+**2026-11-15 (owner's language, dossier `docs/work/2026-11-14-english-backend`)**: the notices, errors and cards this module shows go through `hestia_common.i18n.t` and follow «Language».
 
-**2026-11-15 (WebUI page in the owner's language, dossier `docs/work/2026-11-14-english-backend`)**: the texts of this module's WebUI page and widgets go through `tr` of `@hestia/webui-sdk` and follow «Lingua»; source texts in English, Italian in `Hestia-Shared/hestia_common/locales/it/messages.json`.
+**2026-11-15 (WebUI page in the owner's language, dossier `docs/work/2026-11-14-english-backend`)**: the texts of this module's WebUI page and widgets go through `tr` of `@hestia/webui-sdk` and follow «Language»; source texts in English, Italian in `Hestia-Shared/hestia_common/locales/it/messages.json`.
 
 **2026-11-16 (no Italian in the code, dossier `docs/work/2026-11-14-english-backend` v2.0)**: every text is English in the code; Italian lives only in `Hestia-Shared/hestia_common/locales/it/messages.json`. Labels declared at registration (manifest, capabilities, agenda rules, settings) are plain English, translated at the edge.

@@ -1,5 +1,5 @@
 /**
- * <oracle-usage> — Cervello tab «Uso»: every LLM call kept in Archive (dossier 2026-10-19-oracle-blocks §E).
+ * <oracle-usage> — Brain tab «Usage»: every LLM call kept in Archive (dossier 2026-10-19-oracle-blocks §E).
  * Cards per module (calls, calls/hour, tokens, cache, cost, fallbacks), calls per day, sessions (tap → their calls),
  * which chain step answered. Reads GET /api/ui/usage?group=…&days=… and /api/ui/usage/calls.
  */
@@ -114,7 +114,7 @@ export class OracleUsage extends HestiaElement {
           <div class="grow"><div class="truncate"><b>${c.use_case}</b> <span class="small muted">${c.chain || ''}${c.step ? tr(' · step {0}', c.step + 1) : ''}</span></div>
             <div class="small muted truncate">${at(c.at)} · ${c.provider} · ${c.model}</div></div>
           <div class="num small"><div>${c.outcome === 'ok' ? `${num(c.input_tokens)} / ${num(c.output_tokens)} token` : html`<hxk-badge tone="danger">${c.outcome}</hxk-badge>`}</div>
-            <div class="muted">${ms(c.duration_ms)}${c.cost_usd ? ` · ${cost(c.cost_usd)}` : ''}${c.cost_kind === 'abbonamento' ? ' abbonamento' : ''}</div></div></div>`)}
+            <div class="muted">${ms(c.duration_ms)}${c.cost_usd ? ` · ${cost(c.cost_usd)}` : ''}${c.cost_kind === 'subscription' ? ' ' + tr('subscription') : ''}</div></div></div>`)}
     </hxk-card>`;
   }
 

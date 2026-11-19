@@ -8,7 +8,7 @@ candidates she keeps a ledger and proposes only when
 2. the same thing came up on at least ``athena.evidence.seen_days`` different days within the last
    ``athena.evidence.window_days``.
 
-Until then the candidate is kept as ``collecting`` (visible on the Pensieri page with what is missing). Faults
+Until then the candidate is kept as ``collecting`` (visible on the Thoughts page with what is missing). Faults
 (``remediation``/``notification``) never wait, and «Pensa ora» (the owner asked) skips the wait.
 The ledger lives in Archive ``signals-store`` (``kind=evidence``), so it survives restarts.
 """
@@ -160,11 +160,11 @@ class Evidence:
             out = {"seen_days": len(days), "need_days": need_days, "known_days": max(0, known),
                    "need_known": need_known, "first_day": days[0]}
             if on_demand:
-                out.update(ready=True, note=tr("Asked by you: proposed without waiting for more evidence (seen in {0} {1}).", len(days), _giorni(len(days))))
+                out.update(ready=True, note=tr("Asked by you: proposed without waiting for more evidence (seen in {0} {1}).", len(days), _days_word(len(days))))
             elif known < need_known:
-                out.update(ready=False, note=tr("Still observing: {0} {1} of {2} before proposing improvements.", max(0, known), _giorni(known), need_known))
+                out.update(ready=False, note=tr("Still observing: {0} {1} of {2} before proposing improvements.", max(0, known), _days_word(known), need_known))
             elif len(days) < need_days:
-                out.update(ready=False, note=tr("Collecting evidence: seen on {0} {1} out of {2} needed (since {3}).", len(days), _giorni(len(days)), need_days, _short(days[0])))
+                out.update(ready=False, note=tr("Collecting evidence: seen on {0} {1} out of {2} needed (since {3}).", len(days), _days_word(len(days)), need_days, _short(days[0])))
             else:
                 out.update(ready=True, note=tr("Seen on {0} different days since {1}.", len(days), _short(days[0])))
             if out["ready"]:
@@ -176,7 +176,7 @@ class Evidence:
         return out
 
     def list(self) -> list[dict]:
-        """What she is collecting (newest sighting first), for the Pensieri page."""
+        """What she is collecting (newest sighting first), for the Thoughts page."""
         try:
             with self._lock:
                 self._load()
@@ -186,5 +186,5 @@ class Evidence:
         return sorted(rows, key=lambda r: (r.get("days") or [""])[-1], reverse=True)
 
 
-def _giorni(n: int) -> str:
+def _days_word(n: int) -> str:
     return tr("day") if n == 1 else tr("days")

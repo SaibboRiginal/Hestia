@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import re
+from hestia_common.i18n import is_yes
 from typing import Optional
 from urllib.parse import urlparse, urlunparse
 
@@ -389,5 +390,4 @@ def _to_bool(value) -> bool:
         return value
     if value is None:
         return False
-    text = str(value).strip().lower()
-    return text in {"1", "true", "yes", "on", "si", "sì"}
+    return is_yes(value) or str(value).strip().lower() == "on"

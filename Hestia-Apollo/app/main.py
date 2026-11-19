@@ -31,7 +31,7 @@ from .core.service import PURPOSES, Images
 API = "/api/images"
 kit = ModuleKit("apollo", port=19022, api=API, domain="images", title="Images", store="images-store",
                 when_to_use="create images (portraits, backgrounds, mascots, icons, illustrations)",
-                manual="image_create: describe the image in English in prompt, pick purpose; if ready soon you get it at once, otherwise a notice follows (image_status to see it). Workflows (image_workflows) are uploaded by the user from ComfyUI.")
+                manual="image_create: describe the image in English in prompt, pick purpose; if ready soon you get it at once, otherwise a notice follows (image_status to see it). Workflows (image_flows) are uploaded by the user from ComfyUI.")
 app = kit.app
 comfy = ComfyUI(os.getenv("APOLLO_COMFYUI_URL", ""), os.getenv("APOLLO_COMFYUI_KEY", ""))
 images = Images(kit.store, comfy, kit.hub)
@@ -138,7 +138,7 @@ kit.tools([
                 images.jobs(20)),
             title="Recent images", clients=["telegram", "ui"], telegram_group=G,
             telegram={"section": "Images", "primary": 2}),
-    MCPTool(name="image_workflows", description="The loaded flows (one per purpose) and whether the generator is connected.",
+    MCPTool(name="image_flows", description="The loaded flows (one per purpose) and whether the generator is connected.",
             parameters={"type": "object", "properties": {}},
             handler=lambda: (lambda fl: {"configured": comfy.configured, "items": fl, "display": display(
                 tr("Image workflows"), items=[item(f["name"], [PURPOSES.get(f["purpose"], f["purpose"])]) for f in fl],

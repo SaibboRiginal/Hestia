@@ -7,7 +7,7 @@ written once with tokens and rendered with :func:`render`:
 - ``{assistant}``         → the assistant's name
 - ``{owner}``             → how to call the owner (``the person writing to you`` while unknown)
 - ``{owner_rule}``        → one sentence: his name, or «ask him» while unknown
-- ``{g:amica|amico}``     → the first form for a she, the second for a he
+- ``{g:her-form|his-form}`` → the first form for a she, the second for a he
 - ``{owner_language}``    → the owner's language in English («Italian», «English»…): notifications, recaps and
   every text she writes on her own use it. In chat she answers in the language the owner just wrote in.
 
@@ -25,7 +25,9 @@ themselves with it too (docs/work/2026-11-17-client-names); «Hestia» stays for
 """
 from __future__ import annotations
 
+import json
 import re
+from pathlib import Path
 from typing import Any, Callable
 
 OWNER_NAME = "themis.personal.owner_name"
@@ -34,9 +36,26 @@ ASSISTANT_NAME = "themis.personal.assistant_name"
 ASSISTANT_GENDER = "themis.personal.assistant_gender"
 LANGUAGE = "themis.personal.language"
 
-# Language code → its English name, as the hidden prompt text says it. Same codes as the setting's options.
-# Adding a language: docs/LANGUAGES.md («A new language»).
-LANGUAGES = {"it": "Italian", "en": "English"}
+
+
+def _known_languages() -> tuple[dict[str, str], dict[str, str]]:
+    """Every language with a ``locales/<code>/language.json`` (English first): code → English name, code → own name.
+    Adding a language = adding its folder (docs/LANGUAGES.md «A new language»), no code change."""
+    english: dict[str, str] = {}
+    native: dict[str, str] = {}
+    root = Path(__file__).resolve().parent / "locales"
+    for d in sorted((p for p in root.iterdir() if p.is_dir()), key=lambda p: (p.name != "en", p.name)):
+        try:
+            data = json.loads((d / "language.json").read_text(encoding="utf-8"))
+        except (OSError, ValueError):
+            continue
+        english[d.name] = str(data.get("english") or d.name)
+        native[d.name] = str(data.get("native") or english[d.name])
+    return english or {"en": "English"}, native or {"en": "English"}
+
+
+# Language code → its English name, as the hidden prompt text says it (the setting's options use the own name).
+LANGUAGES, NATIVE_NAMES = _known_languages()
 DEFAULT_LANGUAGE = "it"
 
 DEFAULT_NAME = "Hestia"
@@ -104,7 +123,7 @@ def render(text: str, ident: dict[str, str] | None = None) -> str:
 
 
 def named(text: str, ident: dict[str, str] | None = None) -> str:
-    """A text people read with the assistant's name and gender filled (``{assistant}``, ``{g:lei|lui}``); every
+    """A text people read with the assistant's name and gender filled (``{assistant}``, ``{g:her-form|his-form}``); every
     other brace stays for ``str.format``."""
     raw = str(text or "")
     if "{assistant}" not in raw and "{g:" not in raw:

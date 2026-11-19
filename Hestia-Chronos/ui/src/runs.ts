@@ -1,6 +1,6 @@
 /**
- * <chronos-runs> — «Esecuzioni»: every run of the assistant agenda's jobs/tasks (riuscito / fallito / saltato,
- * duration, who started it) and the rules each module registered. «Riprova» = the agenda's run-now action.
+ * <chronos-runs> — «Runs»: every run of the assistant agenda's jobs/tasks (succeeded / failed / skipped,
+ * duration, who started it) and the rules each module registered. «Retry» = the agenda's run-now action.
  * The calendar stays the WebUI Agenda page. SPEC docs/work/2026-10-18-core-modules-and-external-mcp §A2.
  */
 import { HestiaElement, html, css, nothing, tr } from '@hestia/webui-sdk';
@@ -38,7 +38,7 @@ export class ChronosRuns extends HestiaElement {
 
   connectedCallback() {
     super.connectedCallback();
-    const q = this.ctx?.query?.status;   // «Job falliti» widget opens the page filtered
+    const q = this.ctx?.query?.status;   // «Failed jobs» widget opens the page filtered
     if (q && FILTERS.some(f => f.id === q)) this.status = q;
     this.load();
     this.onHost('refresh', () => this.load());
@@ -106,7 +106,7 @@ export class ChronosRuns extends HestiaElement {
       <div class="head"><h1>${tr("Runs")}</h1><span class="sub">${tr("The jobs of the assistant's agenda: how each run went")}</span></div>
       ${s ? html`<hxk-stat .items=${[
         { label: tr('pl::Succeeded'), value: s.ok, tone: 'success' },
-        { label: tr('pl::Failed'), value: s.failed, tone: s.failed ? 'danger' : 'neutral', delta: s.failed_items ? `${s.failed_items} fermi` : '' },
+        { label: tr('pl::Failed'), value: s.failed, tone: s.failed ? 'danger' : 'neutral', delta: s.failed_items ? tr('{0} stuck', s.failed_items) : '' },
         { label: tr('pl::Skipped'), value: s.skipped },
         { label: tr('Average duration'), value: s.avg_ms === null ? '–' : ms(s.avg_ms) },
       ]}></hxk-stat>` : nothing}

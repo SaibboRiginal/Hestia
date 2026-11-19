@@ -2,7 +2,7 @@
 
 Garmin has no official API for personal use: the ``garminconnect`` library logs in like the Garmin Connect app and
 keeps its tokens (``garmin_tokens.json``, garminconnect ≥ 0.3) in ``HECATE_GARMIN_TOKENS`` (default ``/code/data/garmin``, a data folder, never in
-git). The password is used once and never stored: Marko types it in the secret form (Hermes «Collega Garmin») or
+git). The password is used once and never stored: Marko types it in the secret form (Hermes «Link Garmin») or
 sets ``GARMIN_EMAIL``/``GARMIN_PASSWORD`` in Hecate's ``.env``; a two-step code (MFA) is asked with a second form.
 
 ``day(date)`` returns one normalised day: sleep, steps, resting heart rate, body battery, HRV, training readiness,
@@ -22,11 +22,11 @@ from hestia_common.i18n import t as tr  # fixed texts in the owner's language
 logger = logging.getLogger("hecate.garmin")
 
 TOKENS_DIR = Path(os.getenv("HECATE_GARMIN_TOKENS", "/code/data/garmin"))
-ACTIVITY_KINDS = {"running": "corsa", "trail_running": "corsa", "treadmill_running": "corsa", "track_running": "corsa",
-                  "cycling": "bici", "road_biking": "bici", "mountain_biking": "bici", "indoor_cycling": "bici",
-                  "gravel_cycling": "bici", "walking": "camminata", "hiking": "camminata",
-                  "lap_swimming": "nuoto", "open_water_swimming": "nuoto", "swimming": "nuoto",
-                  "strength_training": "forza"}
+ACTIVITY_KINDS = {"running": "run", "trail_running": "run", "treadmill_running": "run", "track_running": "run",
+                  "cycling": "bike", "road_biking": "bike", "mountain_biking": "bike", "indoor_cycling": "bike",
+                  "gravel_cycling": "bike", "walking": "walk", "hiking": "walk",
+                  "lap_swimming": "swim", "open_water_swimming": "swim", "swimming": "swim",
+                  "strength_training": "strength"}
 
 
 class GarminError(RuntimeError):
@@ -79,7 +79,7 @@ def normalise_activity(a: dict) -> dict:
     key = str(((a.get("activityType") or {}).get("typeKey")) or "").lower()
     seconds = _num(a.get("duration"))
     meters = _num(a.get("distance"))
-    return {"id": str(a.get("activityId") or ""), "kind": ACTIVITY_KINDS.get(key, "altro"), "type": key,
+    return {"id": str(a.get("activityId") or ""), "kind": ACTIVITY_KINDS.get(key, "other"), "type": key,
             "name": str(a.get("activityName") or "")[:120], "start": a.get("startTimeLocal"),
             "minutes": int(seconds // 60) if seconds else None, "km": round(meters / 1000, 2) if meters else None,
             "calories": _num(a.get("calories"), True), "avg_hr": _num(a.get("averageHR"), True),

@@ -7,8 +7,8 @@ import { tr } from '../i18n';
 export interface QuickAction { method: HttpMethod; path: string; undo?: { method: HttpMethod; path: string } | null }
 
 /**
- * One-tap logging (SPEC §4.2b): big chips, tap = done, toast with «Annulla», ⋯ = another day / note,
- * optional progress hint per chip ("2/3 questa settimana"). Same look as the WebUI Home quick-action strip.
+ * One-tap logging (SPEC §4.2b): big chips, tap = done, toast with «Undo», ⋯ = another day / note,
+ * optional progress hint per chip ("2/3 this week"). Same look as the WebUI Home quick-action strip.
  *
  *   <hxk-quicklog .host=${this.host} source="/api/ui/quick/routines"
  *                 .action=${{ method: 'POST', path: '/api/ui/routines/{id}/done', undo: { method: 'DELETE', path: '/api/ui/routines/{id}/done/today' } }}>
@@ -75,7 +75,7 @@ export class HxkQuicklog extends LitElement {
     const r = await this.host.api(this.action.method, fillPath(this.action.path, { id: chip.id }), { body });
     this._busy = '';
     if (!r.ok) {
-      // 409/422: the module says why (e.g. «già segnata oggi»), better than a generic failure.
+      // 409/422: the module says why (e.g. «already logged today»), better than a generic failure.
       const said = (r.status === 409 || r.status === 422) && r.error && !r.error.startsWith('HTTP') ? r.error : '';
       this.host.toast(r.error === 'offline' ? tr('You are offline: try again when you are back online') : said || tr('I couldn\'t mark it'), 'danger');
       return;

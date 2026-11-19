@@ -30,7 +30,7 @@ def test_transcribe_unreachable_returns_empty(monkeypatch):
 
 def test_voice_use_declared_and_no_whisper_left():
     caps = transcription.capabilities()["voice_usecases"]
-    assert caps[0]["id"] == "oracle.documents" and caps[0]["direction"] == "ascolto"
+    assert caps[0]["id"] == "oracle.documents" and caps[0]["direction"] == "listen"
     from core.document import local_models
     from core.services import oracle_settings
     assert not hasattr(local_models, "transcribe_audio")

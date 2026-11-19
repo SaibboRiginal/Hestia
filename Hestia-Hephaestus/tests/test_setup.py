@@ -138,7 +138,7 @@ def test_role_and_lan_ip_from_installer(tmp_path):
     svc = SetupService(tmp_path, tmp_path / "data")
     assert svc.role() == "centrale"
     assert svc.hardware()["lan_ip"] == "192.168.1.10"
-    assert SetupService(tmp_path / "none", tmp_path / "data").role() == "tutto"
+    assert SetupService(tmp_path / "none", tmp_path / "data").role() == "all"
 
 
 class _Box:
@@ -218,7 +218,7 @@ def test_tunnel_first_start_downloads_the_image_as_a_tracked_job(monkeypatch, tm
     out = tunnel.start(dock, wait=10)
     assert out["phase"] == "ready" and out["url"].endswith("trycloudflare.com")
     job = next(j for j in tunnel.downloads().list() if j["source"] == "docker")
-    assert job["state"] == "fatto" and job["module"] == "hephaestus"
+    assert job["state"] == "done" and job["module"] == "hephaestus"
     tunnel.stop(dock)
 
 
@@ -250,7 +250,7 @@ def test_apply_brain_mode_lists_and_order_pass_through_and_are_kept(tmp_path):
     service = SetupService(_repo(tmp_path), tmp_path / "data", hub_call=hub_call)
     steps = [{"provider": "gemini", "model": "gemini-2.5-pro"}, {"provider": "ollama", "model": "qwen2.5-coder:14b"}]
     order = [{"provider": "gemini", "model": "gemini-2.5-flash"}, {"provider": "ollama", "model": "qwen3:8b"}]
-    service.apply_brain("entrambi", "qwen3:8b", ["gemini"], {}, modes={"code": {"steps": steps}}, order=order)
+    service.apply_brain("both", "qwen3:8b", ["gemini"], {}, modes={"code": {"steps": steps}}, order=order)
     apply = next(b for p, b in calls if p == "/api/llm/setup/apply")
     assert apply["modes"]["code"]["steps"] == steps and apply["order"] == order
     assert {"model": "qwen2.5-coder:14b"} in [b for p, b in calls if p == "/api/llm/setup/pull"]

@@ -9,11 +9,11 @@ A routine is **an agenda rule with a written instruction**, not a new timer:
 
 ``params.routine`` = ``{instruction, precheck?: {tool, args}, deliver: "hermes" | "recap", on?, template?}``.
 
-Run = optional **pre-check** first (Cindy 27: a module tool, e.g. «ci sono annunci nuovi?»; empty answer → the run
-stops, «niente di nuovo», no model call), then the assistant runs the instruction as a turn with origin
+Run = optional **pre-check** first (Cindy 27: a module tool, e.g. «are there new listings?»; empty answer → the run
+stops, «nothing new», no model call), then the assistant runs the instruction as a turn with origin
 ``routine:<key>`` (it may write, never delete: ``hestia_common.origin``), then the answer is delivered through
 Hermes only if there is something (the model answers ``NOTHING`` otherwise) or kept for the evening recap.
-Automatic **and** manual: «Esegui adesso» = the agenda's run now. The owner's edits win and pausing is the owner's call (agenda).
+Automatic **and** manual: «Run now» = the agenda's run now. The owner's edits win and pausing is the owner's call (agenda).
 
 A **question** of the turn (the assistant's ``ask_user``, or a module confirmation such as a setting proposal) cannot
 wait for a chat: it goes out as a Hermes notification that asks (``_question``, dossier
@@ -44,7 +44,6 @@ _HUB = os.getenv("HUB_API_URL", "http://hestia_hub:19001/api").rstrip("/")
 OWNER = "chronos"
 PREFIX = "routine."
 NOTHING = "NOTHING"
-_OLD_NOTHING = "NIENTE"    # answer of the old Italian prompt, still accepted
 _RUN_TIMEOUT = 300
 _lock = threading.Lock()
 _results: list[dict] = []          # today's results kept for the recap (in memory, last 50)
@@ -58,18 +57,18 @@ TEMPLATES: list[dict] = [
      "recurrence": "FREQ=DAILY;BYHOUR=7;BYMINUTE=30", "deliver": "recap",
      "precheck": {"tool": "web_search", "args": {"q": "{topic} news today"}},
      "instruction": ("From the results below pick at most 5 important news items of today about «{topic}». For each: title, source (link) and one line «why it matters to you». If there is nothing new answer only NOTHING.")},
-    {"id": "case", "label": "New houses", "icon": "home",
+    {"id": "houses", "label": "New houses", "icon": "home",
      "help": "When there are new listings, the best ones with the reason.",
      "fields": {"query": {"label": "alt2::Area", "required": False}},
      "recurrence": "FREQ=DAILY;BYHOUR=19;BYMINUTE=0", "deliver": "hermes",
      "precheck": {"tool": "scout.search", "args": {"query": "{query}", "limit": 10}},
      "instruction": "Among the listings below tell me the 3 best suited to me and why, briefly."},
-    {"id": "spese", "label": "Expenses to review", "icon": "wallet",
+    {"id": "expenses", "label": "Expenses to review", "icon": "wallet",
      "help": "Every Sunday the expenses of the week to fix.",
      "fields": {}, "recurrence": "FREQ=WEEKLY;BYDAY=SU;BYHOUR=18;BYMINUTE=0", "deliver": "hermes",
      "precheck": {"tool": "finance_search", "args": {"to_review": True, "limit": 30}},
      "instruction": "These expenses need review: propose the right category for each one, in a short list."},
-    {"id": "settimana", "label": "The coming week", "icon": "calendar",
+    {"id": "week", "label": "The coming week", "icon": "calendar",
      "help": "On Monday morning what you have in the week and what to prepare.",
      "fields": {}, "recurrence": "FREQ=WEEKLY;BYDAY=MO;BYHOUR=7;BYMINUTE=45", "deliver": "hermes",
      "instruction": ("Look at my commitments this week and tell me in 5 lines what is on and what I must prepare. If the week is empty answer only NOTHING.")},
@@ -114,7 +113,7 @@ def list_routines(include_cancelled: bool = False) -> list[dict]:
                         "recurrence": item.get("recurrence"), "start_at": item.get("start_at"),
                         "instruction": r.get("instruction"), "precheck": r.get("precheck"),
                         "deliver": r.get("deliver") or "hermes", "on": r.get("on"), "template": r.get("template"),
-                        "trigger": "evento" if r.get("on") else "orario",
+                        "trigger": "event" if r.get("on") else "schedule",
                         "last_run": runs[-1] if runs else None})
     return out
 
@@ -266,7 +265,7 @@ def _deliver(key: str, item: dict, r: dict, out: dict, by: str) -> dict:
         asked = asked or str(question["question_id"]).startswith("ask_")
     if asked:   # the reply is the question itself: the routine goes on with the answer
         return {"ok": True, "ran": True, "delivered": True, "deliver": "question", "text": reply}
-    if not reply or reply.strip().strip(".").upper() in (NOTHING, _OLD_NOTHING):
+    if not reply or reply.strip().strip(".").upper() == NOTHING:
         logger.info("event=routine_quiet key=%s", key)
         return {"ok": True, "ran": True, "delivered": False, "reason": tr("nothing to say")}
     result = {"key": key, "title": item["title"], "text": reply, "at": _now().isoformat(),

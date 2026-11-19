@@ -19,7 +19,7 @@ import requests
 from fastapi import Body, FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
-from hestia_common.i18n import t as tr  # fixed texts in the owner's language
+from hestia_common.i18n import is_yes, t as tr, words  # owner language; owner words per language
 
 try:
     from hestia_common.logging_utils import create_log_control_router, setup_service_logging
@@ -92,7 +92,7 @@ hub = Hub(HUB_API_URL)
 store = Store(hub)
 
 
-# What Spese asks Oracle for (the chain is chosen by Marko in Oracle → Cervello → Modelli).
+# What Expenses asks Oracle for (the chain is chosen by the owner in Oracle → Brain → Models).
 LLM_USECASE = "plutus.reading"
 LLM_USECASES = [llm_usecase(LLM_USECASE, "Expenses · emails and statements", chain="fast",
                             help="Reads the emails or statements the automatic reader doesn't understand and proposes the categories.")]
@@ -315,7 +315,7 @@ def recurring_set(id: str, body: dict = Body(...)):
 
 @app.get(f"{API}/export")
 def export():
-    return {"filename": f"spese-{plutus.today().isoformat()}.json", "data": plutus.export()}
+    return {"filename": f"expenses-{plutus.today().isoformat()}.json", "data": plutus.export()}
 
 
 def _recap_piece(day, nxt) -> dict:
@@ -377,8 +377,7 @@ def import_undo(id: str):
 
 # Chat attachments (Oracle hand-off): a PDF whose text has these words is offered to Plutus (Hub capability).
 ATTACHMENT_HANDLERS = [{"mime": ["application/pdf"], "label": "Bank statement", "min_hits": 2, "path": f"{API}/attachments",
-                        "match": ["lista movimenti", "estratto conto", "saldo contabile", "saldo disponibile", "saldo iniziale",
-                                  "saldo finale", "data valuta", "data operazione", "iban", "movimenti"]}]
+                        "match": list(words("plutus.statement.header"))}]
 
 
 def _day(iso: str) -> str:
@@ -479,7 +478,7 @@ def phone_notification(body: dict = Body(...)):
 
 @app.post(f"{API}/mail/check")
 def mail_check(body: dict = Body(default={})):
-    """«Controlla email PayPal»: Iris passes again the last days' PayPal mails (dedup by id), then process."""
+    """«Check PayPal emails»: Iris passes again the last days' PayPal mails (dedup by id), then process."""
     days = int(body.get("days") or 7)
 
     def _run():
@@ -507,7 +506,7 @@ def quick_categories():
 def quick_expense(id: str, body: dict = Body(default={})):
     out = plutus.add_tx({"amount": body.get("amount"), "category": id, "date": body.get("date"),
                          "merchant": body.get("merchant") or body.get("note") or "", "type": "expense",
-                         "account": body.get("account") or "contanti"}, source="quick")
+                         "account": body.get("account") or "cash"}, source="quick")
     signals.changed()
     return {**out, "label": f"{out['category_label']}: {abs(out['amount']):.2f} {out['currency']}"}
 
@@ -526,7 +525,7 @@ def quick_expense_undo(id: str, date: str = ""):
 
 
 # ── alerts, review, statement reminder (agenda jobs → Hermes) ────────────────
-def _emit(key: str, title: str, text: str, actions: list[dict], level: str = "info", page_: str = "panoramica") -> None:
+def _emit(key: str, title: str, text: str, actions: list[dict], level: str = "info", page_: str = "overview") -> None:
     hub.ok("hermes", "POST", "api/events/ingest", body=reminder_event(
         module="plutus", domain=DOMAIN, key=key, kind=key.rsplit(".", 1)[0], title=title, text=text,
         voice=bool(settings.get("plutus.notifications.voice", False)),
@@ -581,7 +580,7 @@ def review_run(body: dict = Body(default={})):
         return {"sent": False, "why": "disabled"}
     r = plutus.review()
     text = _review_text(r)
-    _emit(f"finance.review.{plutus.month_range()[0].isoformat()}", tr("Expenses of {0}", r['month']), text, [], page_="panoramica")
+    _emit(f"finance.review.{plutus.month_range()[0].isoformat()}", tr("Expenses of {0}", r['month']), text, [], page_="overview")
     return {"sent": True, "text": text, "review": r}
 
 
@@ -607,7 +606,7 @@ def reminders_run():
                 "resolves": True}]
     try:
         _emit("finance.reminder.statement", tr("Expenses"),
-              tr("The statement of {0} is missing: download the transaction list as PDF from the bank app and upload it in the Import page (or send it in chat).", label), actions, page_="importa")
+              tr("The statement of {0} is missing: download the transaction list as PDF from the bank app and upload it in the Import page (or send it in chat).", label), actions, page_="import")
     except Exception as exc:
         logger.warning("[🔄] event=plutus_reminder_emit_failed error=%s fallback=next_run", exc)
         return {"sent": False, "why": "hermes_unreachable"}
@@ -652,14 +651,14 @@ ui.webui(
            page("subscriptions", "Subscriptions", element="plutus-recurring", icon="repeat", order=63, parent="overview"),
            page("import", "Import", element="plutus-import", icon="upload", order=64, parent="overview",
                 help="Upload the PDF of the bank transactions (e.g. Hype): see the preview and confirm. PayPal emails arrive by themselves."),
-           page("statistics", "Statistics", element="plutus-stats", icon="chart", order=65, parent="overview"),
+           page("stats", "Statistics", element="plutus-stats", icon="chart", order=65, parent="overview"),
            page("categories", "Categories and rules", element="plutus-categories", icon="tag", order=66,
                 parent="overview")],
     widgets=[widget("month", "This month's expenses", element="plutus-month-widget", sizes=["s", "m", "l"], auto=True,
                     open_page="overview", icon="wallet"),
              widget("latest", "Latest transactions", element="plutus-latest-widget", sizes=["m", "l"],
                     open_page="transactions", icon="list")],
-    quick_actions=[quick_action("shopping", "Quick expense", "POST", f"{API}/quick/expense/{{id}}", icon="wallet",
+    quick_actions=[quick_action("groceries", "Quick expense", "POST", f"{API}/quick/expense/{{id}}", icon="wallet",
                                 group="Expenses", source=f"{API}/quick/categories",
                                 undo={"method": "DELETE", "path": f"{API}/quick/expense/{{id}}"},
                                 params={"amount": {"type": "float", "label": "Amount", "required": True},
@@ -671,18 +670,18 @@ app.include_router(settings.router())
 
 # ── export / import (hestia_common.transfer; reminder/alert rows are runtime state) ─────────────────────
 transfer = Transfer("plutus", hub, sections=[
-    StoreSection("movimenti", "Transactions", store, ["tx"], icon="wallet",
+    StoreSection("transactions", "Transactions", store, ["tx"], icon="wallet",
                  title=lambda r: f"{r['data'].get('merchant') or r['data'].get('description') or tr('Transaction')} "
                                  f"{r['data'].get('amount')} {r['data'].get('currency') or ''}".strip(),
-                 subtitle=lambda r: r["data"].get("date") or "", depends_on=["categorie", "conti"]),
-    StoreSection("categorie", "Categories", store, ["category"], icon="tag"),
-    StoreSection("regole", "Rules", store, ["rule"], icon="filter",
-                 title=lambda r: f"{r['data'].get('pattern')} → {r['data'].get('category')}", depends_on=["categorie"]),
+                 subtitle=lambda r: r["data"].get("date") or "", depends_on=["categories", "accounts"]),
+    StoreSection("categories", "Categories", store, ["category"], icon="tag"),
+    StoreSection("rules", "Rules", store, ["rule"], icon="filter",
+                 title=lambda r: f"{r['data'].get('pattern')} → {r['data'].get('category')}", depends_on=["categories"]),
     StoreSection("budget", "Budget", store, ["budget"], icon="target",
-                 title=lambda r: f"{r['data'].get('category')}: {r['data'].get('amount')}", depends_on=["categorie"]),
-    StoreSection("conti", "Accounts", store, ["account"], icon="wallet"),
-    StoreSection("ricorrenti", "Recurring", store, ["recurring"], icon="repeat",
-                 title=lambda r: r["data"].get("merchant") or r["id"], depends_on=["categorie"]),
+                 title=lambda r: f"{r['data'].get('category')}: {r['data'].get('amount')}", depends_on=["categories"]),
+    StoreSection("accounts", "Accounts", store, ["account"], icon="wallet"),
+    StoreSection("recurring", "Recurring", store, ["recurring"], icon="repeat",
+                 title=lambda r: r["data"].get("merchant") or r["id"], depends_on=["categories"]),
 ])
 app.include_router(transfer.router())
 
@@ -767,7 +766,7 @@ try:
     def _add(amount: float | None = None, category: str = "", merchant: str = "", date: str = "", account: str = "",
              note: str = "", income: bool = False) -> dict:
         out = plutus.add_tx({"amount": amount, "category": category, "merchant": merchant, "date": date,
-                             "account": account or "contanti", "notes": note, "type": "income" if income else "expense"},
+                             "account": account or "cash", "notes": note, "type": "income" if income else "expense"},
                             source="chat")
         signals.changed()
         return {"saved": True, **_short(out), "undo": undo("finance_delete", id=out.get("id")),
@@ -837,12 +836,12 @@ try:
                 handler=_t(_summary), title="This month's expenses", clients=["telegram", "ui"], telegram_group="expenses",
                 telegram={"section": "Transactions", "summary": True}),
         MCPTool(name="finance_search", description=("Search transactions: query (merchant/description), category, month or since/until YYYY-MM-DD, "
-                                                    "account (paypal, hype, contanti…), to_review. Also gives the total."),
+                                                    "account (paypal, hype, cash…), to_review. Also gives the total."),
                 parameters={"type": "object", "properties": {"query": S, "category": S, "month": S, "since": S,
                                                              "until": S, "account": S, "to_review": B, "limit": I}},
                 handler=_t(_search), title="Search transactions", clients=["telegram", "ui"], telegram_group="expenses",
                 telegram={"section": "Transactions", "primary": 2}),
-        MCPTool(name="finance_add", description=("Log an expense (e.g. 'I spent €12 at the bar' = amount 12, merchant bar, category ristoranti) or an income (income=true). date YYYY-MM-DD (default today), account contanti (default) | hype | paypal."),
+        MCPTool(name="finance_add", description=("Log an expense (e.g. 'I spent €12 at the bar' = amount 12, merchant bar, category restaurants) or an income (income=true). date YYYY-MM-DD (default today), account cash (default) | hype | paypal."),
                 parameters={"type": "object", "properties": {"amount": N, "category": S, "merchant": S, "date": S,
                                                              "account": S, "note": S, "income": B},
                             "required": ["amount"]},
@@ -908,7 +907,7 @@ try:
                     except ValueError:
                         pass
                 elif typ == "boolean":
-                    kw[k] = v.lower() in ("1", "true", "si", "sì", "yes")
+                    kw[k] = is_yes(v)
             return inner(**{k: v for k, v in kw.items() if k in props})
         return run
 

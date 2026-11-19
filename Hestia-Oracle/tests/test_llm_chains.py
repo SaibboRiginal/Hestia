@@ -175,21 +175,21 @@ class TestChainAgent:
 @pytest.mark.unit
 class TestUseCases:
     def test_module_declaration_from_registry(self, monkeypatch):
-        rows = [{"id": "hercules.plan", "module": "hercules", "label": "Pianifica", "chain": "strong",
-                 "thinking": "auto", "mode": "segui", "help": ""}]
+        rows = [{"id": "hercules.plan", "module": "hercules", "label": "Plan", "chain": "strong",
+                 "thinking": "auto", "mode": "follow", "help": ""}]
         monkeypatch.setattr(llm_chains, "_registry_usecases", lambda: rows)
         assert llm_chains.usecase_config("hercules.plan")["chain"] == "strong"
-        _set(monkeypatch, oracle_settings.USECASES_KEY, {"hercules.plan": {"chain": "fast", "mode": "esterna"}})
+        _set(monkeypatch, oracle_settings.USECASES_KEY, {"hercules.plan": {"chain": "fast", "mode": "external"}})
         cfg = llm_chains.usecase_config("hercules.plan")
-        assert (cfg["chain"], cfg["mode"], cfg["declared"]) == ("fast", "esterna", True)
+        assert (cfg["chain"], cfg["mode"], cfg["declared"]) == ("fast", "external", True)
 
     def test_registry_parsing(self, monkeypatch):
         services = [{"service_name": "scout", "capabilities": {"llm_usecases": [
-            {"id": "Scout.Annunci", "label": "Scout · annunci", "chain": "fast"}]}}, {"name": "x"}]
+            {"id": "Scout.Listings", "label": "Scout · listings", "chain": "fast"}]}}, {"name": "x"}]
         monkeypatch.setattr(llm_chains, "_registry_services", lambda: services)
         assert llm_chains._registry_usecases() == [
-            {"id": "scout.listings", "module": "scout", "label": "Scout · annunci", "chain": "fast",
-             "thinking": "auto", "mode": "segui", "help": ""}]
+            {"id": "scout.listings", "module": "scout", "label": "Scout · listings", "chain": "fast",
+             "thinking": "auto", "mode": "follow", "help": ""}]
         assert llm_chains.declared_usecases()["scout.listings"]["module"] == "scout"
 
 
@@ -203,11 +203,11 @@ class TestMigration:
             "oracle.models.generic.provider": "anthropic", "oracle.models.generic.model": "claude-sonnet-5-5",
             "oracle.models.scout_extraction.model": "gemini-2.5-pro",
             "oracle.models.reasoning.thinking": "false"})
-        assert chains["generale-personale"]["steps"] == [
+        assert chains["general-personal"]["steps"] == [
             {"provider": "claude-api", "model": "claude-sonnet-5-5"},
             {"provider": "gemini", "model": "gemini-2.0-flash-lite"}]
-        assert usecases["oracle.general"] == {"chain": "generale-personale"}
-        assert chains["annunci-personale"]["steps"][0] == {"provider": "gemini", "model": "gemini-2.5-pro"}
+        assert usecases["oracle.general"] == {"chain": "general-personal"}
+        assert chains["listings-personal"]["steps"][0] == {"provider": "gemini", "model": "gemini-2.5-pro"}
         assert usecases["oracle.reasoning"] == {"thinking": "false"}
 
     def test_run_once_only(self):
@@ -265,8 +265,8 @@ class TestUsageRows:
         _set(monkeypatch, oracle_settings.PRICING_KEY, {"gemini/flash": {"in": 1.0, "out": 2.0, "cached": 0.5}})
         cost, kind = llm_usage.price("gemini", "flash", 1_000_000, 400_000, 1_000_000)
         assert kind == "api" and cost == pytest.approx(0.6 + 0.2 + 2.0)
-        assert llm_usage.price("gemini", "other", 10, 0, 10) == (0.0, "sconosciuto")
-        assert llm_usage.price("claude", "sonnet", 10, 0, 10, reported=0.3) == (0.3, "abbonamento")
+        assert llm_usage.price("gemini", "other", 10, 0, 10) == (0.0, "unknown")
+        assert llm_usage.price("claude", "sonnet", 10, 0, 10, reported=0.3) == (0.3, "subscription")
 
     def test_drain_sends_batches_to_archive(self, monkeypatch):
         from core.services import llm_usage

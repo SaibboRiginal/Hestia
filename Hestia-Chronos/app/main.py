@@ -32,7 +32,7 @@ from schemas.events import (
     ListEventsResponse,
     UpdateEventRequest,
 )
-from services import agenda as assistant_agenda
+from services import agenda as agenda_assistant
 from services import agenda_parse
 from services import agenda_weather
 from services import coach as weekly_coach
@@ -272,7 +272,7 @@ try:
             telegram_visible=True, telegram_group="day",
                 telegram={"section": "Advanced"}),
         MCPTool(
-            name="assistant_agenda",
+            name="agenda_assistant",
             description=(
                 ("The assistant's own agenda (NOT the user's calendar): what the assistant and its modules "
                  "planned — windows (e.g. Claude Pro at night), periodic jobs, repair tasks, events.")
@@ -280,7 +280,7 @@ try:
             parameters={"type": "object", "properties": {
                 "days": {"type": "integer", "description": "days ahead (default 7)"},
                 "owner": {"type": "string", "description": "module: hephaestus, scout, athena..."}}},
-            handler=lambda **kw: {"status": "ok", "tool": "assistant_agenda", "params": kw},
+            handler=lambda **kw: {"status": "ok", "tool": "agenda_assistant", "params": kw},
             title="Assistant agenda", method="GET", path="/api/agenda",
             clients=["telegram", "ui"], response_mode="oracle_natural",
             response_prompt=(("Chronological list grouped by day: time, title, module. Mark skipped occurrences. No JSON. Show "
@@ -288,7 +288,7 @@ try:
             telegram_visible=True, telegram_group="day",
                 telegram={"section": "Assistant agenda"}),
         MCPTool(
-            name="assistant_agenda_add",
+            name="agenda_assistant_add",
             description="Add an event/task/window/job to the assistant's own agenda (on demand)",
             parameters={"type": "object", "properties": {
                 "title": {"type": "string", "description": "title"},
@@ -299,13 +299,13 @@ try:
                 "description": {"type": "string", "description": "details"},
                 "parent": {"type": "string", "description": "key of the linked item (cascading cancel)"}},
                 "required": ["title", "start_at"]},
-            handler=lambda **kw: {"status": "ok", "tool": "assistant_agenda_add", "params": kw},
+            handler=lambda **kw: {"status": "ok", "tool": "agenda_assistant_add", "params": kw},
             title="Schedule for the assistant", method="POST", path="/api/agenda/items",
             clients=["telegram", "ui"], response_mode="oracle_natural",
             telegram_visible=False, telegram_group="day",
                 telegram={"section": "Assistant agenda", "label": "alt::Plan"}),
         MCPTool(
-            name="assistant_agenda_move",
+            name="agenda_assistant_move",
             description="Move/edit an item of the assistant's own agenda (new time, recurrence, pause)",
             parameters={"type": "object", "properties": {
                 "ref": {"type": "string", "description": "id or key of the item"},
@@ -314,32 +314,32 @@ try:
                 "recurrence": {"type": "string", "description": "new RRULE"},
                 "status": {"type": "string", "description": "confirmed | paused"}},
                 "required": ["ref"]},
-            handler=lambda **kw: {"status": "ok", "tool": "assistant_agenda_move", "params": kw},
+            handler=lambda **kw: {"status": "ok", "tool": "agenda_assistant_move", "params": kw},
             title="Move an entry", method="PATCH", path="/api/agenda/items/{ref}",
             clients=["telegram", "ui"], response_mode="oracle_natural",
             telegram_visible=False, telegram_group="day",
                 telegram={"section": "Assistant agenda"}),
         MCPTool(
-            name="assistant_agenda_skip",
+            name="agenda_assistant_skip",
             description=("Skip (dismiss) the next occurrence of an item of the assistant's own agenda, without deleting "
                          "the rule"),
             parameters={"type": "object", "properties": {
                 "ref": {"type": "string", "description": "id or key of the item"},
                 "occurrence": {"type": "string", "description": "ISO occurrence (empty = next)"}},
                 "required": ["ref"]},
-            handler=lambda **kw: {"status": "ok", "tool": "assistant_agenda_skip", "params": kw},
+            handler=lambda **kw: {"status": "ok", "tool": "agenda_assistant_skip", "params": kw},
             title="Skip once", method="POST", path="/api/agenda/items/{ref}/skip",
             clients=["telegram", "ui"], response_mode="oracle_natural",
             telegram_visible=False, telegram_group="day",
                 telegram={"section": "Assistant agenda"}),
         MCPTool(
-            name="assistant_agenda_restore",
+            name="agenda_assistant_restore",
             description="Restore a skipped occurrence of an item of the assistant's own agenda",
             parameters={"type": "object", "properties": {
                 "ref": {"type": "string", "description": "id or key of the item"},
                 "occurrence": {"type": "string", "description": "skipped ISO occurrence"}},
                 "required": ["ref", "occurrence"]},
-            handler=lambda **kw: {"status": "ok", "tool": "assistant_agenda_restore", "params": kw},
+            handler=lambda **kw: {"status": "ok", "tool": "agenda_assistant_restore", "params": kw},
             title="Restore once", method="POST", path="/api/agenda/items/{ref}/unskip",
             clients=["telegram", "ui"], response_mode="oracle_natural",
             telegram_visible=False, telegram_group="day",
@@ -370,7 +370,7 @@ try:
             telegram_visible=False, telegram_group="day",
                 telegram={"section": "Assistant agenda"}),
         MCPTool(
-            name="assistant_agenda_move_occurrence",
+            name="agenda_assistant_move_occurrence",
             description=(("Move ONLY one occurrence of a recurring item (an exception, like 'only this event'); reset=true "
                           "puts it back at the original time")),
             parameters={"type": "object", "properties": {
@@ -380,23 +380,23 @@ try:
                 "end_at": {"type": "string", "description": "new ISO end"},
                 "reset": {"type": "boolean", "description": "restore the original time"}},
                 "required": ["ref", "occurrence"]},
-            handler=lambda **kw: {"status": "ok", "tool": "assistant_agenda_move_occurrence", "params": kw},
+            handler=lambda **kw: {"status": "ok", "tool": "agenda_assistant_move_occurrence", "params": kw},
             title="Move once", method="POST", path="/api/agenda/items/{ref}/move",
             clients=["telegram", "ui"], response_mode="oracle_natural",
             telegram_visible=False, telegram_group="day",
                 telegram={"section": "Assistant agenda"}),
         MCPTool(
-            name="assistant_agenda_templates",
+            name="agenda_assistant_templates",
             description=(("Templates the modules offer to create items (e.g. Scout: periodic real estate search). Use it "
-                          "before assistant_agenda_from_template")),
+                          "before agenda_assistant_from_template")),
             parameters={"type": "object", "properties": {}},
-            handler=lambda **kw: {"status": "ok", "tool": "assistant_agenda_templates", "params": kw},
+            handler=lambda **kw: {"status": "ok", "tool": "agenda_assistant_templates", "params": kw},
             title="Agenda templates", method="GET", path="/api/agenda/templates",
             clients=["ui"], response_mode="oracle_natural",
             telegram_visible=False, telegram_group="day",
                 telegram={"section": "Assistant agenda"}),
         MCPTool(
-            name="assistant_agenda_from_template",
+            name="agenda_assistant_from_template",
             description="Create an item of the assistant's own agenda from a module template (fields in values)",
             parameters={"type": "object", "properties": {
                 "owner": {"type": "string", "description": "module of the template"},
@@ -406,51 +406,51 @@ try:
                 "end_at": {"type": "string", "description": "ISO end (windows)"},
                 "recurrence": {"type": "string", "description": "RRULE if recurring"}},
                 "required": ["owner", "template_id", "start_at"]},
-            handler=lambda **kw: {"status": "ok", "tool": "assistant_agenda_from_template", "params": kw},
+            handler=lambda **kw: {"status": "ok", "tool": "agenda_assistant_from_template", "params": kw},
             title="Create from template", method="POST", path="/api/agenda/templates/{owner}/{template_id}/create",
             clients=["ui"], response_mode="oracle_natural",
             telegram_visible=False, telegram_group="day",
                 telegram={"section": "Assistant agenda"}),
         MCPTool(
-            name="assistant_agenda_link",
+            name="agenda_assistant_link",
             description=("Link an item to a parent item: cancelling the parent cancels the child, a child's error marks "
                          "the parent"),
             parameters={"type": "object", "properties": {
                 "ref": {"type": "string", "description": "id or key of the child item"},
                 "parent": {"type": "string", "description": "parent key (empty = unlink)"}},
                 "required": ["ref"]},
-            handler=lambda **kw: {"status": "ok", "tool": "assistant_agenda_link", "params": kw},
+            handler=lambda **kw: {"status": "ok", "tool": "agenda_assistant_link", "params": kw},
             title="Link entries", method="POST", path="/api/agenda/items/{ref}/link",
             clients=["ui"], response_mode="oracle_natural",
             telegram_visible=False, telegram_group="day",
                 telegram={"section": "Assistant agenda"}),
         MCPTool(
-            name="assistant_agenda_cancel",
+            name="agenda_assistant_cancel",
             description="Cancel an item of the assistant's own agenda for good",
             parameters={"type": "object", "properties": {
                 "ref": {"type": "string", "description": "id or key of the item"}}, "required": ["ref"]},
-            handler=lambda **kw: {"status": "ok", "tool": "assistant_agenda_cancel", "params": kw},
+            handler=lambda **kw: {"status": "ok", "tool": "agenda_assistant_cancel", "params": kw},
             title="Undo an entry", method="DELETE", path="/api/agenda/items/{ref}",
             clients=["telegram", "ui"], response_mode="oracle_natural",
             telegram_visible=False, telegram_group="day",
                 telegram={"section": "Assistant agenda"}),
         MCPTool(
-            name="assistant_agenda_run",
+            name="agenda_assistant_run",
             description="Run now the action of a job/task of the assistant's own agenda",
             parameters={"type": "object", "properties": {
                 "ref": {"type": "string", "description": "id or key of the item"}}, "required": ["ref"]},
-            handler=lambda **kw: {"status": "ok", "tool": "assistant_agenda_run", "params": kw},
+            handler=lambda **kw: {"status": "ok", "tool": "agenda_assistant_run", "params": kw},
             title="alt::Run now", method="POST", path="/api/agenda/items/{ref}/run",
             clients=["telegram", "ui"], response_mode="oracle_natural",
             telegram_visible=False, telegram_group="day",
                 telegram={"section": "Assistant agenda"}),
         MCPTool(
-            name="assistant_status",
+            name="presence_status",
             description=(("The assistant's activity state: awake, waiting, nap, deep sleep, do not disturb (+ "
                           "busy/tired…), last interaction, work in progress and effects (what is allowed now). Use it when "
                           "the user asks how you are, what you are doing, how long since you last talked.")),
             parameters={"type": "object", "properties": {}},
-            handler=lambda **kw: {"status": "ok", "tool": "assistant_status", "params": kw},
+            handler=lambda **kw: {"status": "ok", "tool": "presence_status", "params": kw},
             title="Assistant status", method="GET", path="/api/presence",
             clients=["telegram", "ui"], response_mode="oracle_natural",
             response_prompt=(
@@ -460,22 +460,22 @@ try:
             telegram_visible=True, telegram_group="system",
                 telegram={"section": "Assistant", "primary": 1, "label": "Status"}),
         MCPTool(
-            name="dnd_on",
+            name="presence_dnd_on",
             description=(("Turn on «Do not disturb»: only urgent notifications get through. minutes = duration (empty = default), until = until an ISO 8601 time.")),
             parameters={"type": "object", "properties": {
                 "minutes": {"type": "integer", "description": "Duration in minutes (empty = default)"},
                 "until": {"type": "string", "description": "Until when, ISO 8601"}}},
-            handler=lambda **kw: {"status": "ok", "tool": "dnd_on", "params": kw},
+            handler=lambda **kw: {"status": "ok", "tool": "presence_dnd_on", "params": kw},
             title="Do not disturb", method="POST", path="/api/presence/dnd",
             clients=["telegram", "ui"], response_mode="oracle_natural",
             response_prompt="Confirm in one line that «Do not disturb» is on and until when (dnd_until, local time).",
             telegram_visible=True, telegram_group="system",
                 telegram={"section": "Assistant", "primary": 2}),
         MCPTool(
-            name="dnd_off",
+            name="presence_dnd_off",
             description="Turn off «Do not disturb».",
             parameters={"type": "object", "properties": {}},
-            handler=lambda **kw: {"status": "ok", "tool": "dnd_off", "params": kw},
+            handler=lambda **kw: {"status": "ok", "tool": "presence_dnd_off", "params": kw},
             title="Remove do not disturb", method="DELETE", path="/api/presence/dnd",
             clients=["telegram", "ui"], response_mode="oracle_natural",
             response_prompt="Confirm in one line that «Do not disturb» is off and say the new state (label).",
@@ -505,7 +505,7 @@ try:
                          "items": {"type": "object", "properties": {
                              "start_at": {"type": "string", "description": "ISO 8601 start"},
                              "end_at": {"type": "string", "description": "ISO 8601 end"},
-                             "title": {"type": "string", "description": "e.g. Trasferta"}}}}}},
+                             "title": {"type": "string", "description": "e.g. Business trip"}}}}}},
             handler=lambda **kw: {"status": "ok", "tool": "coach_replan", "params": kw},
             title="Redo the plan", method="POST", path="/api/agenda/coach/replan",
             clients=["telegram", "ui"], response_mode="oracle_natural",
@@ -542,7 +542,7 @@ try:
             parameters={"type": "object", "properties": {
                 "start_at": {"type": "string", "description": "ISO 8601 start"},
                 "end_at": {"type": "string", "description": "ISO 8601 end"},
-                "title": {"type": "string", "description": "e.g. Trasferta"}}, "required": ["start_at", "end_at"]},
+                "title": {"type": "string", "description": "e.g. Business trip"}}, "required": ["start_at", "end_at"]},
             handler=lambda **kw: {"status": "ok", "tool": "coach_add_busy", "params": kw},
             title="Commitment for the plan", method="POST", path="/api/agenda/coach/busy",
             clients=["telegram", "ui"], response_mode="oracle_natural",
@@ -650,14 +650,14 @@ def on_startup() -> None:
     notification_worker.start()
     # Start the calendar sync worker (pulls events from Hecate into Archive).
     sync_worker.start()
-    assistant_agenda.start_worker()
+    agenda_assistant.start_worker()
     # Assistant presence (SPEC assistant-presence): settings from Themis, state from Archive,
     # night window in the agenda, re-evaluated after every agenda tick.
     presence_settings.settings.on_change(lambda changed: assistant_presence.get_engine().evaluate("settings"))
     presence_settings.settings.on_change(_on_personal_change)
     presence_settings.settings.start()
     threading.Thread(target=_presence_boot, daemon=True, name="presence-boot").start()
-    assistant_agenda.on_tick(lambda: assistant_presence.get_engine().evaluate("tick"))
+    agenda_assistant.on_tick(lambda: assistant_presence.get_engine().evaluate("tick"))
 
 
 def _life_boot() -> None:
@@ -689,7 +689,7 @@ def _presence_boot() -> None:
         loaded = loaded or engine.load()
         if not registered:
             try:
-                assistant_agenda.register_rules("chronos", [daily_window(
+                agenda_assistant.register_rules("chronos", [daily_window(
                     presence_settings.SLEEP_WINDOW, "{assistant}: night (deep sleep)", 1, 7,
                     description="At night the assistant goes into deep sleep: heavy jobs allowed, only urgent notifications. Move or skip to change the night."),
                     weekly_coach.week_job_rule(), *life_api.boot_rules()])
@@ -860,13 +860,13 @@ def get_agenda(
 ) -> dict:
     """Return upcoming calendar items from Archive for the requested window.
 
-    This endpoint is used by Telegram commands (``/agenda``, ``/agenda_oggi``)
+    This endpoint is used by Telegram commands (``/agenda``, ``/agenda_today``)
     and by Oracle when the user asks about their schedule.
     """
-    # Window starts at local midnight: "agenda di oggi" used to start at "now",
+    # Window starts at local midnight: "today's agenda" used to start at "now",
     # hiding events already started today and all-day events (stored 00:00).
     from zoneinfo import ZoneInfo
-    tz = ZoneInfo(assistant_agenda._TZ_DEFAULT)
+    tz = ZoneInfo(agenda_assistant._TZ_DEFAULT)
     now = datetime.now(tz).replace(hour=0, minute=0, second=0, microsecond=0)
     to_time = now + timedelta(days=days)
     items = archive_client.list_items(
@@ -878,7 +878,7 @@ def get_agenda(
     )
     if not source:
         # The assistant's own agenda (source=hestia) is not part of the user's calendar.
-        items = [i for i in items if i.get("source") != assistant_agenda.SOURCE]
+        items = [i for i in items if i.get("source") != agenda_assistant.SOURCE]
     return {
         "from": now.isoformat(),
         "to": to_time.isoformat(),
@@ -988,7 +988,7 @@ class AgendaSkip(BaseModel):
 def _agenda_guard(fn, *args, **kwargs):
     try:
         return fn(*args, **kwargs)
-    except assistant_agenda.AgendaError as exc:
+    except agenda_assistant.AgendaError as exc:
         raise HTTPException(status_code=exc.status_code, detail=str(exc))
 
 
@@ -1017,7 +1017,7 @@ def agenda_view(days: int = Query(7, ge=1, le=400), owner: str | None = None, ty
             raise HTTPException(status_code=400, detail="end must be after start, range <= 400 days")
     else:
         lo, hi = now - timedelta(hours=past_hours), now + timedelta(days=days)
-    rows = assistant_agenda.agenda(lo, hi, owner=owner, type_=type, include_done=include_done)
+    rows = agenda_assistant.agenda(lo, hi, owner=owner, type_=type, include_done=include_done)
     return {"from": lo.isoformat(), "to": hi.isoformat(), "days": days,
             "count": len(rows), "occurrences": rows}
 
@@ -1036,7 +1036,7 @@ def agenda_occurrences(days: int = Query(7, ge=1, le=400), owner: str | None = N
 
 @app.post("/api/agenda/weather")
 def agenda_weather_view(body: dict) -> dict:
-    """Weather for the calendar page: Casa per day, located occurrences (``located: [{key, place, at}]``) and
+    """Weather for the calendar page: Home per day, located occurrences (``located: [{key, place, at}]``) and
     Marko's own located calendar events, next 14 days only (``services/agenda_weather.py``)."""
     b = body or {}
     located = b.get("located") if isinstance(b.get("located"), list) else []
@@ -1045,7 +1045,7 @@ def agenda_weather_view(body: dict) -> dict:
 
 @app.get("/api/agenda/items")
 def agenda_items(owner: str | None = None, type: str | None = None, include_cancelled: bool = False) -> dict:
-    items = assistant_agenda.list_items(owner=owner, type_=type, include_cancelled=include_cancelled)
+    items = agenda_assistant.list_items(owner=owner, type_=type, include_cancelled=include_cancelled)
     return {"count": len(items), "items": items}
 
 
@@ -1053,7 +1053,7 @@ def agenda_items(owner: str | None = None, type: str | None = None, include_canc
 def agenda_create(req: AgendaItemCreate) -> dict:
     data = req.model_dump()
     item = _agenda_guard(
-        assistant_agenda.create, title=data["title"], type_=data["type"], owner=data["owner"],
+        agenda_assistant.create, title=data["title"], type_=data["type"], owner=data["owner"],
         start_at=data["start_at"], end_at=data["end_at"], recurrence=data["recurrence"],
         description=data["description"], action=data["action"], key=data["key"],
         params=data["params"], tz=data["tz"], created_by=data["created_by"], parent=data["parent"])
@@ -1063,7 +1063,7 @@ def agenda_create(req: AgendaItemCreate) -> dict:
 @app.post("/api/agenda/register")
 def agenda_register(req: AgendaRegister) -> dict:
     """Modules declare their default rules (idempotent; user edits are preserved)."""
-    items = _agenda_guard(assistant_agenda.register_rules, req.owner, req.rules)
+    items = _agenda_guard(agenda_assistant.register_rules, req.owner, req.rules)
     return {"status": "ok", "count": len(items), "items": items}
 
 
@@ -1075,20 +1075,20 @@ class AgendaRetire(BaseModel):
 @app.post("/api/agenda/retire")
 def agenda_retire(req: AgendaRetire) -> dict:
     """A module cancels default rules it no longer declares (only rules it created; user items stay)."""
-    keys = _agenda_guard(assistant_agenda.retire_rules, req.owner, req.keys)
+    keys = _agenda_guard(agenda_assistant.retire_rules, req.owner, req.keys)
     return {"status": "ok", "retired": keys}
 
 
 @app.get("/api/agenda/standard")
 def agenda_standard(owner: str | None = None) -> dict:
     """Standard activities of every module (deleted, paused, changed or active) + templates (recap dossier §3.9)."""
-    return _agenda_guard(assistant_agenda.standard, owner)
+    return _agenda_guard(agenda_assistant.standard, owner)
 
 
 @app.post("/api/agenda/standard/{key}/restore")
 def agenda_standard_restore(key: str, by: str = "user") -> dict:
     """Bring a standard activity back exactly as its module declares it."""
-    return {"status": "ok", "item": _agenda_guard(assistant_agenda.restore, key, by)}
+    return {"status": "ok", "item": _agenda_guard(agenda_assistant.restore, key, by)}
 
 
 @app.patch("/api/agenda/items/{ref}")
@@ -1097,27 +1097,27 @@ def agenda_update(ref: str, req: AgendaItemChange) -> dict:
     if changes.get("status") == "cancelled":
         changes.pop("status")
         if changes:
-            _agenda_guard(assistant_agenda.update, ref, changes, req.by)
-        return {"status": "ok", "item": _agenda_guard(assistant_agenda.cancel, ref, req.by)}  # cascade
-    return {"status": "ok", "item": _agenda_guard(assistant_agenda.update, ref, changes, req.by)}
+            _agenda_guard(agenda_assistant.update, ref, changes, req.by)
+        return {"status": "ok", "item": _agenda_guard(agenda_assistant.cancel, ref, req.by)}  # cascade
+    return {"status": "ok", "item": _agenda_guard(agenda_assistant.update, ref, changes, req.by)}
 
 
 @app.delete("/api/agenda/items/{ref}")
 def agenda_cancel(ref: str, by: str = "user") -> dict:
-    return {"status": "ok", "item": _agenda_guard(assistant_agenda.cancel, ref, by)}
+    return {"status": "ok", "item": _agenda_guard(agenda_assistant.cancel, ref, by)}
 
 
 @app.post("/api/agenda/items/{ref}/skip")
 def agenda_skip(ref: str, req: AgendaSkip | None = None) -> dict:
     r = req or AgendaSkip()
-    return {"status": "ok", "item": _agenda_guard(assistant_agenda.skip, ref, r.occurrence, r.by)}
+    return {"status": "ok", "item": _agenda_guard(agenda_assistant.skip, ref, r.occurrence, r.by)}
 
 
 @app.post("/api/agenda/items/{ref}/unskip")
 def agenda_unskip(ref: str, req: AgendaSkip) -> dict:
     if not req.occurrence:
         raise HTTPException(status_code=400, detail="occurrence required")
-    return {"status": "ok", "item": _agenda_guard(assistant_agenda.unskip, ref, req.occurrence, req.by)}
+    return {"status": "ok", "item": _agenda_guard(agenda_assistant.unskip, ref, req.occurrence, req.by)}
 
 
 class AgendaMove(BaseModel):
@@ -1131,7 +1131,7 @@ class AgendaMove(BaseModel):
 @app.post("/api/agenda/items/{ref}/move")
 def agenda_move(ref: str, req: AgendaMove) -> dict:
     """Move one occurrence only (exception); ``reset`` restores it. One-off items move entirely."""
-    return {"status": "ok", "item": _agenda_guard(assistant_agenda.move_occurrence, ref, req.occurrence,
+    return {"status": "ok", "item": _agenda_guard(agenda_assistant.move_occurrence, ref, req.occurrence,
                                                   req.start_at, req.end_at, req.reset, req.by)}
 
 
@@ -1147,32 +1147,32 @@ class AgendaFail(BaseModel):
 
 @app.get("/api/agenda/items/{ref}/links")
 def agenda_links(ref: str) -> dict:
-    item = _agenda_guard(assistant_agenda.get, ref)
+    item = _agenda_guard(agenda_assistant.get, ref)
     parent = None
     if item.get("parent"):
         try:
-            parent = assistant_agenda.get(item["parent"])
-        except assistant_agenda.AgendaError:
+            parent = agenda_assistant.get(item["parent"])
+        except agenda_assistant.AgendaError:
             parent = None
     return {"status": "ok", "key": item["key"], "parent": parent,
-            "children": assistant_agenda.children(item["key"])}
+            "children": agenda_assistant.children(item["key"])}
 
 
 @app.post("/api/agenda/items/{ref}/link")
 def agenda_link(ref: str, req: AgendaLink) -> dict:
     """Link an item to a parent: cancelling the parent cancels it; its failure marks the parent."""
-    return {"status": "ok", "item": _agenda_guard(assistant_agenda.link, ref, req.parent, req.by)}
+    return {"status": "ok", "item": _agenda_guard(agenda_assistant.link, ref, req.parent, req.by)}
 
 
 @app.post("/api/agenda/items/{ref}/fail")
 def agenda_fail(ref: str, req: AgendaFail) -> dict:
     """A module reports that the work behind the item failed (propagates to the parent)."""
-    return {"status": "ok", "item": _agenda_guard(assistant_agenda.fail, ref, req.detail, req.by)}
+    return {"status": "ok", "item": _agenda_guard(agenda_assistant.fail, ref, req.detail, req.by)}
 
 
 @app.post("/api/agenda/items/{ref}/run")
 def agenda_run(ref: str) -> dict:
-    return {"status": "ok", **_agenda_guard(assistant_agenda.run_now, ref)}
+    return {"status": "ok", **_agenda_guard(agenda_assistant.run_now, ref)}
 
 
 def _since(value: str | None, hours: float | None) -> datetime | None:
@@ -1190,14 +1190,14 @@ def agenda_runs(owner: str | None = None, status: str | None = Query(None, descr
                 since: str | None = Query(None, description="ISO; or use hours"),
                 hours: float | None = Query(None, ge=0, le=24 * 400), limit: int = Query(100, ge=1, le=500)) -> dict:
     """Job/task runs of the assistant agenda (newest first) + summary + rules registered per owner
-    (WebUI plugin page «Esecuzioni»)."""
-    return _agenda_guard(assistant_agenda.runs, owner=owner, status=status, since=_since(since, hours), limit=limit)
+    (WebUI plugin page «Runs»)."""
+    return _agenda_guard(agenda_assistant.runs, owner=owner, status=status, since=_since(since, hours), limit=limit)
 
 
 @app.get("/api/agenda/runs/failed")
 def agenda_runs_failed(hours: float = Query(24, ge=1, le=24 * 30)) -> list[dict]:
-    """Chips of the quick action «Riprova job»: jobs whose last run failed (id = item key)."""
-    return assistant_agenda.failed_jobs(since=_since(None, hours))
+    """Chips of the quick action «Retry job»: jobs whose last run failed (id = item key)."""
+    return agenda_assistant.failed_jobs(since=_since(None, hours))
 
 
 _LOG_SERVICE_RE = __import__("re").compile(r"^[a-z0-9_-]{2,40}$")
@@ -1206,7 +1206,7 @@ _LOG_SERVICE_RE = __import__("re").compile(r"^[a-z0-9_-]{2,40}$")
 @app.get("/api/agenda/logs")
 def agenda_logs(service: str, at: str, minutes: int = Query(5, ge=1, le=120), level: str | None = None,
                 contains: str | None = None) -> dict:
-    """«Log del modulo» of the calendar page: the service's own ``/api/logs`` (in-memory buffer, recent hours) read
+    """«Module log» of the calendar page: the service's own ``/api/logs`` (in-memory buffer, recent hours) read
     through Hub and cut to ``at ± minutes``. Under the plugin's api_prefix so the page needs nothing else."""
     import requests
 
@@ -1264,18 +1264,18 @@ class AgendaFromTemplate(BaseModel):
 @app.post("/api/agenda/templates")
 def agenda_templates_register(req: AgendaTemplates) -> dict:
     """Modules declare what the user can create for them (calendar wizard). Replaces the owner's set."""
-    return {"status": "ok", "count": assistant_agenda.register_templates(req.owner, req.templates)}
+    return {"status": "ok", "count": agenda_assistant.register_templates(req.owner, req.templates)}
 
 
 @app.get("/api/agenda/templates")
 def agenda_templates() -> dict:
-    rows = assistant_agenda.list_templates()
+    rows = agenda_assistant.list_templates()
     return {"count": len(rows), "templates": rows}
 
 
 @app.post("/api/agenda/templates/{owner}/{template_id}/create")
 def agenda_from_template(owner: str, template_id: str, req: AgendaFromTemplate) -> dict:
-    item = _agenda_guard(assistant_agenda.create_from_template, owner, template_id, values=req.values,
+    item = _agenda_guard(agenda_assistant.create_from_template, owner, template_id, values=req.values,
                          start_at=req.start_at, end_at=req.end_at, recurrence=req.recurrence,
                          type_=req.type, description=req.description)
     return {"status": "ok", "item": item}
@@ -1302,7 +1302,7 @@ def agenda_ics(days: int = Query(60, ge=1, le=400), past_days: int = Query(7, ge
     """Read-only iCalendar feed of the assistant agenda (expanded occurrences, skips/moves applied)."""
     now = datetime.now(timezone.utc)
     wanted = {t.strip() for t in types.split(",") if t.strip()}
-    rows = [o for o in assistant_agenda.agenda(now - timedelta(days=past_days), now + timedelta(days=days), owner=owner)
+    rows = [o for o in agenda_assistant.agenda(now - timedelta(days=past_days), now + timedelta(days=days), owner=owner)
             if o.get("type") in wanted][:3000]
     return Response(agenda_parse.to_ics(rows, name=tr("{assistant}'s agenda")), media_type="text/calendar; charset=utf-8",
                     headers={"Content-Disposition": 'inline; filename="hestia-agenda.ics"'})
@@ -1311,12 +1311,12 @@ def agenda_ics(days: int = Query(60, ge=1, le=400), past_days: int = Query(7, ge
 @app.get("/api/agenda/windows/{key}")
 def agenda_window(key: str) -> dict:
     """Modules ask: is my window open now? (closed if missing/cancelled/skipped)."""
-    return {"status": "ok", **assistant_agenda.window_status(key)}
+    return {"status": "ok", **agenda_assistant.window_status(key)}
 
 
 # ─────────────────────────────────────────────────────────────────────
 #  Weekly coach plan (SPEC docs/work/2026-10-20-coach-of-every-kind)
-#  Under the plugin's api_prefix (/api/agenda/) so the «La tua settimana» page needs nothing else.
+#  Under the plugin's api_prefix (/api/agenda/) so the «Your week» page needs nothing else.
 # ─────────────────────────────────────────────────────────────────────
 
 
@@ -1355,7 +1355,7 @@ def _coach_guard(fn, *args, **kwargs):
         return fn(*args, **kwargs)
     except weekly_coach.CoachError as exc:
         raise HTTPException(status_code=exc.status_code, detail=str(exc))
-    except assistant_agenda.AgendaError as exc:
+    except agenda_assistant.AgendaError as exc:
         raise HTTPException(status_code=exc.status_code, detail=str(exc))
 
 
@@ -1376,7 +1376,7 @@ def coach_week(date: str | None = None) -> dict:
 
 @app.get("/api/agenda/coach/today")
 def coach_today(date: str | None = None) -> dict:
-    """Today's plan items (widget «Oggi nel piano», daily recap)."""
+    """Today's plan items (widget «Today in the plan», daily recap)."""
     day = _coach_day(date)
     return {"date": (day or weekly_coach.now().date()).isoformat(),
             "items": _coach_guard(weekly_coach.today_items, day)}
@@ -1384,7 +1384,7 @@ def coach_today(date: str | None = None) -> dict:
 
 @app.post("/api/agenda/coach/replan")
 def coach_replan(req: CoachReplan | None = None) -> dict:
-    """Re-plan from ``date`` to the end of its week (chat «rifai il piano», page button)."""
+    """Re-plan from ``date`` to the end of its week (chat «redo the plan», page button)."""
     req = req or CoachReplan()
     for b in req.busy:
         _coach_guard(weekly_coach.add_busy, b.get("start_at"), b.get("end_at"), b.get("title") or "")
@@ -1416,7 +1416,7 @@ def coach_skip(ref: str, req: CoachSkip | None = None) -> dict:
 
 @app.post("/api/agenda/coach/busy")
 def coach_busy_add(req: CoachBusy) -> dict:
-    """A period the plan leaves free («mercoledì sono via»)."""
+    """A period the plan leaves free («I'm away on Wednesday»)."""
     return _coach_guard(weekly_coach.add_busy, req.start_at, req.end_at, req.title)
 
 

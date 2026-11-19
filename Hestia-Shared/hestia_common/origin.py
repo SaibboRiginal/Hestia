@@ -3,15 +3,15 @@
 Every message the owner did not type by hand carries an origin set by the caller's code in the routed headers
 (``X-Hestia-Origin``), never by a model or a body field. Oracle maps it to the **level** of the turn:
 
-- ``utente``   — the owner wrote it (Telegram, WebUI, an external AI he connected): everything, with the usual
+- ``user``     — the owner wrote it (Telegram, WebUI, an external AI he connected): everything, with the usual
                  confirmation gate;
-- ``routine``  — a routine the owner wrote («Le mie routine» in the agenda): acts only inside its instruction,
+- ``routine``  — a routine the owner wrote («My routines» in the agenda): acts only inside its instruction,
                  nothing destructive;
 - ``autonomo`` — the assistant by itself (reflection, presence, mail doorbells, module jobs): only reads, proposes
-                 (Themis/Hermes) and notifies; a write comes back as «serve che lo chieda Marko».
+                 (Themis/Hermes) and notifies; a write comes back as «the owner must ask for it».
 
-Header value: ``<kind>:<ref>`` with kind ``utente`` · ``routine`` · ``autonomo`` · ``esterno`` (an external AI
-access, counts as the owner). ``X-Hestia-Origin-Label`` is an optional short human label («Routine del lunedì»).
+Header value: ``<kind>:<ref>`` with kind ``user`` · ``routine`` · ``autonomous`` · ``external`` (an external AI
+access, counts as the owner). ``X-Hestia-Origin-Label`` is an optional short human label («Monday routine»).
 No header: a client name (telegram, webui) means the owner, nothing means autonomous (fail closed).
 """
 from __future__ import annotations
@@ -21,14 +21,14 @@ from hestia_common.i18n import t as tr  # fixed texts in the owner's language
 
 HEADER = "X-Hestia-Origin"
 LABEL_HEADER = "X-Hestia-Origin-Label"
-LEVELS = ("utente", "routine", "autonomo")
-_KIND_LEVEL = {"utente": "utente", "esterno": "utente", "routine": "routine", "autonomo": "autonomo",
-               "modulo": "autonomo"}
+LEVELS = ("user", "routine", "autonomous")
+_KIND_LEVEL = {"user": "user", "external": "user", "routine": "routine", "autonomous": "autonomous",
+               "module": "autonomous"}
 USER_CLIENTS = {"telegram", "webui", "ui", "web", "mcp", "voice", "cli"}
 
 
 def headers(kind: str, ref: str = "", label: str = "") -> dict[str, str]:
-    """Headers a caller puts in the Hub envelope: ``headers("routine", "lunedi-annunci", "Annunci del lunedì")``."""
+    """Headers a caller puts in the Hub envelope: ``headers("routine", "monday-listings", "Monday listings")``."""
     out = {HEADER: f"{kind}:{ref}" if ref else kind}
     if label:
         out[LABEL_HEADER] = label[:80]
@@ -51,35 +51,35 @@ def parse(hdrs: Mapping[str, Any] | None = None, client: str = "") -> dict[str, 
     if raw:
         kind, _, ref = raw.partition(":")
         kind = kind.strip().lower()
-        level = _KIND_LEVEL.get(kind, "autonomo")
-        return {"kind": kind if kind in _KIND_LEVEL else "autonomo", "ref": ref.strip()[:120], "level": level,
+        level = _KIND_LEVEL.get(kind, "autonomous")
+        return {"kind": kind if kind in _KIND_LEVEL else "autonomous", "ref": ref.strip()[:120], "level": level,
                 "label": label or default_label(kind, ref.strip())}
     client = str(client or _get(hdrs, "X-Hestia-Client")).strip().lower()
     if client in USER_CLIENTS:
-        return {"kind": "utente", "ref": client, "level": "utente", "label": ""}
-    return {"kind": "autonomo", "ref": client, "level": "autonomo", "label": label or default_label("autonomo", client)}
+        return {"kind": "user", "ref": client, "level": "user", "label": ""}
+    return {"kind": "autonomous", "ref": client, "level": "autonomous", "label": label or default_label("autonomous", client)}
 
 
 def default_label(kind: str, ref: str = "") -> str:
     """Short user-facing label (never a module name: R5)."""
     if kind == "routine":
         return tr("From one of your routines")
-    if kind == "esterno":
+    if kind == "external":
         return tr("From another linked AI")
-    if kind in ("autonomo", "modulo"):
+    if kind in ("autonomous", "module"):
         return tr("Assistant's initiative")
     return ""
 
 
 def prompt_line(origin: Mapping[str, str]) -> str:
     """One caveman line for the model about who started this turn (empty for the owner typing)."""
-    level = origin.get("level", "utente")
-    if level == "utente" and origin.get("kind") != "esterno":
+    level = origin.get("level", "user")
+    if level == "user" and origin.get("kind") != "external":
         return ""
     if level == "routine":
         return (f"[Origin] the user's routine ({origin.get('label') or origin.get('ref')}), not written by them now. "
                 "Act only within the routine's instruction; no deletions.")
-    if level == "autonomo":
+    if level == "autonomous":
         return ("[Origin] automatic initiative, not a message from the user. You may only read, propose and "
                 "notify; changing data needs the user to ask.")
     return f"[Origin] {origin.get('label') or 'another connected AI'} on behalf of the user."
@@ -87,14 +87,14 @@ def prompt_line(origin: Mapping[str, str]) -> str:
 
 def blocks_write(origin: Mapping[str, str], *, method: str = "POST", name: str = "") -> str:
     """Why a write is not allowed at this level ("" = allowed). Proposals and notices are always allowed."""
-    level = origin.get("level", "autonomo")
+    level = origin.get("level", "autonomous")
     lname = str(name or "").lower()
-    if any(w in lname for w in ("propose", "proposta", "proponi", "suggest", "notify", "ask_user")):
+    if any(w in lname for w in ("propose", "proposal", "propose", "suggest", "notify", "ask_user")):
         return ""
-    if level == "autonomo":
+    if level == "autonomous":
         return "Automatic initiative: changing data needs the owner to ask. Propose it instead of doing it."
     destructive = str(method or "").upper() == "DELETE" or any(
-        w in lname for w in ("delete", "remove", "elimina", "cancella", "rimuovi", "purge", "restore", "rollback"))
+        w in lname for w in ("delete", "remove", "purge", "restore", "rollback"))
     if level == "routine" and destructive:
         return "A routine does not delete or restore data: ask the owner."
     return ""

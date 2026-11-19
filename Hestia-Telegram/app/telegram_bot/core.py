@@ -12,7 +12,7 @@ import message_format
 import session_store
 import telegram_settings as tg_settings
 from telegram_settings import settings
-from hestia_common.i18n import t as tr  # fixed texts in the owner's language
+from hestia_common.i18n import t as tr, word_set  # fixed texts in the owner's language
 
 try:
     from hestia_common.logging_utils import setup_service_logging
@@ -87,7 +87,7 @@ def _is_feedback_eligible(message_text: str, has_tools: bool = False) -> bool:
     if not text or len(text) < 10:
         return False
     # Skip greetings and trivial messages
-    greetings = {"ciao", "hey", "ehi", "buongiorno", "buonasera", "ok", "grazie"}
+    greetings = word_set("common.greeting")
     if text in greetings or any(text.startswith(g) for g in greetings if len(g) > 3):
         return False
     # Always skip commands

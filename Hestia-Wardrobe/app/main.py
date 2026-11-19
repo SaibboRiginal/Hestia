@@ -1,4 +1,4 @@
-"""Hestia-Wardrobe — the wardrobe: pieces, accessories, outfits, "Indossato" marks, suggestions (domain ``wardrobe``).
+"""Hestia-Wardrobe — the wardrobe: pieces, accessories, outfits, "Worn" marks, suggestions (domain ``wardrobe``).
 
 SPEC docs/work/2026-10-17-wardrobe-module. Data in Archive (``/api/wardrobe-store`` + photos in ``/api/blobs``),
 settings in Themis, reminders through the agenda (Chronos) and Hermes, UI as a plugin bundle (``ui/``),
@@ -15,7 +15,7 @@ import requests
 from fastapi import Body, FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
-from hestia_common.i18n import t as tr  # fixed texts in the owner's language
+from hestia_common.i18n import is_yes, t as tr, words  # fixed texts in the owner's language
 
 try:
     from hestia_common.logging_utils import create_log_control_router, setup_service_logging
@@ -268,7 +268,7 @@ def outfit_unworn(id: str, date: str = ""):
     return out
 
 
-# ── "Indossato" marks ────────────────────────────────────────────────────────
+# ── "Worn" marks ────────────────────────────────────────────────────────────
 @app.get(f"{API}/wears")
 def wears(date_from: str = "", date_to: str = "", limit: int = 200):
     _refresh()
@@ -305,7 +305,7 @@ def _opt_bool(value) -> bool | None:
     """Missing/empty = «use the forecast»; anything else is the user's own answer."""
     if value in (None, ""):
         return None
-    return value if isinstance(value, bool) else str(value).lower() in ("1", "true", "si", "sì", "yes")
+    return is_yes(value)
 
 
 @app.post(f"{API}/suggest/save")
@@ -393,7 +393,7 @@ def collection_delete(id: str):
 # ── AI help, export / import ─────────────────────────────────────────────────
 # A photo sent in chat with these words in its caption comes here (Oracle attachment hand-off, Telegram and WebUI).
 ATTACHMENT_HANDLERS = [{"mime": ["image/jpeg", "image/png", "image/webp"], "label": "Wardrobe item",
-                        "path": f"{API}/attachments", "match": ["guardaroba", "armadio", "nuovo capo"]}]
+                        "path": f"{API}/attachments", "match": list(words("wardrobe.attachment_hint"))}]
 
 
 @app.post(f"{API}/attachments")
@@ -475,7 +475,7 @@ def reminder_check():
 
 @app.post(f"{API}/reminder/skip")
 def reminder_skip(body: dict = Body(default={})):
-    """«Non oggi» on the reminder, «Tieni» on a delete question: nothing to do, Hermes closes the card."""
+    """«Not today» on the reminder, «Keep» on a delete question: nothing to do, Hermes closes the card."""
     return {"ok": True, "message": str((body or {}).get("message") or tr("Ok, nothing for today"))[:120]}
 
 
@@ -502,7 +502,7 @@ def review_run():
         return {"send": False, "why": "nothing_to_say"}
     try:
         _notify("wardrobe.review", tr("Wardrobe of the month"), tr("👕 Wardrobe review\n") + "\n".join(lines), [],
-                replaces=True, page="statistics")
+                replaces=True, page="stats")
     except Exception as exc:
         logger.warning("[🔄] event=wardrobe_review_emit_failed error=%s fallback=next_month", exc)
         return {"send": False, "why": "hermes_unreachable"}
@@ -524,29 +524,29 @@ ui = PluginClient("wardrobe", title="Wardrobe", icon="shirt", color="purple",
                   description="Items, accessories, outfits and what to wear.", dist=UI_DIST, version=SERVICE_VERSION)
 ui.webui(
     entry="wardrobe.js", api_prefix=f"{API}/",
-    pages=[page("items", "Wardrobe", element="wardrobe-pieces", icon="shirt", order=50,
+    pages=[page("pieces", "Wardrobe", element="wardrobe-pieces", icon="shirt", order=50,
                 help="All your items with photos, filters and search."),
-           page("items/:id", "Item", element="wardrobe-piece", detail=True, parent="items"),
-           page("accessories", "Accessories", element="wardrobe-accessories", icon="tag", order=51, parent="items"),
-           page("outfit", "Outfit", element="wardrobe-outfits", icon="grid", order=52, parent="items"),
-           page("outfit/:id", "Outfit", element="wardrobe-outfit", detail=True, parent="items"),
-           page("what-to-wear", "What should I wear", element="wardrobe-suggest", icon="sparkle", order=53, parent="items"),
-           page("statistics", "Statistics", element="wardrobe-stats", icon="chart", order=54, parent="items"),
-           page("lists", "Suitcases and lists", element="wardrobe-collections", icon="list", order=55, parent="items"),
-           page("lists/:id", "alt::List", element="wardrobe-collection", detail=True, parent="items"),
-           page("vocabularies", "Vocabularies", element="wardrobe-vocab", icon="settings", order=56, parent="items")],
+           page("items/:id", "Item", element="wardrobe-piece", detail=True, parent="pieces"),
+           page("accessories", "Accessories", element="wardrobe-accessories", icon="tag", order=51, parent="pieces"),
+           page("outfit", "Outfit", element="wardrobe-outfits", icon="grid", order=52, parent="pieces"),
+           page("outfit/:id", "Outfit", element="wardrobe-outfit", detail=True, parent="pieces"),
+           page("what-to-wear", "What should I wear", element="wardrobe-suggest", icon="sparkle", order=53, parent="pieces"),
+           page("stats", "Statistics", element="wardrobe-stats", icon="chart", order=54, parent="pieces"),
+           page("lists", "Suitcases and lists", element="wardrobe-collections", icon="list", order=55, parent="pieces"),
+           page("lists/:id", "alt::List", element="wardrobe-collection", detail=True, parent="pieces"),
+           page("vocabularies", "Vocabularies", element="wardrobe-vocab", icon="settings", order=56, parent="pieces")],
     widgets=[widget("today", "Wearing today", element="wardrobe-today-widget", sizes=["m", "l"], auto=True,
                     open_page="outfit", icon="shirt",
                     params={"occasion": {"type": "string", "label": "Occasion (e.g. office)"}}),
              widget("suggested", "Today's outfit", element="wardrobe-suggest-widget", sizes=["m", "l"],
                     open_page="what-to-wear", icon="sparkle",
                     params={"occasion": {"type": "string", "label": "Occasion"}}),
-             widget("laundry", "In the laundry", element="wardrobe-laundry-widget", sizes=["s", "m"], open_page="items",
+             widget("laundry", "In the laundry", element="wardrobe-laundry-widget", sizes=["s", "m"], open_page="pieces",
                     icon="refresh"),
              widget("forgotten", "Forgotten clothes", element="wardrobe-forgotten-widget", sizes=["m", "l"], auto=True,
-                    open_page="statistics", icon="clock"),
+                    open_page="stats", icon="clock"),
              widget("numbers", "Wardrobe in numbers", element="wardrobe-kpi-widget", sizes=["s", "m"], auto=True,
-                    open_page="statistics", icon="chart"),
+                    open_page="stats", icon="chart"),
              widget("latest", "Latest outfits", element="wardrobe-recent-widget", sizes=["m", "l"], open_page="outfit",
                     icon="clock")],
     quick_actions=[
@@ -560,15 +560,15 @@ app.include_router(settings.router())
 
 # ── export / import (hestia_common.transfer; reminder/alert rows are runtime state) ─────────────────────
 transfer = Transfer("wardrobe", hub, sections=[
-    StoreSection("capi", "Items", store, ["piece"], icon="shirt",
+    StoreSection("pieces", "Items", store, ["piece"], icon="shirt",
                  subtitle=lambda r: " · ".join(x for x in (r["data"].get("category"), r["data"].get("brand")) if x),
-                 depends_on=["vocabolari", "foto"]),
-    StoreSection("outfit", "Outfit", store, ["outfit"], icon="sparkle", depends_on=["capi", "foto"]),
-    StoreSection("indossati", "alt::Worn", store, ["wear"], icon="history",
-                 title=lambda r: tr("Worn on {0}", r['data'].get('date')), depends_on=["capi", "outfit"]),
-    StoreSection("liste", "Lists", store, ["collection"], icon="list", depends_on=["capi", "outfit"]),
-    StoreSection("vocabolari", "Vocabularies", store, ["taxonomy"], icon="tag", title=lambda r: r["id"]),
-    StoreSection("foto", "Photo", store, ["photo"], icon="camera", file_fields=["original", "medium", "thumb"],
+                 depends_on=["vocabularies", "photos"]),
+    StoreSection("outfit", "Outfit", store, ["outfit"], icon="sparkle", depends_on=["pieces", "photos"]),
+    StoreSection("worn", "alt::Worn", store, ["wear"], icon="history",
+                 title=lambda r: tr("Worn on {0}", r['data'].get('date')), depends_on=["pieces", "outfit"]),
+    StoreSection("lists", "Lists", store, ["collection"], icon="list", depends_on=["pieces", "outfit"]),
+    StoreSection("vocabularies", "Vocabularies", store, ["taxonomy"], icon="tag", title=lambda r: r["id"]),
+    StoreSection("photos", "Photo", store, ["photo"], icon="camera", file_fields=["original", "medium", "thumb"],
                  title=lambda r: r["data"].get("name") or tr("Photo"), subtitle=lambda r: r["data"].get("owner") or ""),
 ])
 app.include_router(transfer.router())
@@ -816,7 +816,7 @@ try:
                                                              "temp_c": N, "rain": B}, "required": ["date_from"]},
                 handler=_t(_packing), title="Suitcase", method="POST", clients=["ui"], telegram_visible=False,
                 telegram_group="wardrobe",
-                telegram={"section": "Trips"}),
+                telegram={"section": "Travel"}),
         MCPTool(name="wardrobe_delete", description=("Delete a garment or an outfit: it does NOT delete at once, it sends the user a confirmation with the buttons Delete / Archive / Keep."),
                 parameters={"type": "object", "properties": {"piece": S, "outfit": S}},
                 handler=_t(_delete), title="Delete item or outfit", method="POST", clients=["ui"], telegram_visible=False,
@@ -842,14 +842,14 @@ try:
                     except ValueError:
                         kw.pop(k)
                 elif typ == "boolean":
-                    kw[k] = v.lower() in ("1", "true", "si", "sì", "yes")
+                    kw[k] = is_yes(v)
                 elif typ == "array":
                     kw[k] = [x.strip() for x in v.split(",") if x.strip()]
             return inner(**{k: v for k, v in kw.items() if k in props})
         return run
 
     for _tool in _tools:
-        _tool.path = f"{API}/tools/{_tool.name.removeprefix('guardaroba_')}"
+        _tool.path = f"{API}/tools/{_tool.name.removeprefix('wardrobe_')}"
         _tool.method = "POST" if _tool.method != "GET" else "GET"
         _tool.handler = _coerced(_tool)
     app.include_router(create_mcp_router(_tools, service_name="wardrobe"))
@@ -864,7 +864,7 @@ except NameError:
 
 
 # ── Hub registration ─────────────────────────────────────────────────────────
-# LLM use cases: the chain (it must see images) is chosen in Oracle → Cervello → Modelli.
+# LLM use cases: the chain (it must see images) is chosen in Oracle → Brain → Models.
 LLM_USECASES = [llm_usecase("wardrobe.photo", "Wardrobe · item photos", chain="vision",
                             help="Describes the photo of a new item (name, category, colours, style).")]
 

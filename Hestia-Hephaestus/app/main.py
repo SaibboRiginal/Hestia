@@ -150,7 +150,7 @@ app.include_router(create_repo_router(forge))
 app.include_router(webui_plugin.router())   # GET /api/ui/manifest · GET /ui/webui/<file>
 setup_router, setup_service = create_setup_router(   # guided setup «Benvenuto» (docs/work/2026-10-30-one-click-setup)
     forge.cfg.repo_path, Path(os.getenv("HEPHAESTUS_DATA_DIR", "/code/data")), config.hub_api_url,
-    channel=lambda: str(forge_settings.settings.get(forge_settings.UPDATE_CHANNEL) or "stabile"),
+    channel=lambda: str(forge_settings.settings.get(forge_settings.UPDATE_CHANNEL) or "stable"),
     unhealthy=forge.unhealthy)
 app.include_router(setup_router)
 from .setup import tunnel as _tunnel  # noqa: E402
@@ -165,7 +165,7 @@ try:
     from hestia_common.mcp_helpers import MCPTool, create_mcp_router
 
     _hephaestus_mcp_tools = [
-        # ── Macchine: central and satellites (docs/work/2026-10-30-one-click-setup §4.0) ──
+        # ── Machines: central and satellites (docs/work/2026-10-30-one-click-setup §4.0) ──
         MCPTool(
             name="machines_list", description=("The assistant's machines: this one and the satellites, on or off, with the modules running on "
                                                  "them."),
@@ -199,7 +199,7 @@ try:
             clients=["telegram", "ui"], response_mode="oracle_natural",
             telegram_visible=True, telegram_group="system", telegram={"section": "Machines", "label": "From outside home"}),
         MCPTool(
-            name="away_set", description=(("Turns on (on=true) or off (on=false) the address to use the assistant away from home; only when "
+            name="away_enable", description=(("Turns on (on=true) or off (on=false) the address to use the assistant away from home; only when "
                                                     "the user asks explicitly.")),
             parameters={"type": "object", "properties": {"on": {"type": "boolean"}}, "required": ["on"]},
             handler=lambda **kw: {"status": "ok"}, title="Turn on or off from outside home", method="POST",
@@ -406,13 +406,13 @@ try:
             path="/api/hephaestus/forge/tasks/$task_id/submit-branch",
             clients=["ui", "external"], response_mode="oracle_natural", telegram_visible=False, telegram_group="development",
                 telegram={"section": "Advanced"}),
-        # Manual brake: a direct user command (Telegram button / "metti in pausa lo sviluppo").
+        # Manual brake: a direct user command (Telegram button / "pause development").
         MCPTool(
             name="forge_pause",
             description=(
                 ("Pause or resume automatic development (Forge). While paused no task starts by itself: they stay "
-                 "proposed until the user starts them. Use ONLY when the user asks ('pausa sviluppo', 'riprendi "
-                 "sviluppo').")
+                 "proposed until the user starts them. Use ONLY when the user asks ('pause development', 'resume "
+                 "development').")
             ),
             parameters={"type": "object", "properties": {
                 "paused": {"type": "boolean", "description": "true = pause, false = resume"}},
@@ -457,11 +457,11 @@ try:
             name="forge_approve",
             description=(
                 ("Approve a Forge task: if 'proposed' it starts it, if 'awaiting_review' it applies the change "
-                 "(merge/deploy). Use when the user says 'approva sviluppo <id>'.")
+                 "(merge/deploy). Use when the user says 'approve development <id>'.")
             ),
             parameters={"type": "object", "properties": {
                 "task_id": {"type": "string", "description": "Task id (the first 6 characters are enough)"},
-                "now": {"type": "boolean", "description": "true only if the user says 'subito'/'ora' (skips Claude's night window)"},
+                "now": {"type": "boolean", "description": "true only if the user asks to run it right away (skips Claude's night window)"},
                 "engine": {"type": "string", "description": "Only if the user chooses who develops it: local | cloud | claude"}},
                 "required": ["task_id"]},
             handler=lambda **kw: {"status": "ok", "tool": "forge_approve", "params": kw},
@@ -471,7 +471,7 @@ try:
                 telegram={"section": "Jobs", "primary": 3, "label": "Approve"}),
         MCPTool(
             name="forge_reject",
-            description="Drop a proposed or in-review Forge task ('rifiuta <id>')",
+            description="Drop a proposed or in-review Forge task ('reject <id>')",
             parameters={"type": "object", "properties": {
                 "task_id": {"type": "string", "description": "Task id"},
                 "reason": {"type": "string", "description": "Reason"}}, "required": ["task_id"]},
@@ -482,7 +482,7 @@ try:
                 telegram={"section": "Jobs", "label": "Reject"}),
         MCPTool(
             name="forge_rollback",
-            description="Undo (git revert) a Forge change already applied ('rollback sviluppo <id>')",
+            description="Undo (git revert) a Forge change already applied ('rollback development <id>')",
             parameters={"type": "object", "properties": {
                 "task_id": {"type": "string", "description": "Task id"},
                 "reason": {"type": "string", "description": "Reason"}}, "required": ["task_id"]},

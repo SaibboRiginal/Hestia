@@ -57,7 +57,7 @@ def test_normalisers():
     s = normalise_sleep(SLEEP)
     assert s["minutes"] == 435 and s["deep_minutes"] == 90 and s["score"] == 82 and s["end"].startswith("2025-10-29T07:15")
     a = normalise_activity(RUN)
-    assert a == {"id": "991", "kind": "corsa", "type": "running", "name": "Corsa mattutina",
+    assert a == {"id": "991", "kind": "run", "type": "running", "name": "Corsa mattutina",
                  "start": "2026-10-29 07:10:00", "minutes": 30, "km": 5.12, "calories": 410, "avg_hr": 151,
                  "training_load": 88.4}
     assert normalise_sleep({}) is None
@@ -72,7 +72,7 @@ def test_login_with_code_then_day(tmp_path):
     day = svc.day(date(2026, 10, 29))
     assert day["steps"] == 9876 and day["readiness"] == 64 and day["body_battery"]["morning"] == 77
     assert "hrv" not in day                                     # a failing part is skipped, the day stays
-    assert day["activities"][0]["kind"] == "corsa"
+    assert day["activities"][0]["kind"] == "run"
     svc.forget()
     with pytest.raises(GarminError):
         svc.client()

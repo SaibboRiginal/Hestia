@@ -3,7 +3,7 @@
 Deterministic, no model: what the running modules declare (MCP tools with their REST paths from Hestia-MCP,
 settings keys from Themis) is compared with the repo's docs read through Forge's repo browser
 (``Hestia-<Name>/hestia-<name>.md`` and ``Hestia-Swagger/swagger.yml``). Missing names become ONE Forge proposal per
-module («aggiorna la documentazione»): Forge's permission modes decide, the owner approves the diff. Monthly agenda job
+module («update the documentation»): Forge's permission modes decide, the owner approves the diff. Monthly agenda job
 ``athena.docs_check`` (movable, pausable) and tool ``docs_check``.
 """
 from __future__ import annotations

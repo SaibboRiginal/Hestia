@@ -188,7 +188,7 @@ try:
             telegram_visible=False, telegram_group="system",
                 telegram={"section": "internal"}),
         # Backup from every client (dossier docs/work/2026-10-24-whole-cindy-brainstorm F). Restore is NOT a tool:
-        # only the owner restores (Telegram «Ripristina un backup», WebUI Backup panel), never the assistant.
+        # only the owner restores (Telegram «Restore a backup», WebUI Backup panel), never the assistant.
         MCPTool(
             name="backup_status",
             description="Backup state: last backup, last check, problems, Google Drive linked.",
@@ -278,7 +278,7 @@ _HUB_REGISTRATION_PAYLOAD = {
                 "response_mode": "raw_json",
             },
             {
-                "command": "notices_recent",
+                "command": "alerts_recent",
                 "title": "Recent notices",
                 "telegram_group": "notifications",
                 "telegram": {"section": "Automatic alerts"},
@@ -291,7 +291,7 @@ _HUB_REGISTRATION_PAYLOAD = {
                 "response_prompt": "Recent notices timeline: for each the item's full title, key payload details, 24h date/time, delivered yes/no. Link on the title, never 'Open'. Concise.",
             },
             {
-                "command": "notification_off",
+                "command": "notification_disable",
                 "title": "Turn off a notice",
                 "telegram_group": "notifications",
                 "telegram": {"section": "Automatic alerts"},
@@ -315,7 +315,7 @@ _HUB_REGISTRATION_PAYLOAD = {
                 "response_prompt": "Confirm clearly that the notification is off.",
             },
             {
-                "command": "notification_on",
+                "command": "notification_enable",
                 "title": "Turn a notice back on",
                 "telegram_group": "notifications",
                 "telegram": {"section": "Automatic alerts"},

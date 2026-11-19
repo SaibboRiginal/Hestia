@@ -134,8 +134,8 @@ export class HygieiaProducts extends HestiaElement {
   constructor() { super(); this.items = undefined; this.view = 'current'; this.area = ''; this.q = ''; this.sort = ''; this.m = null; this.form = false; }
   connectedCallback() {
     super.connectedCallback();
-    if (this.ctx?.query?.nuovo) this.form = true;
-    if (this.ctx?.query?.zona) this.area = this.ctx.query.zona;
+    if (this.ctx?.query?.new) this.form = true;
+    if (this.ctx?.query?.area) this.area = this.ctx.query.area;
     this.load();
     this.onHost('refresh', () => this.load());
   }
@@ -162,7 +162,7 @@ export class HygieiaProducts extends HestiaElement {
   render() {
     const head = html`<div class="between wrap"><div class="head"><button class="link" @click=${() => this.host.navigate('today')}>${tr("‹ Today")}</button><h1>${tr("Products")}</h1>
       ${this.items ? html`<span class="sub">${this.items.length}</span>` : nothing}</div>
-      <div class="row"><hxk-button icon="calendar" variant="ghost" @click=${() => this.host.navigate('shopping')}>${tr('Shopping list')}</hxk-button>
+      <div class="row"><hxk-button icon="calendar" variant="ghost" @click=${() => this.host.navigate('groceries')}>${tr('Shopping list')}</hxk-button>
         <hxk-button variant="primary" icon="plus" @click=${() => (this.form = true)}>${tr("New")}</hxk-button></div></div>`;
     return html`<div class="page">${head}
       <div class="filters">

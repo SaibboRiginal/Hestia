@@ -21,8 +21,8 @@ services:
       - LOG_LEVEL=INFO                                       # Logging verbosity: DEBUG | INFO | WARNING | ERROR
       - PYTHONUNBUFFERED=1                                   # flush stdout/stderr immediately (required for Docker log streaming)
       - TZ=${TZ:-Europe/Rome}                                # Local time for the assistant (today, agenda)
-      # Agent loop, context, timeouts, memory, approvals, documents: Themis settings oracle.* (Impostazioni → Sistema → Oracle).
-      # Models: named providers, chains and use cases are settings (Oracle → Cervello → Modelli);
+      # Agent loop, context, timeouts, memory, approvals, documents: Themis settings oracle.* (Settings → System → Oracle).
+      # Models: named providers, chains and use cases are settings (Oracle → Brain → Models);
       # keys only in app/.env as ORACLE_KEY_<NAME>.
     env_file:
       - ./app/.env

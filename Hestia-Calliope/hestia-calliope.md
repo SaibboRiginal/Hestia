@@ -1,6 +1,6 @@
 # Hestia-Calliope 📄
 
-**Role:** Real documents («Documenti», Cindy 21) — the assistant writes a small HTML draft, Calliope makes a PDF, a
+**Role:** Real documents («Documents», Cindy 21) — the assistant writes a small HTML draft, Calliope makes a PDF, a
 Word or an Excel file with one of three shared themes, checks it and keeps it
 **Node:** main host (with the other domain modules)
 **Stack:** Python · FastAPI · Docker · reportlab · python-docx · openpyxl · pypdf
@@ -12,14 +12,14 @@ Word or an Excel file with one of three shared themes, checks it and keeps it
 
 - Draft: `h1–h3, p, ul/ol/li, table/tr/th/td, b/strong, i/em, br` (plain text = paragraphs on blank lines). One parser
   → blocks; the three renderers read the same blocks, so the formats say the same thing.
-- Themes `classic` (Times, blue), `modern` (Helvetica, teal, default = Themis `calliope.theme`), `plain`
+- Themes `classic` (Times, blue), `modern` (Helvetica, teal, default = Themis `calliope.theme`), `sober`
   (Helvetica, grey). PDF: A4, title and date on top, page numbers. Excel: every table is a sheet named by the heading
-  before it, numbers as numbers (Italian decimals), header row frozen; the rest goes to a «Note» sheet.
+  before it, numbers as numbers (Italian decimals), header row frozen; the rest goes to a «Notes» sheet.
 - **Final check** before delivering: the file opens again, has pages/sheets, contains the title (PDF/Word) and every
   `must_contain` text. A failed check returns `created: false` with what is missing and keeps nothing.
 - Files in Archive blobs (`owner_module: calliope`), records in Archive `office-store` (kind `document`).
   Tool answers carry `display.files` (`hestia_common.display.file`): Telegram sends the file under the card.
-- Export/import section `documenti` (with the files).
+- Export/import section `documents` (with the files).
 
 ## API (`/api/office`)
 
@@ -27,13 +27,13 @@ Word or an Excel file with one of three shared themes, checks it and keeps it
 `GET /{id}/file` (download) · `DELETE /{id}` (record and blob). For the WebUI page:
 `GET /{id}/b64` (`{name, mime, data_b64}`).
 
-## Tools (Telegram area «Documenti»)
+## Tools (Telegram area «Documents»)
 
-`document_create`, `document_list`, `document_send`, `document_delete`.
+`document_create`, `document_created_list`, `document_created_send`, `document_created_delete`.
 
 ## WebUI plugin
 
-Page **Documenti creati** (`calliope-docs`: list, download, delete, new document with title, format, theme, HTML and the words it must contain, «Chiedi all'assistente»). Built from `ui/` in the image (`hestia_common.module_kit` `kit.webui`).
+Page **Documenti creati** (`calliope-docs`: list, download, delete, new document with title, format, theme, HTML and the words it must contain, «Ask the assistant»). Built from `ui/` in the image (`hestia_common.module_kit` `kit.webui`).
 
 ## Tests
 
@@ -42,8 +42,8 @@ Page **Documenti creati** (`calliope-docs`: list, download, delete, new document
 
 **2026-11-14 (backend English, dossier `docs/work/2026-11-14-english-backend`)**: tool descriptions and the module manual are English (for the model). What people read about the tools comes from `hestia_common/locales/<lang>/tools.json`.
 
-**2026-11-15 (owner's language, dossier `docs/work/2026-11-14-english-backend`)**: the notices, errors and cards this module shows go through `hestia_common.i18n.t` and follow «Lingua».
+**2026-11-15 (owner's language, dossier `docs/work/2026-11-14-english-backend`)**: the notices, errors and cards this module shows go through `hestia_common.i18n.t` and follow «Language».
 
-**2026-11-15 (WebUI page in the owner's language, dossier `docs/work/2026-11-14-english-backend`)**: the texts of this module's WebUI page and widgets go through `tr` of `@hestia/webui-sdk` and follow «Lingua»; source texts in English, Italian in `Hestia-Shared/hestia_common/locales/it/messages.json`.
+**2026-11-15 (WebUI page in the owner's language, dossier `docs/work/2026-11-14-english-backend`)**: the texts of this module's WebUI page and widgets go through `tr` of `@hestia/webui-sdk` and follow «Language»; source texts in English, Italian in `Hestia-Shared/hestia_common/locales/it/messages.json`.
 
 **2026-11-16 (no Italian in the code, dossier `docs/work/2026-11-14-english-backend` v2.0)**: every text is English in the code; Italian lives only in `Hestia-Shared/hestia_common/locales/it/messages.json`. Labels declared at registration (manifest, capabilities, agenda rules, settings) are plain English, translated at the edge.

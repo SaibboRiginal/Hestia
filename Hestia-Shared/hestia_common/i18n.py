@@ -10,10 +10,6 @@ A source text may carry a context tag, ``"f::Active"``, when one English text ne
 number, two meanings): the tag picks the catalog entry and is never shown.
 
 Catalog ``tools``: ``{tool_name: {"summary": "...", "params": {param: "help"}}}``.
-
-Catalog ``words``: the words a parser looks for in what the owner writes (``{name: [word, ...]}``), one file per
-language (``locales/<lang>/words.json``). ``words(name)`` joins every language, so the owner may write in any of them
-and a new language is only a new file: the code never holds those words.
 """
 from __future__ import annotations
 
@@ -38,72 +34,6 @@ def catalog(name: str, lang: str = FALLBACK) -> dict:
     except (OSError, ValueError):
         return {}
     return data if isinstance(data, dict) else {}
-
-
-def languages() -> tuple[str, ...]:
-    """Every language with a folder under ``locales`` (English first: the source)."""
-    try:
-        found = sorted(p.name for p in LOCALES.iterdir() if p.is_dir() and not p.name.startswith(("_", ".")))
-    except OSError:
-        found = []
-    return tuple(dict.fromkeys([SOURCE, *found]))
-
-
-@lru_cache(maxsize=256)
-def words(name: str, lang: str | None = None) -> tuple[str, ...]:
-    """The words of list *name* (``locales/<lang>/words.json``): of one language, or of all of them (no *lang*)."""
-    out: list[str] = []
-    for code in ((str(lang)[:2],) if lang else languages()):
-        value = catalog("words", code).get(str(name or ""))
-        if isinstance(value, str):
-            value = [value]
-        out.extend(str(w) for w in (value or []) if str(w))
-    return tuple(dict.fromkeys(out))
-
-
-def word_tables(name: str) -> dict[str, Any]:
-    """The structured entry *name* of ``words.json`` per language (``{lang: value}``, languages without it left out):
-    for a parser that needs more than a list of words (a lexicon, a table of levels, a set of rules)."""
-    out: dict[str, Any] = {}
-    for code in languages():
-        value = catalog("words", code).get(str(name or ""))
-        if value not in (None, "", [], {}):
-            out[code] = value
-    return out
-
-
-def word_map(prefix: str) -> dict[str, str]:
-    """``{word: id}`` from every list ``<prefix>.<id>`` of every language (``word_map("mood.label")`` →
-    {"stanco": "tired", "tired": "tired", …}); the id itself is always a word of its own list."""
-    out: dict[str, str] = {}
-    lead = f"{prefix}."
-    for code in languages():
-        for key, value in catalog("words", code).items():
-            if key.startswith(lead) and isinstance(value, list):
-                ident = key[len(lead):]
-                out.setdefault(ident.lower(), ident)
-                for w in value:
-                    out.setdefault(str(w).strip().lower(), ident)
-    return out
-
-
-def month_number(word: str) -> int:
-    """1-12 for a month name of any language (``words.json`` «months»: twelve names, January first), else 0."""
-    low = str(word or "").strip().lower()
-    for names in word_tables("months").values():
-        for i, name in enumerate(names or [], 1):
-            if low and str(name).lower() == low:
-                return i
-    return 0
-
-
-def words_pattern(name: str, lang: str | None = None, *, whole: bool = True) -> str:
-    """A regex alternation of the words of *name* (longest first, escaped; each word may itself be a regex when the
-    list name ends in ``_re``)."""
-    items = sorted(words(name, lang), key=len, reverse=True)
-    parts = items if name.endswith("_re") else [re.escape(w) for w in items]
-    body = "|".join(parts) or r"(?!x)x"
-    return rf"\b(?:{body})\b" if whole else f"(?:{body})"
 
 
 def language(get: Callable[[str], Any] | None = None) -> str:
@@ -165,7 +95,7 @@ def identity_now() -> dict:
 
 
 def _named(*texts: str) -> tuple[str, ...]:
-    """``{assistant}`` and ``{g:lei|lui}`` filled with the assistant's chosen name and gender (``identity.named``)."""
+    """``{assistant}`` and ``{g:her-form|his-form}`` filled with the assistant's chosen name and gender (``identity.named``)."""
     if not any("{assistant}" in x or "{g:" in x for x in texts):
         return texts
     from hestia_common import identity
@@ -181,7 +111,7 @@ def bare(text: str) -> str:
 def t(text: Any, *args: Any, lang: str | None = None, **kwargs: Any) -> str:
     """``text`` (English source) in the owner's language; with arguments it is then ``str.format``-ed.
 
-    ``t("Hello {name}", name=n)`` · ``t("{0} files", count)``. ``{assistant}`` and ``{g:lei|lui}`` take the
+    ``t("Hello {name}", name=n)`` · ``t("{0} files", count)``. ``{assistant}`` and ``{g:her-form|his-form}`` take the
     assistant's chosen name and gender (``identity.named``) before formatting. Never raises: a broken translation
     falls back to the source text."""
     source = "" if text is None else str(text)
@@ -210,7 +140,7 @@ WEEKDAYS = ("monday", "tuesday", "wednesday", "thursday", "friday", "saturday", 
 
 
 def month_name(month: int, lang: str | None = None) -> str:
-    """Name of ``month`` (1-12) in the owner's language («gennaio» in Italian)."""
+    """Name of ``month`` (1-12) in the owner's language («January» in English)."""
     return t(MONTHS[(int(month) - 1) % 12], lang=lang)
 
 
@@ -254,3 +184,62 @@ def localize(payload: Any, lang: str | None = None) -> Any:
             return text(node)
         return node
     return walk(payload)
+
+
+# ── words people write (catalog ``words``: ``{list key: [regex fragments]}``, one file per language) ───────────
+# Parsers of what the owner writes (yes/no, «delete», dates, moods, bank mails…) never hold a language in the code:
+# they name a list (``"oracle.delete_ask"``) and read it from every ``locales/<lang>/words.json``, so the owner is
+# understood in any language that has a file, whatever «Language» says. Entries are regex fragments (``"delet"``,
+# ``"alread[y]"``); a new language is one new file.
+@lru_cache(maxsize=1)
+def _languages() -> tuple[str, ...]:
+    return tuple(sorted(p.name for p in LOCALES.iterdir() if (p / "words.json").is_file()))
+
+
+def languages() -> tuple[str, ...]:
+    """Every language Hestia knows (one folder in ``locales/``), English first."""
+    return tuple(sorted(_languages(), key=lambda c: c != SOURCE))
+
+
+@lru_cache(maxsize=512)
+def words(key: str) -> tuple[str, ...]:
+    """Every entry of the list ``key`` in every language with a ``words.json`` (English first, no duplicates)."""
+    out: list[str] = []
+    for code in sorted(_languages(), key=lambda c: c != SOURCE):
+        for w in catalog("words", code).get(key) or []:
+            if isinstance(w, str) and w and w not in out:
+                out.append(w)
+    return tuple(out)
+
+
+def alt(key: str) -> str:
+    """The entries of ``key`` as one regex alternation (``a|b|c``), longest first; ``(?!)`` when empty."""
+    items = sorted(words(key), key=len, reverse=True)
+    return "|".join(items) if items else "(?!)"
+
+
+@lru_cache(maxsize=512)
+def word_regex(template: str, *keys: str, flags: int = re.IGNORECASE) -> "re.Pattern[str]":
+    """A compiled regex where ``{0}``, ``{1}``… in ``template`` are the alternations of ``keys``:
+    ``word_regex(r"\\b(?:{0})\\w*", "oracle.delete_ask")``."""
+    return re.compile(template.format(*(alt(k) for k in keys)), flags)
+
+
+def word_set(key: str) -> frozenset[str]:
+    """The entries of ``key`` as plain lower-case words (lists of whole words, not fragments)."""
+    return frozenset(w.lower() for w in words(key))
+
+
+def is_yes(value: Any) -> bool:
+    """True for a boolean typed as text: ``1``, ``true`` or a yes word of any language (``common.yes_word``)."""
+    return value if isinstance(value, bool) else str(value).strip().lower() in {"1", "true"} | word_set("common.yes_word")
+
+
+def weekday_of(name: str) -> int:
+    """Monday = 0 … Sunday = 6 for a weekday name or its first three letters in any language (``date.weekday.<n>``);
+    ``ValueError`` when it is not one."""
+    low = str(name or "").strip().lower()
+    for n in range(7):
+        if any(low in (w, w[:3]) for w in word_set(f"date.weekday.{n}")):
+            return n
+    raise ValueError(name)

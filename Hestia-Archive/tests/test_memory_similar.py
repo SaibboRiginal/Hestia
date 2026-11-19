@@ -61,7 +61,7 @@ def test_ranking_filters_and_similarity_on_postgres():
             ("simtest:far", _vec(0.0, 1.0), "skill", "calendar", True),
             ("simtest:off", _vec(1.0, 0.0), "skill", "calendar", False),
             ("simtest:other-class", _vec(1.0, 0.0), "durable_user_preference", "calendar", True),
-            ("simtest:other-domain", _vec(1.0, 0.0), "skill", "spese", True),
+            ("simtest:other-domain", _vec(1.0, 0.0), "skill", "expenses", True),
             ("simtest:zero", _vec(), "skill", "calendar", True),
         ]
         for fact, emb, cls, dom, active in rows:

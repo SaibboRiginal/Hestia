@@ -6,19 +6,21 @@ do not depend on the model (bench with real and small models, 2026-10-30, docs/w
 1. A question or a request for advice changes nothing: write tools are refused (settings_propose and
    forge_develop excepted: they only propose, the user confirms).
 2. One thing, one place: once a module stored what the user said, memory.save does not copy it (unless the user
-   said «ricorda»).
-3. Deleting or cancelling needs the user's own words for it (cancella, elimina, togli, annulla…).
+   said «remember»).
+3. Deleting or cancelling needs the user's own words for it (delete, remove, cancel… in any language).
 4. forge_develop starts only when the user asked to build something or said yes to the proposal.
 5. At most ``MAX_WRITES`` writes per turn: more is a runaway loop, the model asks first.
 
 A refused call returns ``(False, "BLOCKED: …")``: the model reads why and answers the user. The tool log marks
-it ``refused``: no «Non riuscito» notice to the user, nothing was tried. On a question a write tool called with no
+it ``refused``: no «failed» notice to the user, nothing was tried. On a question a write tool called with no
 values passes: on read-or-write tools (food_diet) that is a read.
 """
 from __future__ import annotations
 
 import logging
 import re
+
+from hestia_common.i18n import word_regex
 
 from core.services.memory_intent import asks_to_remember, has_deprecate_intent, has_write_intent
 
@@ -28,15 +30,12 @@ MAX_WRITES = 6
 PROPOSE_ONLY = frozenset({"settings_propose", "forge_develop", "ask_user"})
 MEMORY_TOOLS = frozenset({"memory.save", "memory.forget"})
 
-_ADVICE = re.compile(r"\b(consigli|consiglia|suggerisci|suggerimento|cosa ne pensi|che ne dici)\w*", re.IGNORECASE)
-_DESTRUCTIVE_NAME = re.compile(r"(delete|elimina|remove|rimuovi|cancel|annulla|disiscriviti|scollega|forget)",
-                               re.IGNORECASE)
-_DESTRUCTIVE_ASK = re.compile(r"\b(cancell|elimin|togli|rimuov|annull|disdic|scollega|smetti|basta|dimentic|"
-                              r"delete|remove|cancel)\w*", re.IGNORECASE)
-_BUILD_ASK = re.compile(r"\b(sviluppa|implementa|programma|costruisci|crea(?:mi)? (?:un|una) (?:comando|modulo|"
-                        r"funzione|strumento|plugin)|aggiungi (?:a|in) hestia|forge)\w*", re.IGNORECASE)
-_YES = re.compile(r"^\s*(s[iì]|ok|okay|va bene|vai|procedi|fallo|confermo|certo|d'accordo|perfetto)\b[\s!.]*",
-                  re.IGNORECASE)
+# Words of the owner in every language with a words file (hestia_common.i18n.words, docs/LANGUAGES.md).
+_ADVICE = word_regex(r"\b(?:{0})\w*", "oracle.advice")
+_DESTRUCTIVE_NAME = re.compile(r"(delete|remove|cancel|unsubscribe|unlink|forget)", re.IGNORECASE)  # tool names
+_DESTRUCTIVE_ASK = word_regex(r"\b(?:{0})\w*", "oracle.delete_ask")
+_BUILD_ASK = word_regex(r"\b(?:{0})\w*", "oracle.build_ask")
+_YES = word_regex(r"^\s*(?:{0})\b[\s!.]*", "common.yes")
 
 
 def is_question_or_advice(message: str) -> bool:
@@ -102,7 +101,7 @@ class TurnGuards:
             reason = self.check(tool, kw)
             if reason:
                 logger.info("[🔄] event=turn_guard_refused tool=%s reason=%s", tool.name, reason[:60])
-                if reason.startswith("ALREADY"):   # nothing to do, not a failure: no «Fatto», no «non riuscito»
+                if reason.startswith("ALREADY"):   # nothing to do, not a failure: no «Done», no «failed»
                     return True, {"already_known": True, "note": reason}
                 return False, reason
             ok, out = handler(**kw)

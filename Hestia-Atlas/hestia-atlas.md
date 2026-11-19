@@ -98,13 +98,13 @@ Tool titles are plain Italian without emoji; each tool says where it goes on Tel
   `{"params": {...}, "timeout_seconds": 30}`.
 - A step that fails or a required field that comes back empty → answer `status: broken` and the log
   `event=atlas_recipe_broken` (WARNING): Argus alerts on it and, when it repeats, proposes the fix to Forge.
-- Shipped: `duckduckgo` (q → titles, links, snippets), `pagina` (url → title, description, headings, text).
+- Shipped: `duckduckgo` (q → titles, links, snippets), `page` (url → title, description, headings, text).
 
 
 
 **2026-11-14 (backend English, dossier `docs/work/2026-11-14-english-backend`)**: tool descriptions are English (for the model). What people read about the tools comes from `hestia_common/locales/<lang>/tools.json`.
 
-**2026-11-15 (owner's language, dossier `docs/work/2026-11-14-english-backend`)**: the notices, errors and cards this module shows go through `hestia_common.i18n.t` and follow «Lingua».
+**2026-11-15 (owner's language, dossier `docs/work/2026-11-14-english-backend`)**: the notices, errors and cards this module shows go through `hestia_common.i18n.t` and follow «Language».
 
 **2026-11-16 (no Italian in the code, dossier `docs/work/2026-11-14-english-backend` v2.0)**: every text is English in the code; Italian lives only in `Hestia-Shared/hestia_common/locales/it/messages.json`. Labels declared at registration (manifest, capabilities, agenda rules, settings) are plain English, translated at the edge. It now follows «Lingua» at startup (`SettingsClient("atlas").follow_personal()`).
 

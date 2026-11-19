@@ -224,7 +224,7 @@ class People:
         return {"handled": True, "ideas": len(ideas)}
 
     def daily(self) -> dict:
-        """Agenda job: one «call …?» notice per person due a contact today (never piling up: ``replaces``)."""
+        """Agenda job: one «call …» notice per person due a contact today (never piling up: ``replaces``)."""
         due = [p for p in self.list() if p.get("contact_due_in") is not None and p["contact_due_in"] <= 0]
         for p in due:
             if self.hub:

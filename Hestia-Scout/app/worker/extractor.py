@@ -19,7 +19,7 @@ from core.atlas_client import AtlasClient
 from evaluators.oracle_evaluator import OracleEvaluator
 from tools.geocoding import GeocodingService
 from worker.sites.registry import SiteHandlerRegistry
-from hestia_common.i18n import t as tr  # fixed texts in the owner's language
+from hestia_common.i18n import t as tr, words  # fixed texts in the owner's language
 
 
 logger = logging.getLogger("hestia_scout.extractor")
@@ -71,7 +71,7 @@ CRITICAL:
 DO NOT truncate or summarize. Include ALL details provided.
 7. For listing_status: infer from the email text. Use ONLY one of:
    "available" | "in_negotiation" | "investment_occupied" | "sold" | "unknown"
-   - "in_negotiation" if the email mentions "trattativa", "under offer" or similar.
+   - "in_negotiation" if the email mentions "under offer" or similar (scout.status.negotiation).
    - "investment_occupied" if the listing is rented out or sold as investment with tenants.
    - "sold" if the property is already sold.
    - "available" if explicitly stated as free/available.
@@ -210,8 +210,8 @@ def _build_geocoding_candidates(payload: dict) -> list[str]:
         if not c:
             continue
         expanded.append(c)
-        if "italia" not in c.lower() and "italy" not in c.lower():
-            expanded.append(f"{c}, Italia")
+        if "italia" not in c.lower() and "italy" not in c.lower():   # the listing sites are Italian
+            expanded.append(f"{c}, Italy")
     return expanded
 
 
@@ -300,11 +300,7 @@ def enrich_payload_from_listing(payload: dict, timeout_seconds: int = 30) -> dic
 
     # ── Content-based availability check ─────────────────────────────
     _html_lower = result.html.lower()
-    _sold_signals = [
-        tr("no longer available"), "annuncio rimosso", "immobile venduto",
-        "property sold", "no longer available", "listing removed",
-        "this property is no longer", "venduta", "venduto",
-    ]
+    _sold_signals = [tr("no longer available").lower(), *words("scout.page.sold")]
     if any(s in _html_lower for s in _sold_signals):
         logger.info("event=listing_sold_detected_in_content Marking as sold from page content | url=%s",
                     normalized_url)

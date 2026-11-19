@@ -12,7 +12,7 @@ export const routes: Routes = [
   // The address is the same in every language (the installer prints it); the old Italian one still works.
   { path: 'setup', canActivate: [authGuard], title: tr('Setup · {assistant}'),
     loadComponent: () => import('./features/setup/setup-page.component').then(m => m.SetupPageComponent) },
-  { path: 'benvenuto', redirectTo: 'setup' },
+  { path: 'welcome', redirectTo: 'setup' },
   {
     path: '',
     component: ShellComponent,

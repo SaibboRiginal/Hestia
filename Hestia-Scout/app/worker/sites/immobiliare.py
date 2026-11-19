@@ -14,6 +14,10 @@ from urllib.parse import urlparse, urlunparse
 from bs4 import BeautifulSoup
 
 from worker.sites.base import BaseSiteHandler
+from worker.sites.labels import has, label_is, none_value, word_regex, yes_value
+from hestia_common.i18n import words
+
+OTHER = "Other"   # bucket of the features without a «key: value»
 
 
 class ImmobiliareSiteHandler(BaseSiteHandler):
@@ -148,7 +152,7 @@ class ImmobiliareSiteHandler(BaseSiteHandler):
             if len(location_parts) > 2:
                 extras.setdefault("area", ", ".join(location_parts[2:]))
 
-        # Top badges like "2 locali", "56 m²", "1 bagno", "No Ascensore", "Balcone".
+        # Top badges like "2 rooms", "56 m²", "1 bathroom", "No lift", "Balcony" (the site's language).
         for item in soup.select("div[class*='MainFeatures_item'] span[class*='MainFeatures_text']"):
             self._apply_feature_text(item.get_text(
                 " ", strip=True), specs, extras)
@@ -172,48 +176,44 @@ class ImmobiliareSiteHandler(BaseSiteHandler):
             if not key or not value:
                 continue
 
-            if "piano" in key and "floor" not in specs:
+            if has("floor", key) and "floor" not in specs:
                 specs["floor"] = value
-            elif "superficie" in key and "surface_m2" not in specs:
+            elif has("surface", key) and "surface_m2" not in specs:
                 number = self._extract_number(value)
                 if number is not None:
                     specs["surface_m2"] = number
-            elif "locali" in key and "rooms" not in specs:
+            elif has("rooms", key) and "rooms" not in specs:
                 number = self._extract_int(value)
                 if number is not None:
                     specs["rooms"] = number
-            elif "camere da letto" in key and "bedrooms" not in specs:
+            elif has("bedrooms", key) and "bedrooms" not in specs:
                 number = self._extract_int(value)
                 if number is not None:
                     specs["bedrooms"] = number
-            elif "bagni" in key and "bathrooms" not in specs:
+            elif has("bathrooms", key) and "bathrooms" not in specs:
                 number = self._extract_int(value)
                 if number is not None:
                     specs["bathrooms"] = number
-            elif "ascensore" in key:
-                specs["elevator"] = value.strip().lower() not in {
-                    "no", "assente"}
-            elif "balcone" in key:
-                specs["balcony_or_terrace"] = value.strip(
-                ).lower().startswith("s")
-            elif "terrazzo" in key and not specs.get("balcony_or_terrace"):
-                specs["balcony_or_terrace"] = value.strip(
-                ).lower().startswith("s")
-            elif "box" in key or "posti auto" in key:
-                specs["garage_or_parking"] = value.strip().lower() not in {
-                    "no", "nessuno"}
+            elif has("elevator", key):
+                specs["elevator"] = not none_value(value)
+            elif has("balcony", key):
+                specs["balcony_or_terrace"] = yes_value(value)
+            elif has("terrace", key) and not specs.get("balcony_or_terrace"):
+                specs["balcony_or_terrace"] = yes_value(value)
+            elif has("parking", key) or has("parking", key):
+                specs["garage_or_parking"] = not none_value(value)
                 extras["parking_details"] = value
-            elif "riscaldamento" in key and "heating" not in specs:
+            elif has("heating", key) and "heating" not in specs:
                 specs["heating"] = value
-            elif "tipologia" in key:
+            elif has("property_type", key):
                 extras["property_type"] = value
-            elif "contratto" in key:
+            elif has("contract", key):
                 extras["contract"] = value
-            elif "cucina" in key:
+            elif has("kitchen", key):
                 extras["kitchen"] = value
-            elif "arredato" in key:
+            elif has("furnished", key):
                 extras["furnished"] = value
-            elif "climatizzazione" in key:
+            elif has("air_conditioning", key):
                 extras["climatization"] = value
 
         return enriched, specs, extras
@@ -232,16 +232,16 @@ class ImmobiliareSiteHandler(BaseSiteHandler):
             key = dt.get_text(" ", strip=True).lower()
             value = dd.get_text(" ", strip=True)
 
-            if "prezzo" in key and "prezzo al m" not in key and not enriched.get("price"):
+            if has("price", key) and not has("price_per_m2", key) and not enriched.get("price"):
                 money = self._extract_money_int(value)
                 if money is not None:
                     enriched["price"] = money
-            elif "prezzo al m" in key:
+            elif has("price_per_m2", key):
                 money = self._extract_money_int(value)
                 if money is not None:
                     extras["price_per_m2"] = money
                     enriched.setdefault("pricing", {})["price_per_m2"] = money
-            elif "spese condominio" in key:
+            elif has("condo_fees", key):
                 extras["condo_fees"] = value
                 monthly = self._extract_money_int(value)
                 if monthly is not None:
@@ -271,20 +271,20 @@ class ImmobiliareSiteHandler(BaseSiteHandler):
             if not key or not val:
                 continue
 
-            if "anno di costruzione" in key:
+            if has("year_built", key):
                 year = self._extract_int(val)
                 if year is not None:
                     extras["year_built"] = year
                     enriched.setdefault("energy", {})["year_built"] = year
-            elif key == "stato":
+            elif label_is("state", key):
                 extras["property_state"] = val
                 enriched.setdefault("energy", {})["property_state"] = val
-            elif "riscaldamento" in key:
+            elif has("heating", key):
                 enriched.setdefault("specs", {})
                 if not enriched["specs"].get("heating"):
                     enriched["specs"]["heating"] = val
                 enriched.setdefault("energy", {})["heating"] = val
-            elif "climatizz" in key:
+            elif has("air_conditioning", key):
                 extras["climatization"] = val
                 enriched.setdefault("energy", {})["climatization"] = val
 
@@ -306,8 +306,7 @@ class ImmobiliareSiteHandler(BaseSiteHandler):
         if ref_node:
             ref_text = ref_node.get_text(" ", strip=True)
             extras["reference"] = ref_text
-            ref_val = re.search(r"riferimento\s*:?\s*(\S+)",
-                                ref_text, re.IGNORECASE)
+            ref_val = word_regex(r"(?:{0})\s*:?\s*(\S+)", "scout.label.reference").search(ref_text)
             if ref_val:
                 extras["reference_id"] = ref_val.group(1)
 
@@ -384,11 +383,11 @@ class ImmobiliareSiteHandler(BaseSiteHandler):
                     continue
                 if key == "piano":
                     details["floor"] = value
-                elif key == "superficie":
+                elif label_is("surface", key):
                     details["surface_m2"] = self._extract_number(value)
                 elif key == "coefficiente":
                     details["coefficient_pct"] = self._extract_int(value)
-                elif key == "tipo superficie":
+                elif label_is("surface_type", key):
                     details["surface_type"] = value
                 elif "sup. commerciale" in key:
                     details["commercial_surface_m2"] = self._extract_number(value)
@@ -436,7 +435,7 @@ class ImmobiliareSiteHandler(BaseSiteHandler):
         if nav_count:
             text = nav_count.get_text(" ", strip=True)
             listing["nav_position"] = text
-            m = re.search(r"(\d+)\s+di\s+(\d+)", text.lower())
+            m = word_regex(r"(\d+)\s+(?:{0})\s+(\d+)", "scout.label.of").search(text.lower())
             if m:
                 listing["position"] = int(m.group(1))
                 listing["total_results"] = int(m.group(2))
@@ -475,7 +474,7 @@ class ImmobiliareSiteHandler(BaseSiteHandler):
         if not lowered:
             return
 
-        if "locali" in lowered and "rooms" not in specs:
+        if has("rooms", lowered) and "rooms" not in specs:
             value = self._extract_int(text)
             if value is not None:
                 specs["rooms"] = value
@@ -485,23 +484,23 @@ class ImmobiliareSiteHandler(BaseSiteHandler):
             if value is not None:
                 specs["surface_m2"] = value
 
-        if "bagno" in lowered and "bathrooms" not in specs:
+        if has("bathrooms", lowered) and "bathrooms" not in specs:
             value = self._extract_int(text)
             if value is not None:
                 specs["bathrooms"] = value
 
-        if "piano" in lowered and "floor" not in specs:
+        if has("floor", lowered) and "floor" not in specs:
             specs["floor"] = text
 
-        if "no ascensore" in lowered:
+        if has("no_elevator", lowered):
             specs["elevator"] = False
-        elif "ascensore" in lowered:
+        elif has("elevator", lowered):
             specs["elevator"] = True
 
-        if "balcone" in lowered or "terrazzo" in lowered:
+        if has("balcony", lowered) or has("terrace", lowered):
             specs["balcony_or_terrace"] = True
 
-        if "parzialmente arredato" in lowered:
+        if has("partly_furnished", lowered):
             extras.setdefault("furnished", text)
 
     @staticmethod

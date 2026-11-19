@@ -3,7 +3,7 @@
 Needs (``hestia_common.coach`` contract):
 - one ``target`` per budget (category or total): what is left this budget month, spread over the weeks still to go
   (``value`` = what fits this week, ``progress`` = spent / budget); no budget → no target;
-- one ``block`` "Rivedi spese" (15') when the movements to review reach ``plutus.coach.review_threshold``.
+- one ``block`` "Review expenses" (15') when the movements to review reach ``plutus.coach.review_threshold``.
 ``review`` = budgets kept or over in the budget month of that week.
 """
 from __future__ import annotations
@@ -18,7 +18,7 @@ REVIEW_NEED = "finance.review"
 class PlutusCoach:
     def __init__(self, plutus):
         self.p = plutus
-        self.review_open = False                         # the "Rivedi spese" block is in the plan
+        self.review_open = False                         # the "Review expenses" block is in the plan
 
     def check(self) -> str | None:
         """After movements change: ``done`` when the review is no longer needed, ``changed`` when it now is."""
@@ -57,7 +57,7 @@ class PlutusCoach:
         if self.review_open:
             out.append({"id": REVIEW_NEED, "title": tr("Review expenses"), "kind": "block", "count": 1, "minutes": 15,
                         "time_of_day": "evening", "tags": ["admin"], "priority": "could",
-                        "reason": tr("{0} transactions to check", s['to_review']), "link": "movimenti"})
+                        "reason": tr("{0} transactions to check", s['to_review']), "link": "transactions"})
         state = f"spent {s['spent']:.2f} {cur}" + (f" su {s['budget']:.2f}" if s.get("budget") else "")
         return {"state": state, "needs": out}
 

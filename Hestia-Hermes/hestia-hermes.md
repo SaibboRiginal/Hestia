@@ -78,19 +78,19 @@ within the cooldown window.
   such events are **never deduped**.
 - Hermes reads the latest row with that key: every still-open occurrence becomes `superseded` (compare-and-set,
   a concurrent answer wins) and every client gets `update {state: "superseded", superseded_by}` (Telegram deletes
-  the message, over 48 h «↻ Sostituito»; WebUI removes it). A late answer on it → `409 already_handled`.
+  the message, over 48 h «↻ Replaced»; WebUI removes it). A late answer on it → `409 already_handled`.
 - Counter in `payload.notification.repeat {count, skipped, since}`: previous not resolved → +1 / +1, else
   fresh. Clients get `repeat: {count, skipped, since, text}` from the 2nd occurrence («Saltato 2 volte · dal 12 ott»,
   readable aloud). The module's own text never counts skips.
 - The chain ends (`payload.repeat_resolved`) when the user answers with an action flagged `resolves: true`
-  («Fatto») or the module sends `closes: <key>` with `decision` `done`/`resolved`. Other answers («Salta») count
+  («Done») or the module sends `closes: <key>` with `decision` `done`/`resolved`. Other answers («Skip») count
   as skipped. A chain idle longer than `hermes.repeat.reset_after_days` starts from zero.
 - The inbox lists every state but `superseded`: only the live occurrence is shown.
 - When to nudge stays with the module (e.g. Self care max 2/week).
 
 ## Notifications also as voice (2026-10-20, dossier `docs/work/2026-10-20-voice-module` §7.3)
 
-- The module decides with its own setting `<module>.notifiche.voce` (`hestia_common.reminders.voice_setting`) and puts
+- The module decides with its own setting `<module>.notifications.voice` (`hestia_common.reminders.voice_setting`) and puts
   `_voice: true` in the event payload (`reminder_event(voice=…)`; batched domains keep the flag for the batch).
 - Hermes publishes the written notification as always, then in the background asks Echo (`VoiceClient.speak`, use
   `hermes.notification` declared in `voice_usecases`, `ogg_opus`, kept as class `notification`), stores
@@ -102,16 +102,16 @@ within the cooldown window.
 
 ## Da decidere, active client, secret form, Web Push (dossier `docs/work/2026-10-24-whole-cindy-brainstorm` W2)
 
-- **«Da decidere»** (Cindy 5): agenda job `hermes.notifications.remind_pending` (hourly) → `POST
-  /api/notifications/remind-pending`. Notifications still waiting for an answer after `hermes.waiting.recall_hours`
+- **«To decide»** (Cindy 5): agenda job `hermes.notifications.remind_pending` (hourly) → `POST
+  /api/notifications/remind-pending`. Notifications still waiting for an answer after `hermes.wait.recall_hours`
   (default 4 h) get ONE grouped reminder «Da decidere: N» (repeat chain `hermes.pending_reminder`, so the previous
   reminder is replaced), each notification recalled once (`reminded_at`). The link opens the inbox filter `pending`.
 - **Rings only where the owner is** (Cindy 20): if the presence says the owner used a client (`last_interaction_client`)
-  within `hermes.delivery.active_client_minutes` (default 10, 0 = everywhere), the other clients get the notification
+  within `hermes.delivery.client_active_minutes` (default 10, 0 = everywhere), the other clients get the notification
   `silent` (inbox only). Urgent ones (`_urgent`) and `origin` notifications keep their own rule; an unknown client
   (one Hermes does not deliver to) rings everywhere.
 - **Secret form** (Cindy 4): an event with `_secret: {service, path, fields: [{name, label, type password|text|token}]}`
-  shows a form (WebUI; Telegram gets an «Inserisci» Mini App button, never asks in the chat). `POST
+  shows a form (WebUI; Telegram gets an «Insert» Mini App button, never asks in the chat). `POST
   /api/notifications/{id}/secret {client, values}` claims it (first answer wins) and forwards `{values, client}` to
   the module through the Hub. Hermes never stores or logs the values (only the field names); clients see only the
   fields (`secret: {fields}`). A secret notification counts as pending.
@@ -125,22 +125,22 @@ within the cooldown window.
 
 - An event with `_question: {kind, options, allow_other, service, path, method?, body?}` asks like the chat card:
   `kind` = `confirm` (Sì/No by default) · `single_choice` · `multi_choice` (2–8 options, labels or `{value,
-  label}`) · `free_text`; `allow_other` adds «Altro…». Malformed = ignored (`normalize_question`).
+  label}`) · `free_text`; `allow_other` adds «Other…». Malformed = ignored (`normalize_question`).
 - Stored as `notification.question`; clients get only `{kind, options, allow_other}` (`question` in the client body
-  and the inbox view). It counts as pending: «Da decidere», the grouped reminder, never retracted while open, never
+  and the inbox view). It counts as pending: «To decide», the grouped reminder, never retracted while open, never
   held by presence.
 - `POST /api/notifications/{id}/reply {client, answer}` (plugin door `/api/ui/inbox/{id}/reply`): text, or one value
   per line / a list for multiple choice; a value outside the options needs `allow_other` (else 400). Claimed with
   compare-and-set like an action (409 `already_handled` with the winning answer), routed to the module with
   `{...body, answer, answers, client, notification_id}`, then `update answered` to every client with the answer shown
   as labels. Module 409 → already handled; module error → claim released (502).
-- WebUI inbox: the same card as a chat question (buttons, toggles + «Invia», field for free text / «Altro…»).
-  Telegram: the chat-question keyboard, free text only after «Rispondi…»/«Altro…» or as a reply to the message.
+- WebUI inbox: the same card as a chat question (buttons, toggles + «Send», field for free text / «Other…»).
+  Telegram: the chat-question keyboard, free text only after «Rispondi…»/«Other…» or as a reply to the message.
 - First producer: Chronos routines (the assistant's questions during a routine). Any module: `reminder_event(question=)`.
 
-## Notification style «Frase di Hestia» (dossier `docs/work/2026-11-06-living-hestia` F5)
+## Notification style «Hestia's sentence» (dossier `docs/work/2026-11-06-living-hestia` F5)
 
-Setting `hermes.notifications.style`: `scheda` (default, unchanged) or `frase`. With `frase`, before publishing,
+Setting `hermes.notifications.style`: `card` (default, unchanged) or `sentence`. With `sentence`, before publishing,
 `conversational_message()` asks Oracle (`/api/llm/generate` via `narrate`) to say an informative notification as
 one short sentence of Hestia, like in chat. Warnings, errors, `service.action_required` / `service.health`, and
 events with `_actions`, `_question` or `_secret` stay cards. Oracle down or empty answer → the card text as is.
@@ -148,7 +148,7 @@ The prompt speaks with the chosen name and gender (`hestia_common.identity`; Her
 
 ## Messages of the conversation (`_chat`, dossier `docs/work/2026-11-12-identity-and-proactivity`)
 
-An event whose payload has `_chat: true` is a message the assistant wrote on her own (Athena «parla con te»,
+An event whose payload has `_chat: true` is a message the assistant wrote on her own (Athena «talks to you»,
 `kind: athena.talk`): delivered like any notification (presence and quiet hours hold), but clients show it as chat
 text and it is **never retracted** from Telegram. The inbox view and `GET /api/notifications` items carry `kind`
 (the event payload's `kind`), which Oracle's awareness reads.
@@ -164,7 +164,7 @@ text and it is **never retracted** from Telegram. The inbox view and `GET /api/n
 | `POST` | `/api/notifications/{id}/seen` · `/seen-all` | Global read state |
 | `POST` | `/api/notifications/{id}/answer` · `/answer/outcome` | First answer wins, routed to the asking module |
 | `POST` | `/api/notifications/retract-stale` | Agenda job: retract handled messages from clients |
-| `POST` | `/api/notifications/remind-pending` | Agenda job: one grouped «Da decidere» reminder (Cindy 5) |
+| `POST` | `/api/notifications/remind-pending` | Agenda job: one grouped «To decide» reminder (Cindy 5) |
 | `POST` | `/api/notifications/{id}/reply` | Answer to a notification question `{client, answer}` → forwarded to the module, first answer wins |
 | `POST` | `/api/notifications/{id}/secret` | Secret form `{client, values}` → forwarded to the module, never stored (Cindy 4) |
 | `GET` · `POST` · `DELETE` | `/api/push/key` · `/api/push/subscribe` | Web Push: VAPID public key · browser subscription on/off (C15) |
@@ -178,7 +178,7 @@ text and it is **never retracted** from Telegram. The inbox view and `GET /api/n
 | `POST` | `/api/ui/inbox/{id}/secret` | Plugin door of the secret form: same as `/api/notifications/{id}/secret` (body `{values, client?}`; values never logged) |
 | `GET` · `POST` · `DELETE` | `/api/ui/push/key` · `/api/ui/push/subscribe` | Plugin doors of Web Push for the WebUI shell (Impostazioni → Personali → Messaggi): same as `/api/push/*` |
 | `GET` | `/api/ui/manifest` · `/ui/webui/hermes.js` | WebUI plugin manifest + bundle (plugin contract) |
-| `GET` | `/api/module/recap` | Daily recap piece «Notifiche»: how many today, the important ones (warning/error), those still waiting for an answer; the recap itself (`replaces: athena.recap`) is excluded. Capability `recap_endpoint` |
+| `GET` | `/api/module/recap` | Daily recap piece «Notifications»: how many today, the important ones (warning/error), those still waiting for an answer; the recap itself (`replaces: athena.recap`) is excluded. Capability `recap_endpoint` |
 
 System subscription (`service.action_required`) is bootstrapped at startup for the user (`owner`,
 channel `{"type": "all"}` = every client; Telegram resolves `owner` to its `ALLOWED_USER_ID`); older `sys-action-required-<chat id>` subscriptions are
@@ -198,14 +198,14 @@ are spread over `/api/notifications`, `/api/events`…, so the pages use small `
   *Tutte*, module, *Anche da altri client*; grouped by day (Oggi, Ieri, …); level icon, repeat badge (↻), origin
   client, unread dot, title, message (Telegram-style HTML, sanitised: only b/i/u/s/code/pre/a(http)/br/blockquote);
   *Apri* on the module page of `_link` (marks it seen); the notification's buttons (first answer wins, 409 →
-  «Già gestita da …»), the outcome or *Scaduta*, «Vista su Telegram»; *Segna tutte lette*; *Carica altre* (40 per
+  «Already handled by …»), the outcome or *Scaduta*, «Vista su Telegram»; *Segna tutte lette*; *Carica altre* (40 per
   page, `before` cursor). Items shown in a visible tab for 1.5 s are marked seen. While visible the page polls
   `/api/ui/inbox/counts` every 20 s and reloads when the counters move (no SignalR in plugins). Sidebar **badge**
   = page badge `{source: /api/ui/inbox/counts, field: unread}`. Deep link `?filter=unread|pending|all&source=`.
   The live toasts stay in the WebUI shell (it is the client); the page's *Avvisi a comparsa* select writes the
   shell's own preference (`localStorage` `hestia_notification_prefs`, same origin) and fires the window event
-  `hestia:notification-prefs` `{toast}`. «Rispondi»/«Apri» on a toast opens `?focus=<id>`: filter «Tutte», that
-  notification first under «Questa», highlighted and scrolled into view (a filter change drops it).
+  `hestia:notification-prefs` `{toast}`. «Reply»/«Open» on a toast opens `?focus=<id>`: filter «All», that
+  notification first under «This one», highlighted and scrolled into view (a filter change drops it).
   Since W7 (dossier 2026-10-24-whole-cindy-brainstorm) the *Da rispondere* filter reads **Da decidere**; a secret
   notification shows its form in the card (password fields masked, *Invia* → `/api/ui/inbox/{id}/secret`, the
   values leave the page and are never kept); a button whose answer is `{execute: "command", command}` opens that tool
@@ -219,7 +219,7 @@ are spread over `/api/notifications`, `/api/events`…, so the pages use small `
   with more than one device, by device; «How notifications are chosen» (subscriptions) is a closed section.
   Read-only apart from the retry: the inbox to read and answer is the **Notifiche** page above.
 - widget **Consegne oggi** (`hermes-today-widget`, s/m, auto): today's notifications, failed, held, waiting.
-- Hermes down → the page shows «Hermes non raggiungibile» (SDK `hxk-state offline`).
+- Hermes down → the page shows «Hermes not reachable» (SDK `hxk-state offline`).
 
 Bundle: `ui/` (Lit, `@hestia/webui-sdk`) built in the Dockerfile Node stage →
 `/ui/dist/webui/hermes.js` (outside `/code`: the compose dev mount of `src/` must not hide it; env
@@ -257,7 +257,7 @@ cloud test bench; regression test `TestHubKeepalive`).
   no client got it). Attempts are stored in `payload.deliveries`.
 - **Batches (real_estate):** a failed batch is re-queued with exponential backoff (`hermes.batch.max_attempts`, 6; settling window `hermes.batch.window`, 30 s),
   merged with entities that arrived meanwhile.
-- **Narration** uses Oracle `/api/llm/generate` (plain generation), not the full `/api/chat` pipeline. The call carries `voice: true`: Oracle writes as the assistant (name, she/he, style) in the personal «Lingua»; the prompt here holds only what to say, the data and the format, never a language (rule 13 of `docs/ARCHITECTURE.md`).
+- **Narration** uses Oracle `/api/llm/generate` (plain generation), not the full `/api/chat` pipeline. The call carries `voice: true`: Oracle writes as the assistant (name, she/he, style) in the personal «Language»; the prompt here holds only what to say, the data and the format, never a language (rule 13 of `docs/ARCHITECTURE.md`).
 
 ## Central settings (Themis)
 
@@ -274,7 +274,7 @@ Declared in `src/modules/hermes_settings.py` (`SettingsClient("hermes")`, router
 | `hermes.batch.max_attempts` | int 6 | Attempts for a failed batch before giving up |
 | `hermes.retract.after` | int 6 h (1–46) | Handled notifications are retracted from Telegram after this delay |
 | `hermes.repeat.reset_after_days` | int 30 days (1–365) | A repeat chain idle longer than this starts again from zero |
-| `hermes.notifications.style` | enum `scheda` (default) · `frase` | `frase` = informative notifications said as one sentence of Hestia (see below) |
+| `hermes.notifications.style` | enum `card` (default) · `sentence` | `sentence` = informative notifications said as one sentence of Hestia (see below) |
 | `hermes.log.level` | enum (boot = `LOG_LEVEL`) | Log verbosity |
 
 Env keeps only infrastructure: `HUB_API_URL`, `ARCHIVE_API_URL`, `HERMES_SERVICE_BASE_URL`,
@@ -283,11 +283,11 @@ Env keeps only infrastructure: `HUB_API_URL`, `ARCHIVE_API_URL`, `HERMES_SERVICE
 
 ## Assistant presence
 
-Notifications below the presence `notify.level` (all/important/urgent) are **held**: stored, delivered silently, marked `held`. When the level relaxes Chronos calls `POST /api/notifications/release-held` and Hermes sends one digest «Mentre riposavo». `important` holds info/success without actions; `urgent` lets through only errors and events flagged `_urgent`.
+Notifications below the presence `notify.level` (all/important/urgent) are **held**: stored, delivered silently, marked `held`. When the level relaxes Chronos calls `POST /api/notifications/release-held` and Hermes sends one digest «While I was resting». `important` holds info/success without actions; `urgent` lets through only errors and events flagged `_urgent`.
 
-**2026-10-29 (texts for people, dossier `docs/work/2026-10-29-frontend-review-and-tests`)**: Plugin title «Notifiche»; deliveries subtitle «Cosa è stato mandato, a chi e com'è andata»; agenda title «Pulisci le notifiche già gestite».
+**2026-10-29 (texts for people, dossier `docs/work/2026-10-29-frontend-review-and-tests`)**: Plugin title «Notifications»; deliveries subtitle «What was sent, to whom and how it went»; agenda title «Clean the notifications already handled».
 
-**2026-11-15 (WebUI page in the owner's language, dossier `docs/work/2026-11-14-english-backend`)**: the texts of this module's WebUI page and widgets go through `tr` of `@hestia/webui-sdk` and follow «Lingua»; source texts in English, Italian in `Hestia-Shared/hestia_common/locales/it/messages.json`.
+**2026-11-15 (WebUI page in the owner's language, dossier `docs/work/2026-11-14-english-backend`)**: the texts of this module's WebUI page and widgets go through `tr` of `@hestia/webui-sdk` and follow «Language»; source texts in English, Italian in `Hestia-Shared/hestia_common/locales/it/messages.json`.
 
 **2026-11-16 (no Italian in the code, dossier `docs/work/2026-11-14-english-backend` v2.0)**: every text is English in the code; Italian lives only in `Hestia-Shared/hestia_common/locales/it/messages.json`. Labels declared at registration (manifest, capabilities, agenda rules, settings) are plain English, translated at the edge.
 

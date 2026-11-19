@@ -34,7 +34,7 @@ class TestLoopGuard:
     def test_same_call_four_times_stops(self):
         g = LoopGuard(repeat=4, window=12, wait_seconds=30)
         assert not any(g.add("a", {"x": 1}, at=i) for i in range(3))
-        assert g.add("a", {"x": 1}, at=3) and g.reason == "ripetizione"
+        assert g.add("a", {"x": 1}, at=3) and g.reason == "repetition"
 
     def test_real_wait_is_not_a_loop(self):
         g = LoopGuard(repeat=3, window=12, wait_seconds=30)
@@ -46,7 +46,7 @@ class TestLoopGuard:
         assert hits[-1] and g.reason == "ping-pong"
         r = LoopGuard(repeat=9, window=16)
         hits = [r.add(n, {}, at=i) for i, n in enumerate("abcabcabc")]
-        assert hits[-1] and r.reason == "giro"
+        assert hits[-1] and r.reason == "loop"
 
     def test_checker_says_waiting(self):
         g = LoopGuard(repeat=2, window=12, checker=lambda recent: "aspetta", max_checks=3)
@@ -78,7 +78,7 @@ def test_prior_actions_are_in_the_scratchpad():
     def ask(prompt):
         seen.append(prompt)
         return "Fatto."
-    run_agent_loop(user_message="spesa", history_text="", preference_facts=[], tools=[tool], ask_fn=ask,
+    run_agent_loop(user_message="groceries", history_text="", preference_facts=[], tools=[tool], ask_fn=ask,
                    prior_actions=[{"tool": "finance_add", "ok": True, "result_preview": "saved id=1"}])
     assert "ALREADY DONE" in seen[0] and "finance_add" in seen[0] and not calls
 
@@ -92,11 +92,11 @@ def test_agent_error_carries_the_log():
 # ── Cindy 6: origin and turn authority ───────────────────────────────────────
 class TestOrigin:
     def test_parse(self):
-        assert origin_mod.parse({}, "telegram")["level"] == "utente"
-        assert origin_mod.parse({}, "")["level"] == "autonomo"
+        assert origin_mod.parse({}, "telegram")["level"] == "user"
+        assert origin_mod.parse({}, "")["level"] == "autonomous"
         o = origin_mod.parse({"x-hestia-origin": "routine:lunedi", "X-Hestia-Origin-Label": "Annunci"}, "")
         assert (o["level"], o["ref"], o["label"]) == ("routine", "lunedi", "Annunci")
-        assert origin_mod.parse({"X-Hestia-Origin": "esterno:Claude"}, "")["level"] == "utente"
+        assert origin_mod.parse({"X-Hestia-Origin": "external:Claude"}, "")["level"] == "user"
 
     def test_gate(self):
         from core.oracle_engine import OracleEngine
@@ -104,7 +104,7 @@ class TestOrigin:
         delete, dcalls = _tool("agenda_delete", writes=True, method="DELETE")
         propose, pcalls = _tool("settings_propose", writes=True, method="POST")
         tools = [write, delete, propose]
-        OracleEngine._apply_origin_gate(tools, {"level": "autonomo", "kind": "autonomo"})
+        OracleEngine._apply_origin_gate(tools, {"level": "autonomous", "kind": "autonomous"})
         assert tools[0].handler()[0] is False and tools[1].handler()[0] is False
         assert tools[2].handler()[0] is True
         write2, _ = _tool("agenda_create", writes=True, method="POST")
@@ -113,7 +113,7 @@ class TestOrigin:
         assert write2.handler()[0] is True and delete2.handler()[0] is False
 
     def test_prompt_line_and_final(self):
-        assert origin_mod.prompt_line({"level": "utente", "kind": "utente"}) == ""
+        assert origin_mod.prompt_line({"level": "user", "kind": "user"}) == ""
         assert "routine" in origin_mod.prompt_line({"level": "routine", "kind": "routine", "ref": "r"})
         line = json.loads(stream_emitter.emit_final("ok", origin={"kind": "routine", "level": "routine",
                                                                   "label": "Da una tua routine"}))
@@ -141,7 +141,7 @@ def test_goal_storage_round_trip():
     conversation_goal._cache.clear()
     g = conversation_goal.set_goal(hub, "s1", "fare X")
     assert conversation_goal.active(hub, "s1")["id"] == g["id"]
-    conversation_goal.end(hub, "s1", "raggiunto", "ok")
+    conversation_goal.end(hub, "s1", "reached", "ok")
     assert conversation_goal.active(hub, "s1") is None
     assert "fare X" in conversation_goal.continuation_message(g)
 

@@ -56,7 +56,7 @@ def test_save_calendar_and_recurring_done(kd):
     assert d["category"] == "car_tax" and d["lead_days"] == 15 and ("show", f"kairos.{d['id']}") in agenda.calls
     rolled = deadlines.done(d["id"])
     assert rolled["status"] == "open" and rolled["due"] == add_months(date.fromisoformat(due), 12).isoformat()
-    one = deadlines.save({"title": "Rinnovo passaporto", "due": due, "category": "document"})
+    one = deadlines.save({"title": "Rinnovo passaporto", "due": due, "category": "documento"})
     assert deadlines.done(one["id"])["status"] == "done" and ("done", f"kairos.{one['id']}") in agenda.calls
     with pytest.raises(Invalid):
         deadlines.save({"title": "X", "due": "domani"})
@@ -78,7 +78,7 @@ def test_mail_proposal_confirm_and_dedupe(kd):
 
 def test_daily_notices_once_per_stage(kd):
     deadlines, hub, _ = kd
-    d = deadlines.save({"title": "Tari", "due": (deadlines.today() + timedelta(days=3)).isoformat(), "category": "tax"})
+    d = deadlines.save({"title": "Tari", "due": (deadlines.today() + timedelta(days=3)).isoformat(), "category": "tassa"})
     assert deadlines.daily() == {"sent": 1}
     assert deadlines.daily() == {"sent": 0}
     deadlines.snooze(d["id"], 2)
@@ -89,7 +89,7 @@ def test_snooze_reminds_again_after_the_pause(kd):
     """Regression: «Fra 3 giorni» kept the stage marked as notified, so the reminder never came back."""
     deadlines, _, _ = kd
     real_today = deadlines.today()
-    d = deadlines.save({"title": "Bollo", "due": (real_today + timedelta(days=10)).isoformat(), "category": "car_tax"})
+    d = deadlines.save({"title": "Bollo", "due": (real_today + timedelta(days=10)).isoformat(), "category": "bollo"})
     assert deadlines.daily() == {"sent": 1}
     deadlines.snooze(d["id"], 3)
     assert deadlines.daily() == {"sent": 0}                      # still paused

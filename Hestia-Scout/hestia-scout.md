@@ -117,11 +117,11 @@ Provider keys live only in Oracle (`ORACLE_KEY_<NAME>`). (Previously Scout embed
 | `POST` | `/api/tools/real_estate/search` | Optional direct domain endpoint (internal/debug use) |
 | `POST` | `/api/module/maintenance/reconcile` | Run standardized module maintenance reconcile |
 | `POST` | `/api/maintenance/reconcile` | Compatibility alias for module maintenance reconcile |
-| `GET` | `/api/module/recap` | Daily recap piece «Case»: new listings of the day (`?day=&next=`, capability `recap_endpoint`) |
+| `GET` | `/api/module/recap` | Daily recap piece «Houses»: new listings of the day (`?day=&next=`, capability `recap_endpoint`) |
 | `POST` | `/api/scout/cycle` | Run the email → listings cycle `{trigger, wait}` (default async; one cycle at a time, `busy` otherwise) |
 | `GET` | `/api/scout/cycle` | Cycle state: running, last start/finish/trigger/error, `mail: push`, subscription `scout:listings` |
 | `POST` | `/api/scout/mail` | Iris doorbell `{owner, key, domain, count, reference_ids, source}` → runs the cycle (async) on the pending records |
-| `POST` | `/api/scout/check` | «Controlla email»: Iris backfill of the last day + cycle (MCP tool `scout_fetch`) |
+| `POST` | `/api/scout/check` | «Check emails»: Iris backfill of the last day + cycle (MCP tool `scout_fetch`) |
 | `GET` | `/api/ui/manifest` | WebUI plugin manifest (`hestia_common.plugin_client`) |
 | `GET` | `/ui/webui/scout.js` | Plugin bundle (built in the image from `ui/`) |
 | `GET` | `/api/ui/listings` | Listings for the plugin: `q, city, status, flag (''=da valutare, favorite, discarded, all), price_min/max, rooms_min, surface_min, days, sort (new, price_asc, price_desc, ppm2, surface), offset, limit` → `{total, items, cities, statuses}` |
@@ -134,7 +134,7 @@ Provider keys live only in Oracle (`ORACLE_KEY_<NAME>`). (Previously Scout embed
 
 ### WebUI plugin (2026-10-17, dossier `docs/work/2026-10-17-client-plugins/`)
 
-Icons, never emoji (DESIGN-SYSTEM rule, `docs/work/2026-10-20-icons-in-clients`): `<hxk-icon name tone>`. Favourite badge text «preferita»; address map-pin.
+Icons, never emoji (DESIGN-SYSTEM rule, `docs/work/2026-10-20-icons-in-clients`): `<hxk-icon name tone>`. Favourite badge text «favourite»; address map-pin.
 
 `app/ui_api.py` declares the plugin and serves its data; `ui/src/` is the Lit bundle (built with the shared SDK in
 the Node stage of the Dockerfile; `ui/dist/` is git-ignored). The image keeps the bundle in `/ui/dist`
@@ -158,7 +158,7 @@ of `scout.mail.filter_queries` when set), re-asserted hourly and refreshed at on
 or changed rule gets a 7-day backfill from Iris. One cycle runs at boot for mails that waited in Archive.
 The old 30-minute agenda job `scout.email_cycle` is retired on existing installs (`AgendaClient.retire`), and the
 setting `scout.cycle.interval`, the agenda template `extra_check` and the fallback loop are gone.
-«Controlla ora» (plugin quick action, `scout_fetch`) = Iris backfill (last day) + cycle. Reconcile/enrichment keep
+«Check now» (plugin quick action, `scout_fetch`) = Iris backfill (last day) + cycle. Reconcile/enrichment keep
 their own cadence (`scout.reconcile.every_cycles` counts cycles, now one per push).
 
 ### Worker batching policy
@@ -238,8 +238,8 @@ Declared in `app/core/scout_settings.py` (owner `scout`), all `apply=live` (read
 
 ## Export and import (`/api/transfer/*`, dossier `docs/work/2026-10-20-import-export`)
 
-One section `annunci`: the active listings of Scout's domain in Archive (payload with the user's marks
-`user_flag`, `listing_status`). Import upserts through Archive's entity merge; «Sostituisci» never deletes (the
+One section `listings`: the active listings of Scout's domain in Archive (payload with the user's marks
+`user_flag`, `listing_status`). Import upserts through Archive's entity merge; «Replace» never deletes (the
 mail cycle brings listings back anyway). Settings travel through Themis.
 
 ## Configuration (env: infrastructure only)
@@ -279,19 +279,19 @@ search tools called with no arguments get the body `{}` and list the latest hous
 The Hub registration declares `capabilities.when_to_use` (one line in the assistant's «MODULI» index) and
 `capabilities.manual` (short manual the assistant loads with `module_manual` only when it needs it).
 
-**2026-10-29 (texts for people, dossier `docs/work/2026-10-29-frontend-review-and-tests`)**: Plugin title «Immobili».
+**2026-10-29 (texts for people, dossier `docs/work/2026-10-29-frontend-review-and-tests`)**: Plugin title «Houses».
 
 
 **2026-11-14 (backend English, dossier `docs/work/2026-11-14-english-backend`)**: tool descriptions, the module manual and the extraction prompt are English. What people read about the tools comes from `hestia_common/locales/<lang>/tools.json`.
 
-**2026-11-14 (owner's language, dossier `docs/work/2026-11-14-english-backend`)**: the module follows the personal setting «Lingua» (`settings.follow_personal()`), so the fixed texts it shows go out in the owner's language through `hestia_common.i18n.t`.
+**2026-11-14 (owner's language, dossier `docs/work/2026-11-14-english-backend`)**: the module follows the personal setting «Language» (`settings.follow_personal()`), so the fixed texts it shows go out in the owner's language through `hestia_common.i18n.t`.
 
-**2026-11-15 (owner's language, dossier `docs/work/2026-11-14-english-backend`)**: the notices, errors and cards this module shows go through `hestia_common.i18n.t` and follow «Lingua».
+**2026-11-15 (owner's language, dossier `docs/work/2026-11-14-english-backend`)**: the notices, errors and cards this module shows go through `hestia_common.i18n.t` and follow «Language».
 
-**2026-11-15 (WebUI page in the owner's language, dossier `docs/work/2026-11-14-english-backend`)**: the texts of this module's WebUI page and widgets go through `tr` of `@hestia/webui-sdk` and follow «Lingua»; source texts in English, Italian in `Hestia-Shared/hestia_common/locales/it/messages.json`.
+**2026-11-15 (WebUI page in the owner's language, dossier `docs/work/2026-11-14-english-backend`)**: the texts of this module's WebUI page and widgets go through `tr` of `@hestia/webui-sdk` and follow «Language»; source texts in English, Italian in `Hestia-Shared/hestia_common/locales/it/messages.json`.
 
 **2026-11-16 (no Italian in the code, dossier `docs/work/2026-11-14-english-backend` v2.0)**: every text is English in the code; Italian lives only in `Hestia-Shared/hestia_common/locales/it/messages.json`. Labels declared at registration (manifest, capabilities, agenda rules, settings) are plain English, translated at the edge.
-**2026-11-15 (WebUI page in the owner's language, dossier `docs/work/2026-11-14-english-backend`)**: the texts of this module's WebUI page and widgets go through `tr` of `@hestia/webui-sdk` and follow «Lingua»; English texts in `Hestia-Shared/hestia_common/locales/en/messages.json`.
+**2026-11-15 (WebUI page in the owner's language, dossier `docs/work/2026-11-14-english-backend`)**: the texts of this module's WebUI page and widgets go through `tr` of `@hestia/webui-sdk` and follow «Language»; English texts in `Hestia-Shared/hestia_common/locales/en/messages.json`.
 
 **2026-11-16** (dossier `docs/work/2026-11-16-name-everywhere`): the fixed texts of this module that speak of the assistant
 as a person (pages, help, agenda titles, notes) write `{assistant}` and say the name the owner chose; texts about the

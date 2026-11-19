@@ -9,7 +9,6 @@ import sys
 from pathlib import Path
 
 from fastapi import Body
-from hestia_common import i18n
 from hestia_common.i18n import t as tr  # fixed texts in the owner's language
 
 try:
@@ -147,7 +146,7 @@ def _update(person: str, relation: str = "", birthday: str = "", notes: str = ""
                               "contact_every_days": contact_every_days}.items() if v}
     if date_label and date_day:
         body["dates"] = [{"label": date_label, "day": date_day, "kind": "anniversary"
-                          if any(w in date_label.casefold() for w in i18n.words("people.anniversary")) else "custom"}]
+                          if "anniversary" in date_label.casefold() else "custom"}]
     p = people.save(body, people.find(person)["id"])
     return {"saved": True, "display": _card(p)}
 
@@ -225,7 +224,7 @@ kit.on_warm(lambda: [people.sync_calendar(p) for p in people.store.items("person
 kit.webui(icon="user", color="pink", description="The important people: dates in the calendar, tastes, gift ideas.",
           pages=[page("people", "People", element="hera-people", icon="user", order=90,
                       help="Who matters to you: birthdays and dates (they go in the calendar with a notice), tastes, gift ideas the assistant notes from the chat, when to hear from them."),
-                 page("person/:id", "Persona", element="hera-person", detail=True, parent="people")],
+                 page("person/:id", "Person", element="hera-person", detail=True, parent="people")],
           widgets=[widget("upcoming", "Upcoming dates", element="hera-soon-widget", sizes=["s", "m", "l"], size="m",
                           auto=True, open_page="people", icon="heart")])
 kit.finish()

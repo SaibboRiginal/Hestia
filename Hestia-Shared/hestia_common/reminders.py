@@ -7,11 +7,11 @@ to send.
 
     from hestia_common.reminders import reminder_settings, reminder_event, voice_setting
 
-    settings.declare([..., *reminder_settings("hercules", help="Solo se sei indietro con l'obiettivo."),
+    settings.declare([..., *reminder_settings("hercules", help="Only when you are behind the goal."),
                       voice_setting("hercules", True)])
     if settings.get("hercules.reminder.enabled"):
         hub.call("hermes", "POST", "api/events/ingest", body=reminder_event(
-            module="hercules", domain="fitness", key="hercules.reminder", title="Allenamento",
+            module="hercules", domain="fitness", key="hercules.reminder", title="Training",
             text=text, actions=actions, page="training", voice=settings.get("hercules.notifications.voice")))
 """
 from __future__ import annotations
@@ -36,11 +36,11 @@ def reminder_settings(module: str, *, group: str = "Reminders", help: str = "", 
 
 
 def voice_setting(module: str, default: bool, *, group: str = "Reminders", help: str = "", order: int = 9) -> dict:
-    """``<module>.notifiche.voce``: whether this module's notifications also arrive as a voice message
+    """``<module>.notifications.voice``: whether this module's notifications also arrive as a voice message
     (dossier docs/work/2026-10-20-voice-module §7.3). Each module picks its own default: on where a notification
     reads well aloud (reminders, recaps), off where it is a list or numbers. Pass the value to
     ``reminder_event(voice=...)``; the written notification never changes."""
-    return setting(f"{module}.notifiche.voce", "Notifications by voice too", "bool", bool(default), group=group,
+    return setting(f"{module}.notifications.voice", "Notifications by voice too", "bool", bool(default), group=group,
                    order=order, help=help or tr("Besides the text you get a voice message (Telegram) or a play button (site)."))
 
 

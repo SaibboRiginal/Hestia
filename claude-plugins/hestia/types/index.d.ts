@@ -1,6 +1,6 @@
 // State contract of the «hestia» mod (docs/work/2026-10-30-hestia-in-claude).
 
-export type HestiaMode = 'off' | 'strumenti' | 'hestia'
+export type HestiaMode = 'off' | 'tools' | 'hestia'
 
 export type HestiaProfile = {
   revision: string
@@ -26,7 +26,7 @@ declare module 'claude-code' {
       profile: HestiaProfile | null
       status: HestiaStatus | null
       notes: number
-      pane: { kind: 'memoria' | 'stato' | 'sviluppo'; rows: HestiaRow[]; error: string } | null
+      pane: { kind: 'memory' | 'status' | 'development'; rows: HestiaRow[]; error: string } | null
       busy: string
     }
   }

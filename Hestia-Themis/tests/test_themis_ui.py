@@ -24,9 +24,9 @@ from hestia_common.settings_client import setting
 
 HISTORY = [   # newest first, as Archive returns it
     {"id": 9, "key": "argus.poll.interval", "scope": "system", "scope_id": "", "old_value": 60, "new_value": 30,
-     "actor": "user", "reason": "undo", "created_at": "2026-10-18T10:00:00"},
+     "actor": "user", "reason": "cancel", "created_at": "2026-10-18T10:00:00"},
     {"id": 8, "key": "oracle.chat.tone", "scope": "session", "scope_id": "s1", "old_value": None,
-     "new_value": "warm", "actor": "webui", "reason": "nuova sessione", "created_at": "2026-10-18T09:30:00"},
+     "new_value": "warm", "actor": "webui", "reason": "new session", "created_at": "2026-10-18T09:30:00"},
     {"id": 7, "key": "argus.poll.interval", "scope": "system", "scope_id": "", "old_value": 30, "new_value": 60,
      "actor": "athena", "reason": "proposal approved (telegram): less load", "created_at": "2026-10-18T09:00:00"},
     {"id": 6, "key": "argus.mode", "scope": "system", "scope_id": "", "old_value": "normal", "new_value": None,

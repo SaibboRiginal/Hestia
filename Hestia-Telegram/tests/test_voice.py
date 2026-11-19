@@ -77,7 +77,7 @@ def test_voice_note_becomes_chat_message_with_listen_button(env, fake_message):
     handle_file_message(_voice_message(fake_message))
     assert oracle_calls[0]["message"] == "aggiungi al diario che ho dormito male"
     t = voice.calls[0]
-    assert t[1] == "audio/ogg" and t[2]["use_case"] == "telegram.vocale" and t[2]["keep"]["kind"] == "recording"
+    assert t[1] == "audio/ogg" and t[2]["use_case"] == "telegram.voice_note" and t[2]["keep"]["kind"] == "recording"
     assert t[2]["keep"]["message_id"] == "tg:12345:7"
     assert "«aggiungi al diario che ho dormito male»" in bot.edit_message_text.call_args_list[0][0][0]
     assert bot.edit_message_reply_markup.called and not bot.send_voice.called      # chat: text only
@@ -127,7 +127,7 @@ def test_listen_button_speaks_the_reply(env, fake_callback):
 def test_voice_uses_in_registration():
     from telegram_bot.services.voice_service import capabilities
     ids = {u["id"]: u["direction"] for u in capabilities()["voice_usecases"]}
-    assert ids == {"telegram.vocale": "ascolto", "telegram.answer": "voce"}
+    assert ids == {"telegram.voice_note": "listen", "telegram.answer": "voice"}
 
 
 @pytest.mark.unit

@@ -3,14 +3,14 @@
  "agenda": {
   "summary": "Mostra gli eventi in agenda nei prossimi 7 giorni."
  },
- "assistant_agenda": {
+ "agenda_assistant": {
   "params": {
    "days": "giorni avanti (default 7)",
    "owner": "modulo: hephaestus, scout, athena..."
   },
   "summary": "Agenda di Hestia stessa: cosa l'assistente e i suoi moduli hanno pianificato — finestre, job periodici, task di riparazione, eventi."
  },
- "assistant_agenda_add": {
+ "agenda_assistant_add": {
   "params": {
    "title": "titolo",
    "start_at": "inizio ISO 8601",
@@ -21,20 +21,20 @@
   },
   "summary": "Aggiunge alla agenda di Hestia un evento/task/finestra/job."
  },
- "assistant_agenda_cancel": {
+ "agenda_assistant_cancel": {
   "params": {
    "ref": "id o chiave della voce"
   },
   "summary": "Annulla definitivamente una voce dell'agenda di Hestia."
  },
- "assistant_agenda_link": {
+ "agenda_assistant_link": {
   "params": {
    "ref": "id o chiave della voce figlia",
    "parent": "chiave del padre (vuoto = scollega)"
   },
   "summary": "Collega una voce a una voce padre: annullare il padre annulla la figlia, l'errore della figlia segna il padre."
  },
- "assistant_agenda_from_template": {
+ "agenda_assistant_from_template": {
   "params": {
    "owner": "modulo del modello",
    "template_id": "id modello",
@@ -45,30 +45,30 @@
   },
   "summary": "Crea una voce dell'agenda di Hestia da un modello di un modulo."
  },
- "assistant_agenda_run": {
+ "agenda_assistant_run": {
   "params": {
    "ref": "id o chiave della voce"
   },
   "summary": "Esegue subito l'azione di un job/task dell'agenda di Hestia."
  },
- "assistant_agenda_templates": {
+ "agenda_assistant_templates": {
   "summary": "Modelli che i moduli offrono per creare voci."
  },
- "assistant_agenda_restore": {
+ "agenda_assistant_restore": {
   "params": {
    "ref": "id o chiave della voce",
    "occurrence": "occorrenza ISO saltata"
   },
   "summary": "Ripristina un'occorrenza saltata di una voce dell'agenda di Hestia."
  },
- "assistant_agenda_skip": {
+ "agenda_assistant_skip": {
   "params": {
    "ref": "id o chiave della voce",
    "occurrence": "occorrenza ISO (vuoto = prossima)"
   },
   "summary": "Salta la prossima occorrenza di una voce dell'agenda di Hestia, senza cancellare la regola."
  },
- "assistant_agenda_move": {
+ "agenda_assistant_move": {
   "params": {
    "ref": "id o chiave della voce",
    "start_at": "nuovo inizio ISO",
@@ -77,7 +77,7 @@
   },
   "summary": "Sposta/modifica una voce dell'agenda di Hestia."
  },
- "assistant_agenda_move_occurrence": {
+ "agenda_assistant_move_occurrence": {
   "params": {
    "ref": "id o chiave della voce",
    "occurrence": "occorrenza ISO originale",
@@ -114,7 +114,7 @@
  "look_now": {
   "summary": "Che aspetto ha adesso il sito e perché."
  },
- "look_pet_create": {
+ "look_pet": {
   "summary": "Crea un animaletto da compagnia e ne chiede le immagini."
  },
  "look_pets": {
@@ -123,7 +123,7 @@
  "look_generate": {
   "summary": "Chiedi di nuovo le immagini: target profile o pet; ref = chiave del profilo o id/nome dell'animaletto."
  },
- "look_upcoming": {
+ "look_next": {
   "summary": "I temi dei prossimi giorni."
  },
  "look_choice": {
@@ -312,7 +312,7 @@
   },
   "summary": "Crea un nuovo evento nel calendario connesso."
  },
- "dnd_off": {
+ "presence_dnd_off": {
   "summary": "Disattiva «Non disturbare»."
  },
  "docs_check": {
@@ -324,13 +324,13 @@
   },
   "summary": "Crea un PDF, Word o Excel: title, html, format pdf|docx|xlsx, theme classico|moderno|sobrio, must_contain."
  },
- "document_list": {
+ "document_created_list": {
   "summary": "I documenti creati di recente."
  },
- "document_delete": {
+ "document_created_delete": {
   "summary": "Elimina un documento creato."
  },
- "document_send": {
+ "document_created_send": {
   "summary": "Manda di nuovo il file di un documento creato."
  },
  "documents.search": {
@@ -573,7 +573,7 @@
   },
   "summary": "Elenca i task di auto-sviluppo e il loro stato."
  },
- "away_set": {
+ "away_enable": {
   "summary": "Accende o spegne l'indirizzo per usare Hestia da fuori casa; solo su richiesta esplicita dell'utente."
  },
  "away_status": {
@@ -649,7 +649,7 @@
  "hephaestus_tasks": {
   "summary": "Lista task remediation recenti."
  },
- "image_workflows": {
+ "image_flows": {
   "summary": "I flussi caricati e se il generatore è collegato."
  },
  "image_list": {
@@ -712,7 +712,7 @@
  "metis_dataset_build": {
   "summary": "Build a cleaned, deduplicated, balanced dataset from graded feedback records."
  },
- "metis_dataset_download": {
+ "metis_training_export": {
   "params": {
    "in_chiaro": "true = dati veri, false = oscurati (predefinito)",
    "include_unreviewed": "true = anche i turni non ancora riletti"
@@ -753,7 +753,7 @@
  "models_download": {
   "summary": "Download a local model for the brain, by its Ollama name, e.g."
  },
- "dnd_on": {
+ "presence_dnd_on": {
   "params": {
    "minutes": "Durata in minuti (vuoto = predefinita)",
    "until": "Fino a quando, ISO 8601"
@@ -872,7 +872,7 @@
  "selfcare_check": {
   "summary": "Compatibilità degli attivi: di una routine, o di un prodotto / lista di attivi rispetto a quelli in uso."
  },
- "selfcare_journal_voice": {
+ "selfcare_diary_voice": {
   "summary": "Diario a voce: l'utente racconta la giornata con un vocale; viene trascritto e salvato nel diario."
  },
  "selfcare_journal_add": {
@@ -1004,16 +1004,16 @@
  "voice_downloads": {
   "summary": "Le voci e l'ascolto che sto scaricando o ho scaricato, con l'avanzamento."
  },
- "voice_print": {
+ "voiceprint": {
   "summary": "Se ho la tua impronta della voce e dove riconosco solo te."
  },
- "voice_print_record": {
+ "voiceprint_record": {
   "params": {
    "audio": "Un vocale di almeno 10 secondi in cui parli tu"
   },
   "summary": "Registra almeno 10 secondi della tua voce: poi le altre voci non finiscono nei tuoi messaggi dove lo hai scelto."
  },
- "voice_print_remove": {
+ "voiceprint_remove": {
   "summary": "Dimentica la tua impronta: ascolto tutte le voci."
  },
  "voice_word": {
@@ -1091,13 +1091,13 @@
  "notifications_active": {
   "summary": "Mostra le notifiche automatiche attive"
  },
- "notices_recent": {
+ "alerts_recent": {
   "summary": "Mostra gli ultimi avvisi inviati"
  },
- "notification_off": {
+ "notification_disable": {
   "summary": "Disattiva una notifica tramite subscription_id"
  },
- "notification_on": {
+ "notification_enable": {
   "summary": "Riattiva una notifica tramite subscription_id"
  },
  "calendar_subscribe": {
@@ -1119,7 +1119,7 @@
    "domain": "Dominio opzionale su cui limitare la riconciliazione"
   }
  },
- "assistant_status": {
+ "presence_status": {
   "summary": "Stato di attività dell'assistente: sveglio, in attesa, pisolino, sonno profondo, non disturbare, ultima interazione, lavori in corso ed effetti."
  }
 }

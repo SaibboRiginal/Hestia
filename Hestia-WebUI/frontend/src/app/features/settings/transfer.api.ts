@@ -4,7 +4,7 @@ import { firstValueFrom } from 'rxjs';
 import { tr } from '../../core/i18n';
 
 /**
- * Esporta e importa (docs/work/2026-10-20-import-export): `/api/webui/transfer/*` → Hub → the module's
+ * Export and import (docs/work/2026-10-20-import-export): `/api/webui/transfer/*` → Hub → the module's
  * `/api/transfer/*` (hestia_common.transfer). Themis answers for the settings of every module.
  */
 

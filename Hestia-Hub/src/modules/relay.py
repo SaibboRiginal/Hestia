@@ -10,7 +10,7 @@ pairing) and ``HUB_NODE_ADDRESS`` (this machine's LAN address):
 - forwards everything else (routes, streams, discovery, long polls) to the central as it is: the central decides,
   including the way back to this machine's own modules.
 
-The central down → the satellite's calls fail as they would with Hub down (the existing «Not available» path).
+The central down → the satellite's calls fail as they would with Hub down (the existing «Unavailable» path).
 """
 from __future__ import annotations
 

@@ -1,4 +1,4 @@
-"""Impostazioni › Menu: change the menus from Telegram (docs/work/2026-10-23-telegram-from-scratch §5.11).
+"""Settings › Menu: change the menus from Telegram (docs/work/2026-10-23-telegram-from-scratch §5.11).
 
 Every change edits the user's layout (Themis ``telegram.menu.layout``), is saved at once and the card is redrawn.
 Callback data ``m:…``: ``root`` · ``a:<area>`` · ``p:<area>`` primary list · ``pu|pd|px:<area>:<i>`` up/down/remove ·
@@ -72,7 +72,7 @@ def area(chat_id, key: str, message_id=None) -> None:
     if not a:
         return root(chat_id, message_id)
     lines = [tr("Actions: {0}", len(a.names)), tr("Main: ") + (", ".join(ui.esc(menu.label(n)) for n in a.primary)
-                                                       or "nessuna")]
+                                                       or "none")]
     rows = [[ui.button(tr("Main actions"), f"m:p:{key}")],
             [ui.button(tr("Rename"), f"m:rn:{key}"), ui.button(tr("Emoji"), f"m:em:{key}")],
             [ui.button(tr("Higher"), f"m:ou:{key}"), ui.button(tr("Lower"), f"m:od:{key}")],
@@ -218,7 +218,7 @@ def on_text(chat_id, text: str) -> bool:
         _area_over(layout, key)["emoji"] = emoji
     elif op == "new":
         label = ui.strip_emoji(value)[:24]
-        key = re.sub(r"[^a-z0-9]+", "_", label.lower()).strip("_")[:20] or "nuova"
+        key = re.sub(r"[^a-z0-9]+", "_", label.lower()).strip("_")[:20] or "new"
         _area_over(layout, key).update({"label": label or tr("New area"), "emoji": "•", "order": 800})
     if not save(layout):
         _failed(chat_id, mid, "m:root")

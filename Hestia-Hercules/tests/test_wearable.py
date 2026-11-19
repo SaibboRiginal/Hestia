@@ -12,9 +12,9 @@ pytestmark = pytest.mark.unit
 def _item(h, **kw):
     return {"date": h.today().isoformat(), "source": "garmin", "sleep": {"score": 82}, "body_battery": {"morning": 45},
             "readiness": 64, "activities": [
-                {"id": "991", "kind": "corsa", "start": f"{h.today().isoformat()} 07:10:00", "minutes": 30, "km": 5.1,
+                {"id": "991", "kind": "run", "start": f"{h.today().isoformat()} 07:10:00", "minutes": 30, "km": 5.1,
                  "name": "Corsa mattutina"},
-                {"id": "992", "kind": "forza", "start": f"{h.today().isoformat()} 18:00:00", "minutes": 50}], **kw}
+                {"id": "992", "kind": "strength", "start": f"{h.today().isoformat()} 18:00:00", "minutes": 50}], **kw}
 
 
 def test_activities_logged_once(env):  # noqa: F811

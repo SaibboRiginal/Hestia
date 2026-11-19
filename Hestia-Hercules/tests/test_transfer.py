@@ -24,11 +24,11 @@ OLD, NEW, NEWER = "2026-10-01T10:00:00+00:00", "2026-10-10T10:00:00+00:00", "202
 def _hestia():
     store = Store(FakeArchive(), min_refresh_seconds=0)
     t = Transfer("hercules", sections=[
-        StoreSection("esercizi", "Esercizi", store, ["exercise"]),
-        StoreSection("schede", "Schede", store, ["template"], depends_on=["esercizi"]),
-        StoreSection("sessioni", "Sessioni", store, ["session", "set"], item_kinds=["session"],
-                     depends_on=["esercizi", "schede"]),
-        StoreSection("misure", "Misure", store, ["measurement"]),
+        StoreSection("exercises", "Esercizi", store, ["exercise"]),
+        StoreSection("plans", "Schede", store, ["template"], depends_on=["exercises"]),
+        StoreSection("sessions", "Sessioni", store, ["session", "set"], item_kinds=["session"],
+                     depends_on=["exercises", "plans"]),
+        StoreSection("measures", "Misure", store, ["measurement"]),
     ])
     return store, t
 
@@ -59,19 +59,19 @@ def _roundtrip(payload):
 def test_describe_counts_items_only(cloud):
     _, t = cloud
     by = {s["id"]: s["count"] for s in t.describe()["sections"]}
-    assert by == {"esercizi": 3, "schede": 1, "sessioni": 1, "misure": 1}
-    assert t.capabilities()["transfer"]["sections"]["sessioni"] == 1
+    assert by == {"exercises": 3, "plans": 1, "sessions": 1, "measures": 1}
+    assert t.capabilities()["transfer"]["sections"]["sessions"] == 1
 
 
 def test_item_export_pulls_children_and_dependencies(cloud):
     _, t = cloud
-    out = t.export({"sessioni": {"keys": ["session:s1"]}})
+    out = t.export({"sessions": {"keys": ["session:s1"]}})
     keys = {sid: sorted(r["key"] for r in b["records"]) for sid, b in out["sections"].items()}
-    assert keys["sessioni"] == ["session:s1", "set:set1"]                 # the set travels with its session
-    assert keys["schede"] == ["template:tp-push"]                          # referenced template
-    assert keys["esercizi"] == ["exercise:ex-bench", "exercise:ex-squat"]  # via set and via the template
-    assert out["sections"]["esercizi"]["partial"] and out["sections"]["sessioni"]["partial"]
-    assert "misure" not in out["sections"]
+    assert keys["sessions"] == ["session:s1", "set:set1"]                 # the set travels with its session
+    assert keys["plans"] == ["template:tp-push"]                          # referenced template
+    assert keys["exercises"] == ["exercise:ex-bench", "exercise:ex-squat"]  # via set and via the template
+    assert out["sections"]["exercises"]["partial"] and out["sections"]["sessions"]["partial"]
+    assert "measures" not in out["sections"]
 
 
 def test_import_into_empty_hestia_then_unchanged(cloud):
@@ -81,7 +81,7 @@ def test_import_into_empty_hestia_then_unchanged(cloud):
     preview = home.import_(data, mode="merge", dry_run=True)
     assert preview["totals"]["added"] == 6 and not home_store.all("exercise")   # dry run writes nothing
     done = home.import_(data, mode="merge", dry_run=False)
-    assert done["totals"]["added"] == 6 and done["sections"]["sessioni"]["related"] == 1
+    assert done["totals"]["added"] == 6 and done["sections"]["sessions"]["related"] == 1
     assert home_store.get("set", "set1")["parent_id"] == "s1"
     again = home.import_(data, mode="merge", dry_run=True)
     assert again["totals"]["added"] == 0 and again["totals"]["unchanged"] == 6
@@ -93,15 +93,15 @@ def test_modes_on_existing_records(cloud):
     home_store.write([_row("exercise", "ex-bench", {"name": "Panca piana"}, updated_at=NEWER),   # newer at home
                       _row("exercise", "ex-squat", {"name": "Squat vecchio"}, updated_at=OLD),   # older at home
                       _row("exercise", "ex-home", {"name": "Solo a casa"}, updated_at=OLD)])
-    data = _roundtrip(t.export({"esercizi": {}}))
+    data = _roundtrip(t.export({"exercises": {}}))
 
-    r = home.import_(data, mode="append", dry_run=True)["sections"]["esercizi"]
+    r = home.import_(data, mode="append", dry_run=True)["sections"]["exercises"]
     assert (r["added"], r["updated"], r["skipped"], r["deleted"]) == (1, 0, 2, 0)
 
-    r = home.import_(data, mode="merge", dry_run=True)["sections"]["esercizi"]
+    r = home.import_(data, mode="merge", dry_run=True)["sections"]["exercises"]
     assert (r["added"], r["updated"], r["skipped"], r["deleted"]) == (1, 1, 1, 0)
 
-    r = home.import_(data, mode="replace", dry_run=False)["sections"]["esercizi"]
+    r = home.import_(data, mode="replace", dry_run=False)["sections"]["exercises"]
     assert (r["added"], r["updated"], r["skipped"], r["deleted"]) == (1, 2, 0, 1)
     assert home_store.data("exercise", "ex-bench")["name"] == "Panca"     # file wins
     assert home_store.get("exercise", "ex-home") is None                    # only at home → deleted (tombstone)
@@ -111,20 +111,20 @@ def test_replace_of_partial_section_never_deletes(cloud):
     _, t = cloud
     home_store, home = _hestia()
     home_store.write([_row("exercise", "ex-home", {"name": "Solo a casa"})])
-    data = _roundtrip(t.export({"esercizi": {"keys": ["exercise:ex-curl"]}}))
-    r = home.import_(data, mode="replace", dry_run=False)["sections"]["esercizi"]
+    data = _roundtrip(t.export({"exercises": {"keys": ["exercise:ex-curl"]}}))
+    r = home.import_(data, mode="replace", dry_run=False)["sections"]["exercises"]
     assert r["partial"] and r["deleted"] == 0 and home_store.get("exercise", "ex-home")
 
 
 def test_since_exports_changes_and_deletions(cloud):
     store, t = cloud
     store.write([_row("measurement", "m1", {"kind": "bodyweight", "value": 80}, updated_at=NEWER, deleted=True)])
-    out = t.export({"misure": {}, "esercizi": {}}, since="2026-10-12T00:00:00+00:00")
-    assert [r["key"] for r in out["sections"]["misure"]["records"]] == ["measurement:m1"]
-    assert out["sections"]["misure"]["records"][0]["deleted"] and out["sections"]["esercizi"]["records"] == []
+    out = t.export({"measures": {}, "exercises": {}}, since="2026-10-12T00:00:00+00:00")
+    assert [r["key"] for r in out["sections"]["measures"]["records"]] == ["measurement:m1"]
+    assert out["sections"]["measures"]["records"][0]["deleted"] and out["sections"]["exercises"]["records"] == []
     home_store, home = _hestia()
     home_store.write([_row("measurement", "m1", {"kind": "bodyweight", "value": 80}, updated_at=NEW)])
-    r = home.import_(_roundtrip(out), mode="merge", dry_run=False)["sections"]["misure"]
+    r = home.import_(_roundtrip(out), mode="merge", dry_run=False)["sections"]["measures"]
     assert r["deleted"] == 1 and home_store.get("measurement", "m1") is None
 
 
@@ -132,10 +132,10 @@ def test_import_selection_and_newer_schema(cloud):
     _, t = cloud
     data = _roundtrip(t.export())
     home_store, home = _hestia()
-    r = home.import_(data, dry_run=False, selection={"misure": {}})
-    assert list(r["sections"]) == ["misure"] and home_store.get("measurement", "m1") and not home_store.all("exercise")
-    data["sections"]["misure"]["schema"] = 99
-    assert home.import_(data, dry_run=True)["sections"]["misure"]["problems"] == 1
+    r = home.import_(data, dry_run=False, selection={"measures": {}})
+    assert list(r["sections"]) == ["measures"] and home_store.get("measurement", "m1") and not home_store.all("exercise")
+    data["sections"]["measures"]["schema"] = 99
+    assert home.import_(data, dry_run=True)["sections"]["measures"]["problems"] == 1
     data["format"] = 99
     with pytest.raises(TransferError):
         home.import_(data, dry_run=True)
@@ -147,14 +147,14 @@ def test_items_picker_and_http(cloud):
     from fastapi import FastAPI
     from fastapi.testclient import TestClient
     _, t = cloud
-    items = t.section("esercizi").items(q="pan")
+    items = t.section("exercises").items(q="pan")
     assert items["total"] == 1 and items["items"][0]["title"] == "Panca"
     app = FastAPI()
     app.include_router(t.router())
     c = TestClient(app)
     assert c.get("/api/transfer/describe").json()["module"] == "hercules"
     assert c.post("/api/transfer/items", json={"section": "nope"}).status_code == 404
-    exp = c.post("/api/transfer/export", json={"sections": {"misure": {}}}).json()
+    exp = c.post("/api/transfer/export", json={"sections": {"measures": {}}}).json()
     rep = c.post("/api/transfer/import", json={"data": exp, "mode": "merge"}).json()
     assert rep["dry_run"] is True and rep["totals"]["unchanged"] == 1
 

@@ -2,7 +2,7 @@
 #   python tools/cloud_test.py up      → docker compose -f docker-compose.global.yml -f docker-compose.cloud-test.yml …
 # The normal local run (up-all.bat) never reads this file. Dossier: docs/work/2026-10-19-cloud-test-bench/
 #
-# - fake_llm: deterministic stand-in for Ollama (no GPU in the cloud); every answer starts with "[LLM finto]".
+# - fake_llm: deterministic stand-in for Ollama (no GPU in the cloud); every answer starts with "[fake LLM]".
 #   With GEMINI_API_KEY in the environment the script points Oracle's chat use cases at a Gemini chain instead.
 # - Oracle: Ollama URL → fake_llm, Claude Code CLI not installed (no subscription token in a test bench).
 
@@ -27,7 +27,7 @@ services:
         INSTALL_CLAUDE_CODE: "0"
     environment:
       - OLLAMA_URL=http://hestia_fake_llm:11434/api/generate
-      - ORACLE_KEY_GEMINI=${GEMINI_API_KEY:-}   # provider «gemini» key (Oracle a blocchi)
+      - ORACLE_KEY_GEMINI=${GEMINI_API_KEY:-}   # provider «gemini» key (Oracle blocks)
     depends_on:
       fake_llm:
         condition: service_started

@@ -12,7 +12,7 @@ Event types:
   - final    : terminal event carrying the assistant's full reply
   - signal   : side-channel event (e.g. memory update, tool summary, document saved)
   - question : interactive question frame for cross-client approval flows
-  - changes  : what the answer changed, each item with its «Annulla» (Cindy 13)
+  - changes  : what the answer changed, each item with its «Undo» (Cindy 13)
   - notice   : STANDARD system packet for every client (memory saved, action done,
                errors…): {type, kind, level, icon, emoji, title, detail, data}.
                Clients render it distinctly from chat text (see NOTICE_KINDS and
@@ -38,7 +38,7 @@ _THINK_TAGS = re.compile(r"</?\s*(?:think|thinking|reasoning)\s*>|<｜[^｜]*｜
 
 def clean_reasoning(text: str | None) -> str:
     """The model's reasoning as text to show, or "" when there is none. Some local models send only the
-    empty wrapper (``<think>\n\n</think>``): without this a client drew a «Ragionamento» block with nothing in it."""
+    empty wrapper (``<think>\n\n</think>``): without this a client drew a «Reasoning» block with nothing in it."""
     return _THINK_TAGS.sub("", str(text or "")).strip()
 
 
@@ -74,7 +74,7 @@ def emit_thinking(
 def emit_final(reply: str, domain: str = "none", origin: dict | None = None, trace_id: str = "",
                model: str = "", operating_mode: str = "") -> str:
     """Return the terminal final-type NDJSON line. ``origin`` (Cindy 6) is set when the turn was not typed by the
-    owner: clients show its ``label`` as a small tag («Da una tua routine»). ``trace_id`` names the turn: clients
+    owner: clients show its ``label`` as a small tag («From one of your routines»). ``trace_id`` names the turn: clients
     send it back with a 👍/👎 so the vote lands on this turn (docs/work/2026-10-30-training-dataset)."""
     payload = {"type": "final", "reply": reply, "domain": domain}
     if model:
@@ -98,7 +98,7 @@ def emit_agent(event: str, *, agent_id: str, module: str, label: str = "", **fie
 
 
 def changes_from_log(tool_log: list[dict]) -> list[dict]:
-    """«Cosa ho cambiato» (Cindy 13): one item per successful write of the turn; ``undo`` when the module declared
+    """«What I changed» (Cindy 13): one item per successful write of the turn; ``undo`` when the module declared
     how to undo it in its result (``{"tool", "args", "label"}``, or a tool name + the call's ``id``)."""
     out = []
     for entry in tool_log or []:
@@ -119,7 +119,7 @@ def changes_from_log(tool_log: list[dict]) -> list[dict]:
 
 
 def emit_changes(items: list[dict], session_id: str = "") -> str:
-    """Return the ``changes`` frame: what this answer changed, each with its Annulla (clients may ignore it)."""
+    """Return the ``changes`` frame: what this answer changed, each with its Undo (clients may ignore it)."""
     return json.dumps({"type": "changes", "items": items, "session_id": session_id}, ensure_ascii=False) + "\n"
 
 
@@ -151,7 +151,7 @@ def emit_question(
     if timeout_sec is not None:
         payload["timeout_sec"] = timeout_sec
     if allow_other:
-        payload["allow_other"] = True  # choice kinds also accept a free answer («Altro…»)
+        payload["allow_other"] = True  # choice kinds also accept a free answer («Other…»)
     return json.dumps(payload, ensure_ascii=False) + "\n"
 
 

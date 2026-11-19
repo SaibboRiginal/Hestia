@@ -134,7 +134,7 @@ def test_generate_voice_flag_reaches_the_chain(monkeypatch):
         calls["voice"] = voice
         return _Agent()
     monkeypatch.setattr(llm_chains, "agent_for", _agent_for)
-    monkeypatch.setattr("core.services.external_agent.mode_for", lambda uc: "interna")
+    monkeypatch.setattr("core.services.external_agent.mode_for", lambda uc: "internal")
     res = TestClient(main.app).post("/api/llm/generate", json={"prompt": "FACTS: x", "use_case": "athena.recap",
                                                                "voice": True})
     assert res.status_code == 200 and calls["voice"] is True

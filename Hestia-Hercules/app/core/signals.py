@@ -2,7 +2,7 @@
 training + weekly series, published to Archive through ``hestia_common.signals_client``.
 
 Nothing new is judged here: stall, low energy, missed days, PRs and goals come from the engines the summary already
-uses; this file only picks what is worth a signal and words it (Italian, «Allenamento», never the module name).
+uses; this file only picks what is worth a signal and words it (owner's language, «Training», never the module name).
 """
 from __future__ import annotations
 

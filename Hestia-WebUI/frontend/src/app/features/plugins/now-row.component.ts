@@ -1,18 +1,18 @@
 import { ChangeDetectionStrategy, Component, OnInit, computed, effect, inject, untracked } from '@angular/core';
 import { IconComponent } from '../../ui';
-import { AdessoItem, MetisService } from '../../services/metis.service';
+import { NowItem, MetisService } from '../../services/metis.service';
 import { PluginsService } from './plugins.service';
 import { TrPipe } from '../../core/i18n';
 
 const SOURCE_ICON: Record<string, string> = { agenda: 'calendar', habit: 'repeat', recent: 'history', idea: 'sparkle' };
 
 /**
- * Home row «Adesso» (dossier 2026-10-24-whole-cindy-brainstorm C11, W7): what makes sense now, from the agenda,
+ * Home row «Now» (dossier 2026-10-24-whole-cindy-brainstorm C11, W7): what makes sense now, from the agenda,
  * habits, recent use and a few ideas, each with its reason. A tap opens the tool (run at once when it needs nothing
  * more) and is remembered, so the row learns. Hidden when there is nothing to suggest.
  */
 @Component({
-  selector: 'hx-adesso-row',
+  selector: 'hx-now-row',
   imports: [TrPipe, IconComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
@@ -45,19 +45,19 @@ const SOURCE_ICON: Record<string, string> = { agenda: 'calendar', habit: 'repeat
     .r { font-size: 12px; color: var(--text-3); overflow-wrap: anywhere; }
   `],
 })
-export class AdessoRowComponent implements OnInit {
+export class NowRowComponent implements OnInit {
   private metis = inject(MetisService);
   private plugins = inject(PluginsService);
-  readonly items = computed(() => this.metis.adesso());
+  readonly items = computed(() => this.metis.now());
 
   constructor() {
     // The catalog arrives after the first paint: read again once Metis is known.
-    effect(() => { if (this.plugins.modules().has('metis')) untracked(() => void this.metis.loadAdesso()); });
+    effect(() => { if (this.plugins.modules().has('metis')) untracked(() => void this.metis.loadNow()); });
   }
 
-  ngOnInit(): void { void this.metis.loadAdesso(); }
+  ngOnInit(): void { void this.metis.loadNow(); }
 
-  icon(it: AdessoItem): string { return this.plugins.modules().get(it.module)?.icon || SOURCE_ICON[it.source] || 'zap'; }
+  icon(it: NowItem): string { return this.plugins.modules().get(it.module)?.icon || SOURCE_ICON[it.source] || 'zap'; }
 
-  open(it: AdessoItem): void { this.metis.open(it.tool, it.args ?? {}, it.title); }
+  open(it: NowItem): void { this.metis.open(it.tool, it.args ?? {}, it.title); }
 }

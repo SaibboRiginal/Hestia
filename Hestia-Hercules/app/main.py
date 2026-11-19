@@ -15,7 +15,7 @@ import requests
 from fastapi import Body, FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, Response
-from hestia_common.i18n import t as tr  # fixed texts in the owner's language
+from hestia_common.i18n import is_yes, t as tr  # fixed texts in the owner's language
 
 try:
     from hestia_common.logging_utils import create_log_control_router, setup_service_logging
@@ -525,7 +525,7 @@ def summary():
 
 
 def _activity_hints() -> list[dict]:
-    """«Corsa 1/2» for every open outdoor intention of this week (summary, widget, context)."""
+    """«Running 1/2» for every open outdoor intention of this week (summary, widget, context)."""
     try:
         return [{"kind": i["kind"], "label": i["label"], "done": i["done"], "times": i["times"], "hint": i["hint"]}
                 for i in activities.week()["intentions"]]
@@ -586,7 +586,7 @@ def quick_done(id: str, body: dict = Body(default={})):
 
 @app.delete(f"{API}/quick/{{id}}")
 def quick_undo(id: str, date: str = ""):
-    """Undo of 'Segna fatto': removes the last quick session of that template (today or ``date``)."""
+    """Undo of 'Mark done': removes the last quick session of that template (today or ``date``)."""
     from .core import records as rec
     day = date or hercules.today().isoformat()
     rows = [s for s in hercules.store.items("session") if s.get("template_id") == id and s.get("source") == "quick"
@@ -601,7 +601,7 @@ def quick_undo(id: str, date: str = ""):
 
 @app.post(f"{API}/quick-bodyweight")
 def quick_bodyweight(body: dict = Body(...)):
-    value = body.get("peso", body.get("weight"))
+    value = body.get("weight", body.get("weight"))
     taken = f"{body['date']}T08:00:00+00:00" if body.get("date") else None
     m = hercules.log_measurement("bodyweight", float(str(value).replace(",", ".")), taken)
     return {**m, "label": tr("Weight {0} kg", m['value'])}
@@ -638,7 +638,7 @@ def reminder_check():
     tpl = nxt.get("template") or {}
     planned = coach.next_planned()
     text = tr("🏋️ Today: {0}", tr(tpl.get('name') or "workout"))
-    if planned and planned["label"].startswith("oggi"):
+    if planned and planned["label"].startswith("today"):
         text += tr(" at {0}", planned['label'].split()[-1])
     if nxt.get("estimated_minutes"):
         text += f" · {nxt['estimated_minutes']} min"
@@ -682,25 +682,25 @@ def activities_week():
 
 @app.post(f"{API}/activities/propose")
 def activities_propose(body: dict = Body(default={})):
-    return activities.propose(body.get("kind") or "corsa", int(body.get("times") or 1), str(body.get("place") or ""),
+    return activities.propose(body.get("kind") or "run", int(body.get("times") or 1), str(body.get("place") or ""),
                               int(body.get("minutes") or 45), str(body.get("week") or ""))
 
 
 @app.post(f"{API}/activities/log")
 def activities_log(body: dict = Body(default={})):
-    return activities.log(body.get("kind") or "corsa", str(body.get("date") or ""), domain._num(body.get("minutes"), integer=True),
+    return activities.log(body.get("kind") or "run", str(body.get("date") or ""), domain._num(body.get("minutes"), integer=True),
                           domain._num(body.get("km")), str(body.get("note") or ""))
 
 
 @app.post(f"{API}/activities/quick-run")
 def activities_quick_run(body: dict = Body(default={})):
-    """Home quick action «Ho corso» (``km`` optional, ``date`` for another day)."""
-    return activities.log("corsa", str(body.get("date") or ""), None, domain._num(body.get("km")))
+    """Home quick action «I ran» (``km`` optional, ``date`` for another day)."""
+    return activities.log("run", str(body.get("date") or ""), None, domain._num(body.get("km")))
 
 
 @app.delete(f"{API}/activities/quick-run")
 def activities_quick_run_undo(date: str = ""):
-    last = [a for a in activities.logs() if a.get("kind") == "corsa" and a.get("source") in ("log", "slot")
+    last = [a for a in activities.logs() if a.get("kind") == "run" and a.get("source") in ("log", "slot")
             and a["date"] == (date or hercules.today().isoformat())]
     if not last:
         return {"undone": False}
@@ -714,7 +714,7 @@ def activities_unlog(id: str):
 
 @app.post(f"{API}/activities/morning")
 def activities_morning():
-    """Agenda job (07:30): the coach line «Ottimo giorno per…» or «pioggia, spostiamo?», at most once a day."""
+    """Agenda job (07:30): the coach line «Great day for…» or «rain, shall we move it?», at most once a day."""
     msg = activities.morning()
     if not msg or msg.get("skip"):
         return {"send": False, "why": (msg or {}).get("skip") or "nothing_to_say"}
@@ -743,7 +743,7 @@ def activities_add_slot(plan_id: str, body: dict = Body(default={})):
 
 @app.post(f"{API}/activities/{{plan_id}}/keep")
 def activities_keep(plan_id: str):
-    """«Tengo» / «Non oggi» from the morning message: nothing changes."""
+    """«Keep» / «Not today» from the morning message: nothing changes."""
     return {"ok": True, "plan_id": plan_id}
 
 
@@ -769,7 +769,7 @@ def activities_slot_moved(plan_id: str, slot_id: str, body: dict = Body(default=
 
 @app.post(f"{API}/activities/{{plan_id}}/slots/{{slot_id}}/ask")
 def activities_slot_ask(plan_id: str, slot_id: str):
-    """Agenda task after the slot: «Hai fatto la corsa delle 18:00?» (Fatto / Non fatto / Spostato)."""
+    """Agenda task after the slot: «Did you do the 18:00 run?» (Done / Not done / Moved)."""
     msg = activities.ask(plan_id, slot_id)
     if not msg:
         return {"send": False, "why": "already_answered"}
@@ -811,7 +811,7 @@ ui.webui(
            page("history/:id", "Training", element="hercules-session", detail=True, parent="training"),
            page("progress", "Progress", element="hercules-progress", icon="chart", order=34, parent="training"),
            page("body", "Body", element="hercules-body", icon="scale", order=35, parent="training")],
-    widgets=[widget("coming-up", "Next workout", element="hercules-next-widget", sizes=["m", "l"], auto=True,
+    widgets=[widget("next", "Next workout", element="hercules-next-widget", sizes=["m", "l"], auto=True,
                     open_page="training", icon="dumbbell"),
              widget("week", "Training week", element="hercules-week-widget", sizes=["s", "m", "l"],
                     auto=True, open_page="progress", icon="calendar"),
@@ -836,7 +836,7 @@ ui.webui(
         quick_action("start", "Start today's workout", "POST", f"{API}/sessions/start-next", icon="play",
                      group="Training", order=31),
         quick_action("weight", "Log body weight", "POST", f"{API}/quick-bodyweight", icon="scale",
-                     group="Training", params={"peso": {"type": "float", "label": "Weight (kg)"}}, order=32),
+                     group="Training", params={"weight": {"type": "float", "label": "Weight (kg)"}}, order=32),
         quick_action("run", "I went running", "POST", f"{API}/activities/quick-run", icon="run", group="Training",
                      params={"km": {"type": "float", "label": "Km (optional)"}},
                      undo={"method": "DELETE", "path": f"{API}/activities/quick-run"}, order=34),
@@ -849,21 +849,21 @@ app.include_router(settings.router())
 
 # ── export / import (hestia_common.transfer; reminder and adaptation rows are runtime state) ────────────────
 transfer = Transfer("hercules", hub, sections=[
-    StoreSection("esercizi", "Exercises", store, ["exercise"], icon="dumbbell"),
-    StoreSection("schede", "Workouts and programs", store, ["template", "program"], icon="list",
-                 depends_on=["esercizi"]),
-    StoreSection("sessioni", "Sessions", store, ["session", "set"], item_kinds=["session"], icon="history",
+    StoreSection("exercises", "Exercises", store, ["exercise"], icon="dumbbell"),
+    StoreSection("plans", "Workouts and programs", store, ["template", "program"], icon="list",
+                 depends_on=["exercises"]),
+    StoreSection("sessions", "Sessions", store, ["session", "set"], item_kinds=["session"], icon="history",
                  title=lambda r: r["data"].get("name") or tr("Session"),
                  subtitle=lambda r: str(r["data"].get("started_at") or r.get("at") or "")[:10],
-                 depends_on=["esercizi", "schede"]),
-    StoreSection("misure", "Measurements", store, ["measurement"], icon="scale",
+                 depends_on=["exercises", "plans"]),
+    StoreSection("measures", "Measurements", store, ["measurement"], icon="scale",
                  title=lambda r: f"{r['data'].get('kind')}: {r['data'].get('value')} {r['data'].get('unit') or ''}"),
-    StoreSection("obiettivi", "Goals and plans", store, ["goal", "plan"], icon="target",
+    StoreSection("goals", "Goals and plans", store, ["goal", "plan"], icon="target",
                  title=lambda r: r["data"].get("label") or r["data"].get("note") or r["data"].get("date") or r["id"],
-                 depends_on=["esercizi", "schede"]),
+                 depends_on=["exercises", "plans"]),
     StoreSection("feedback", "Check-in e note", store, ["checkin", "feedback"], icon="note",
                  title=lambda r: r["data"].get("text") or r["data"].get("free_text") or "Check-in",
-                 depends_on=["esercizi", "sessioni"]),
+                 depends_on=["exercises", "sessions"]),
 ])
 app.include_router(transfer.router())
 
@@ -1061,13 +1061,13 @@ try:
         return hercules.save("goal", {"times": times, "per": per, "scope": scope, "target_id": target_id, "active": active},
                              id=existing["id"] if existing else None)
 
-    def _plan_activity(kind: str = "corsa", times: int = 1, place: str = "", minutes: int = 45, week: str = "") -> dict:
+    def _plan_activity(kind: str = "run", times: int = 1, place: str = "", minutes: int = 45, week: str = "") -> dict:
         return activities.propose(kind, times, place, minutes, week)
 
     def _confirm_activity(plan_id: str = "", slots: list | None = None) -> dict:
         return activities.confirm(plan_id, slots or None)
 
-    def _log_activity(kind: str = "corsa", date: str = "", minutes: int | None = None, km: float | None = None,
+    def _log_activity(kind: str = "run", date: str = "", minutes: int | None = None, km: float | None = None,
                       note: str = "") -> dict:
         return activities.log(kind, date, minutes, km, note)
 
@@ -1120,7 +1120,7 @@ try:
                 title="Start workout", method="POST", path=f"{API}/sessions", clients=["telegram", "ui"],
                 telegram_group="training",
                 telegram={"section": "Today", "primary": 1}),
-        MCPTool(name="fitness_log_sets", description=("Log sets in the workout in progress from text: 'panca 80x8, 80x8, 77.5x7; trazioni 8, 7, 6'. "
+        MCPTool(name="fitness_log_sets", description=("Log sets in the workout in progress from text: 'bench 80x8, 80x8, 77.5x7; pull up 8, 7, 6'. "
                                                       "Weight x reps (x sets), optional @RPE."),
                 parameters={"type": "object", "properties": {"text": S}, "required": ["text"]}, handler=_t(_log),
                 title="Log set", method="POST", path=f"{API}/sessions/log-text", clients=["telegram", "ui"],
@@ -1191,14 +1191,14 @@ try:
                 clients=["telegram", "ui"], telegram_group="training",
                 telegram={"section": "Goals and body", "primary": 3}),
         MCPTool(name="fitness_set_goal", description=("Set a training goal: times per day|week|month; scope any, template (target = template name) or "
-                                                      "muscle (petto, spalle, braccia, schiena, core, gambe)."),
+                                                      "muscle (chest, shoulders, arms, back, core, legs)."),
                 parameters={"type": "object", "properties": {"times": I, "per": S, "scope": S, "target": S,
                                                              "active": {"type": "boolean"}}, "required": ["times"]},
                 handler=_t(_goal), title="Workout goal", method="POST", path=f"{API}/goals", clients=["ui"],
                 telegram_visible=False, telegram_group="training",
                 telegram={"section": "Goals and body"}),
-        MCPTool(name="fitness_plan_activity", description=("Intention of an outdoor activity («ho voglia di correre 2 volte questa settimana»): kind "
-                                                           "corsa|bici|camminata|nuoto|altro, times, place (name of a saved place or a city; empty = Casa), "
+        MCPTool(name="fitness_plan_activity", description=("Intention of an outdoor activity («I feel like running twice this week»): kind "
+                                                           "run|bike|walk|swim|other, times, place (name of a saved place or a city; empty = Home), "
                                                            "minutes, week (empty = this one, 'next' = next). Proposes the best moments from weather and "
                                                            "commitments; does NOT write the calendar: show the moments and ask for confirmation."),
                 parameters={"type": "object", "properties": {"kind": S, "times": I, "place": S, "minutes": I, "week": S}},
@@ -1219,7 +1219,7 @@ try:
                 handler=_t(_log_activity), title="Log activity", method="POST", path=f"{API}/activities/log",
                 clients=["telegram", "ui"], telegram_group="training",
                 telegram={"section": "Activity", "primary": 4}),
-        MCPTool(name="fitness_activities", description=("Outdoor activities of this week: intentions with progress (e.g. Corsa 1/2), planned moments and "
+        MCPTool(name="fitness_activities", description=("Outdoor activities of this week: intentions with progress (e.g. Running 1/2), planned moments and "
                                                         "activities done."),
                 parameters={"type": "object", "properties": {}}, handler=_t(_activities_week),
                 title="This week's tasks", path=f"{API}/activities", clients=["telegram", "ui"],
@@ -1258,7 +1258,7 @@ try:
                     except ValueError:
                         pass
                 elif typ == "boolean":
-                    kw[k] = v.lower() in ("1", "true", "si", "sì", "yes")
+                    kw[k] = is_yes(v)
                 elif typ == "array":
                     kw[k] = [x.strip() for x in v.split(",") if x.strip()]
             return inner(**{k: v for k, v in kw.items() if k in props})

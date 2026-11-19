@@ -38,11 +38,11 @@ body { background: var(--backdrop, var(--bg)); }
 .hx-glass::before { content: ''; position: absolute; inset: 0; z-index: -1; border-radius: inherit; pointer-events: none;
   backdrop-filter: var(--glass, none); -webkit-backdrop-filter: var(--glass, none); }
 
-/* Animations knob: «Nessuna» stops them everywhere in the WebUI (plugins get --dur 0ms);
-   «Vivaci» adds a little life to cards and pages. prefers-reduced-motion always wins (rule further down). */
-html[data-motion=nessuna] *, html[data-motion=nessuna] *::before, html[data-motion=nessuna] *::after {
+/* Animations knob: «None» stops them everywhere in the WebUI (plugins get --dur 0ms);
+   «Lively» adds a little life to cards and pages. prefers-reduced-motion always wins (rule further down). */
+html[data-motion=none] *, html[data-motion=none] *::before, html[data-motion=none] *::after {
   animation: none !important; transition: none !important; }
-html[data-motion=vivaci] {
+html[data-motion=lively] {
   .hx-card { transition: box-shadow var(--dur) var(--ease), border-color var(--dur) var(--ease); }
   .hx-card:hover { box-shadow: var(--shadow-2); border-color: var(--border-strong); }
   main > :not(router-outlet):not(.burger) { animation: hx-rise var(--dur) var(--ease) both; }

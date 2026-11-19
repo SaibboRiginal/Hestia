@@ -1,6 +1,6 @@
 /**
- * <hercules-progress> — "Progressi": workouts and volume per week/month, sets per muscle group, year heatmap,
- * recent records and goals. <hercules-body> — "Corpo": bodyweight trend and body measurements (offline logging).
+ * <hercules-progress> — "Progress": workouts and volume per week/month, sets per muscle group, year heatmap,
+ * recent records and goals. <hercules-body> — "Body": bodyweight trend and body measurements (offline logging).
  */
 import { HestiaElement, html, css, nothing, locale, tr } from '@hestia/webui-sdk';
 import { API, nowIso, uuid } from './data';

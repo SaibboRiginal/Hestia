@@ -7,7 +7,7 @@ using Microsoft.AspNetCore.Mvc;
 using Hestia.WebUI.Services;
 
 /// <summary>
-/// Esporta e importa (docs/work/2026-10-20-import-export): the page in Impostazioni builds and reads the
+/// Export and import (docs/work/2026-10-20-import-export): the page in Settings builds and reads the
 /// <c>.hestia</c> file; every module exports/imports only its own data through <c>/api/transfer/*</c>
 /// (hestia_common.transfer) and Themis does the settings. This controller forwards to modules that advertise the
 /// <c>transfer</c> capability (nothing else) and keeps the restore points: before an import the page saves the
@@ -65,7 +65,7 @@ public class TransferController : ControllerBase
         catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException or JsonException)
         {
             _logger.LogWarning("[🔄] event=webui_transfer_modules_failed error={Error}", ex.Message);
-            return StatusCode(503, new { detail = "Hub non raggiungibile" });
+            return StatusCode(503, new { detail = Texts.Tr("Not available") });
         }
     }
 
@@ -78,7 +78,7 @@ public class TransferController : ControllerBase
     [HttpGet("{module}/describe")]
     public async Task<IActionResult> Describe(string module)
     {
-        if (!await AllowedAsync(module)) return NotFound(new { detail = "modulo senza esporta/importa" });
+        if (!await AllowedAsync(module)) return NotFound(new { detail = Texts.Tr("no export or import here") });
         var (status, payload) = await _hub.RouteRawAsync(module, "/api/transfer/describe", HttpMethod.Get,
             timeoutSeconds: 30, ct: HttpContext.RequestAborted);
         return StatusCode(status, payload);
@@ -87,7 +87,7 @@ public class TransferController : ControllerBase
     [HttpGet("{module}/files/{id}")]
     public async Task<IActionResult> File(string module, string id)
     {
-        if (!await AllowedAsync(module)) return NotFound(new { detail = "modulo senza esporta/importa" });
+        if (!await AllowedAsync(module)) return NotFound(new { detail = Texts.Tr("no export or import here") });
         var (status, payload) = await _hub.RouteRawAsync(module, $"/api/transfer/files/{Uri.EscapeDataString(id)}",
             HttpMethod.Get, timeoutSeconds: 60, ct: HttpContext.RequestAborted);
         return StatusCode(status, payload);
@@ -99,7 +99,7 @@ public class TransferController : ControllerBase
     public async Task<IActionResult> Forward(string module, string op, [FromBody] JsonElement body)
     {
         if (!Actions.Contains(op)) return NotFound();
-        if (!await AllowedAsync(module)) return NotFound(new { detail = "modulo senza esporta/importa" });
+        if (!await AllowedAsync(module)) return NotFound(new { detail = Texts.Tr("no export or import here") });
         var (status, payload) = await _hub.RouteRawAsync(module, $"/api/transfer/{op}", HttpMethod.Post, body,
             timeoutSeconds: op == "items" ? 30 : 120, ct: HttpContext.RequestAborted);
         return StatusCode(status, payload);
@@ -147,7 +147,7 @@ public class TransferController : ControllerBase
     public async Task<IActionResult> SaveRestorePoint([FromBody] JsonElement body)
     {
         if (body.ValueKind != JsonValueKind.Object || !body.TryGetProperty("file", out var file))
-            return BadRequest(new { detail = "file obbligatorio" });
+            return BadRequest(new { detail = Texts.Tr("file required") });
         byte[] gz;
         using (var ms = new MemoryStream())
         {
@@ -158,7 +158,7 @@ public class TransferController : ControllerBase
         var meta = new Dictionary<string, object?>
         {
             ["kind"] = RestoreKind,
-            ["label"] = body.TryGetProperty("label", out var l) ? l.GetString() : "Prima dell'importazione",
+            ["label"] = body.TryGetProperty("label", out var l) ? l.GetString() : Texts.Tr("Before the import"),
             ["modules"] = body.TryGetProperty("modules", out var m) ? m : null,
             ["at"] = DateTimeOffset.UtcNow.ToString("o"),
         };
@@ -184,7 +184,7 @@ public class TransferController : ControllerBase
                 HttpMethod.Delete, timeoutSeconds: 15);
     }
 
-    /// <summary>The restore point as the .hestia JSON object (the page imports it with «Sostituisci»).</summary>
+    /// <summary>The restore point as the .hestia JSON object (the page imports it with «Replace»).</summary>
     [HttpGet("restore-points/{id}")]
     public async Task<IActionResult> RestorePoint(string id)
     {

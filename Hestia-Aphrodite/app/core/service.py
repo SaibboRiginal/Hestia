@@ -1,8 +1,8 @@
-"""Aphrodite — how the clients look («Look»).
+"""Aphrodite — how the clients look («Look», dossier docs/work/2026-10-24-whole-cindy-brainstorm W5 A2).
 
 Profiles (palette, a light effect, a background) and pets (a small companion with a few poses). Aphrodite decides
 by itself which profile is on: a special moment of today pushed by the calendar (the owner's birthday, the owner's
-important events), then the holidays (Christmas, New year, Valentine's day, Easter, Halloween…), then the season.
+important events), then the holidays (Christmas, New Year, Valentine's Day, Easter, Halloween…), then the season.
 Marko's only switch is per client: ``auto`` off = the standard look. The pet is a per-client choice. Pictures are
 asked to the image module (``POST /api/images/jobs`` with a callback here); clients only read ``GET /now``.
 """
@@ -20,7 +20,7 @@ logger = logging.getLogger("hestia_aphrodite.service")
 
 EFFECTS = ("none", "snow", "leaves", "petals", "sun", "hearts", "confetti", "pumpkins", "stars")
 POSES = ("idle", "happy", "sleep")
-# Mascots drawn by the clients themselves (animated, no picture needed).
+# Mascots drawn by the clients themselves (animated, no picture needed: dossier 2026-11-18-real-test-problems G).
 # key → English name (translated when served). The default when the client never chose is the first one.
 DRAWN = {"ember": "Little flame", "cat": "Cat", "owl": "Owl"}
 DEFAULT_PET = "builtin:ember"
@@ -47,13 +47,13 @@ BUILTIN: dict[str, dict] = {
     "standard": {"name": "Standard", "palette": {}, "effect": "none", "prompt": ""},
     "birthday": {"name": "Birthday", "palette": {"accent": "#D97706", "accent2": "#DB2777"}, "effect": "confetti",
                    "prompt": "soft festive birthday background, balloons, warm light, minimal, no text"},
-    "special_day": {"name": "Special day", "palette": {"accent": "#7C3AED"}, "effect": "stars",
+    "event": {"name": "Special day", "palette": {"accent": "#7C3AED"}, "effect": "stars",
                "prompt": "soft celebratory background, gentle sparkles, minimal, no text"},
-    "new_year": {"name": "New year", "palette": {"accent": "#CA8A04", "accent2": "#1E3A8A"}, "effect": "confetti",
+    "new_year": {"name": "New Year", "palette": {"accent": "#CA8A04", "accent2": "#1E3A8A"}, "effect": "confetti",
                   "prompt": "new year night, gold fireworks, elegant minimal, no text"},
     "christmas": {"name": "Christmas", "palette": {"accent": "#B91C1C", "accent2": "#166534"}, "effect": "snow",
                "prompt": "cozy christmas, warm lights, snow, minimal illustration, no text"},
-    "valentine": {"name": "Valentine's day", "palette": {"accent": "#DB2777"}, "effect": "hearts",
+    "valentines": {"name": "Valentine's Day", "palette": {"accent": "#DB2777"}, "effect": "hearts",
                       "prompt": "soft pink hearts, minimal, no text"},
     "easter": {"name": "Easter", "palette": {"accent": "#65A30D", "accent2": "#EAB308"}, "effect": "petals",
                "prompt": "spring easter, pastel flowers, minimal, no text"},
@@ -73,7 +73,7 @@ def holiday(day: date) -> str | None:
     if (12, 8) <= md or md <= (1, 6):
         return "christmas"
     if md == (2, 14):
-        return "valentine"
+        return "valentines"
     if abs((day - easter(day.year)).days) <= 1:
         return "easter"
     if (10, 25) <= md <= (10, 31) or md == (11, 1):
@@ -138,7 +138,7 @@ class Appearance:
         """Calendar ``special_moment`` of today: the owner's own moments change the look for the day."""
         if moment.get("person_id"):
             return {"handled": False}                       # other people's dates: gifts, not decorations
-        kind = "birthday" if moment.get("kind") == "birthday" else "special_day"
+        kind = "birthday" if moment.get("kind") == "birthday" else "event"
         day = str(moment.get("date") or self.today().isoformat())[:10]
         self.store.upsert("moment", f"{day}-{moment.get('key') or kind}", {
             "date": day, "profile": kind, "title": str(moment.get("title") or "")[:80]})
@@ -151,7 +151,7 @@ class Appearance:
         moments = [m for m in self.store.items("moment") if m.get("date") == day.isoformat()]
         if moments:
             m = sorted(moments, key=lambda m: m["profile"] != "birthday")[0]
-            return m["profile"], m.get("title") or tr(BUILTIN[m["profile"]]["name"])
+            return m["profile"], m.get("title") or BUILTIN[m["profile"]]["name"]
         md = f"{day.month:02d}-{day.day:02d}"
         for p in self.profiles():
             w = p.get("when")
@@ -159,9 +159,9 @@ class Appearance:
                 return p["id"], p["name"]
         h = holiday(day)
         if h:
-            return h, tr(BUILTIN[h]["name"])
+            return h, BUILTIN[h]["name"]
         s = season(day)
-        return s, tr(BUILTIN[s]["name"])
+        return s, BUILTIN[s]["name"]
 
     # ── per client ──────────────────────────────────────────────────────────
     def choice(self, client: str) -> dict:
@@ -189,7 +189,7 @@ class Appearance:
             except NotFound:          # a deleted pet: the built-in mascot comes back
                 pet = self.pet(DEFAULT_PET)
         return {"client": client, "auto": c["auto"], "profile": {
-            "key": key, "name": tr(p["name"]) if p.get("builtin") else p["name"], "palette": p.get("palette") or {}, "effect": p.get("effect") or "none",
+            "key": key, "name": p["name"], "palette": p.get("palette") or {}, "effect": p.get("effect") or "none",
             "background": p.get("background")}, "why": why, "pet": pet and {
             "id": pet["id"], "name": pet["name"], "images": pet.get("images") or {}, "drawn": pet.get("drawn", "")}}
 

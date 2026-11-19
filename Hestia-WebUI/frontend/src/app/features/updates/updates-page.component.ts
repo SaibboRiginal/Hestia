@@ -8,17 +8,17 @@ import { locale, tr, TrPipe } from '../../core/i18n';
 
 interface Version { version: string; tag: string; commit: string; label: string; }
 interface Available { ref: string; label: string; notes?: string[]; major?: boolean; commits?: number; }
-interface Job { state: 'idle' | 'in_corso' | 'fatto' | 'errore'; step?: string; detail?: string; target?: string; }
+interface Job { state: 'idle' | 'running' | 'done' | 'error'; step?: string; detail?: string; target?: string; }
 interface HistoryRow { at: number; from: string; to: string; ok: boolean; back: boolean; detail: string; }
 export interface UpdateStatus {
-  installed: Version; channel: 'stabile' | 'novita'; available: Available | null; checked_at: number | null;
+  installed: Version; channel: 'stable' | 'news'; available: Available | null; checked_at: number | null;
   check_error: string; job: Job; history: HistoryRow[]; previous: string; blocked: string;
 }
 
 /**
- * «Aggiornamenti» (docs/work/2026-10-30-one-click-setup §4.4): the installed version, the new one with what it brings,
- * «Installa» (Hestia moves to it and comes back by itself if something does not answer), «Torna alla versione di
- * prima», the history. Browser → WebUI → Hub → Hephaestus /api/setup/update*.
+ * «Updates» (docs/work/2026-10-30-one-click-setup §4.4): the installed version, the new one with what it brings,
+ * «Install» (it moves to it and comes back by itself if something does not answer), «Back to the previous
+ * version», the history. Browser → WebUI → Hub → Hephaestus /api/setup/update*.
  */
 @Component({
   selector: 'app-updates-page',
@@ -38,13 +38,13 @@ export interface UpdateStatus {
           <div class="now">
             <hx-icon name="check-circle" [size]="22" tone="success" />
             <div><b>Hestia {{ st()!.installed.label }}</b>
-              <small>{{ st()!.channel === 'novita' ? ('Get every news as soon as it\\'s ready' | tr) : ('Get the published versions' | tr) }} ·
+              <small>{{ st()!.channel === 'news' ? ('Get every news as soon as it\\'s ready' | tr) : ('Get the published versions' | tr) }} ·
                 <a routerLink="/settings" [queryParams]="{ module: 'hephaestus' }">{{ "change" | tr }}</a>
                 @if (st()!.checked_at) { · {{ 'checked' | tr }} {{ ago(st()!.checked_at!) }} }</small></div>
           </div>
         </section>
 
-        @if (job().state === 'in_corso') {
+        @if (job().state === 'running') {
           <section class="card hx-card">
             <div class="now"><hx-spinner /><div><b>{{ "Updating…" | tr }}</b><small>{{ job().step || ('Preparing' | tr) }}{{ ". Nothing to do: if something doesn't answer I go back to the previous version by myself." | tr }}</small></div></div>
           </section>
@@ -69,9 +69,9 @@ export interface UpdateStatus {
           <p class="note">{{ st()!.check_error || ('You already have the latest version.' | tr) }}</p>
         }
 
-        @if (job().state === 'errore' || job().state === 'fatto') {
+        @if (job().state === 'error' || job().state === 'done') {
           @if (job().detail) {
-            <p class="note"><hx-icon [name]="job().state === 'errore' ? 'alert' : 'info'" [size]="14" [tone]="job().state === 'errore' ? 'warning' : 'info'" /> {{ job().detail }}</p>
+            <p class="note"><hx-icon [name]="job().state === 'error' ? 'alert' : 'info'" [size]="14" [tone]="job().state === 'error' ? 'warning' : 'info'" /> {{ job().detail }}</p>
           }
         }
 
@@ -86,7 +86,7 @@ export interface UpdateStatus {
               </li>
             }
           </ul>
-          @if (st()!.previous && job().state !== 'in_corso') {
+          @if (st()!.previous && job().state !== 'running') {
             <div class="row"><button hx-btn size="sm" variant="ghost" icon="undo" [loading]="busy() === 'back'" (click)="back()">{{ "Back to the previous version" | tr }}</button></div>
           }
         }
@@ -132,7 +132,7 @@ export class UpdatesPageComponent {
     let tick = 0;
     const timer = setInterval(() => {
       tick++;
-      if (this.job().state === 'in_corso' || tick % 10 === 0) void this.load();
+      if (this.job().state === 'running' || tick % 10 === 0) void this.load();
     }, 3000);
     inject(DestroyRef).onDestroy(() => clearInterval(timer));
   }

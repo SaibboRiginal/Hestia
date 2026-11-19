@@ -1,5 +1,5 @@
 /**
- * <chronos-cal-wizard> — "Da un modulo…": modules declare what can be created for them (AgendaTemplate, registered
+ * <chronos-cal-wizard> — "From a module…": modules declare what can be created for them (AgendaTemplate, registered
  * with hestia_common.agenda_client.template). Steps: 1 pick · 2 fields + when · 3 review. `seed` = suggested start
  * (null = closed). Events: cal-template ({tpl, body}), close. Ported from the WebUI's template-wizard component.
  */

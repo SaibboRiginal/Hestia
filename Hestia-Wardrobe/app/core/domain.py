@@ -298,7 +298,7 @@ def outfit(data: dict, pieces: dict[str, dict]) -> dict:
             "notes": _text(data.get("notes"), 2000)}
 
 
-# ── wears ("Indossato" marks) ───────────────────────────────────────────────
+# ── wears ("Worn" marks) ───────────────────────────────────────────────────
 def wear(data: dict, pieces: dict[str, dict], outfits: dict[str, dict], today: date) -> dict:
     oid = str(data.get("outfit_id") or "") or None
     if oid and oid not in outfits:
@@ -343,7 +343,7 @@ def collection(data: dict, pieces: dict[str, dict], outfits: dict[str, dict]) ->
     pids = [p for p in dict.fromkeys(str(x) for x in data.get("piece_ids") or []) if p in pieces]
     oids = [o for o in dict.fromkeys(str(x) for x in data.get("outfit_ids") or []) if o in outfits]
     trip = data.get("trip") if isinstance(data.get("trip"), dict) else {}
-    items = []                                  # free-text lines ("caricabatterie") for packing lists
+    items = []                                  # free-text lines ("charger") for packing lists
     for it in data.get("items") or []:
         label = _text(it.get("label") if isinstance(it, dict) else it, 80)
         if label:

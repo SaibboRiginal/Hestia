@@ -3,14 +3,14 @@
  "agenda": {
   "summary": "Shows the agenda events of the next 7 days."
  },
- "assistant_agenda": {
+ "agenda_assistant": {
   "summary": "Hestia's own agenda: what the assistant and its modules have planned — windows, periodic jobs, repair tasks, events.",
   "params": {
    "days": "days ahead (default 7)",
    "owner": "module: hephaestus, scout, athena..."
   }
  },
- "assistant_agenda_add": {
+ "agenda_assistant_add": {
   "summary": "Adds an event/task/window/job to Hestia's agenda.",
   "params": {
    "title": "title",
@@ -21,20 +21,20 @@
    "parent": "linked item key (cascade cancel)"
   }
  },
- "assistant_agenda_cancel": {
+ "agenda_assistant_cancel": {
   "summary": "Cancels an entry of Hestia's agenda for good.",
   "params": {
    "ref": "item id or key"
   }
  },
- "assistant_agenda_link": {
+ "agenda_assistant_link": {
   "summary": "Links an entry to a parent entry: cancelling the parent cancels the child, the child's error marks the parent.",
   "params": {
    "ref": "child item id or key",
    "parent": "parent key (empty = unlink)"
   }
  },
- "assistant_agenda_from_template": {
+ "agenda_assistant_from_template": {
   "summary": "Creates an entry of Hestia's agenda from a module template.",
   "params": {
    "owner": "model module",
@@ -45,30 +45,30 @@
    "recurrence": "RRULE if recurring"
   }
  },
- "assistant_agenda_run": {
+ "agenda_assistant_run": {
   "summary": "Runs the action of a job/task of Hestia's agenda now.",
   "params": {
    "ref": "item id or key"
   }
  },
- "assistant_agenda_templates": {
+ "agenda_assistant_templates": {
   "summary": "Templates the modules offer to create entries."
  },
- "assistant_agenda_restore": {
+ "agenda_assistant_restore": {
   "summary": "Restores a skipped occurrence of an entry of Hestia's agenda.",
   "params": {
    "ref": "item id or key",
    "occurrence": "skipped ISO occurrence"
   }
  },
- "assistant_agenda_skip": {
+ "agenda_assistant_skip": {
   "summary": "Skips the next occurrence of an entry of Hestia's agenda, without deleting the rule.",
   "params": {
    "ref": "item id or key",
    "occurrence": "ISO occurrence (empty = next)"
   }
  },
- "assistant_agenda_move": {
+ "agenda_assistant_move": {
   "summary": "Moves/changes an entry of Hestia's agenda.",
   "params": {
    "ref": "item id or key",
@@ -77,7 +77,7 @@
    "recurrence": "new RRULE"
   }
  },
- "assistant_agenda_move_occurrence": {
+ "agenda_assistant_move_occurrence": {
   "summary": "Moves only one occurrence of a recurring entry; reset=true brings it back to the original time.",
   "params": {
    "ref": "item id or key",
@@ -114,7 +114,7 @@
  "look_now": {
   "summary": "What the site looks like now and why."
  },
- "look_pet_create": {
+ "look_pet": {
   "summary": "Creates a companion pet and asks for its images."
  },
  "look_pets": {
@@ -123,7 +123,7 @@
  "look_generate": {
   "summary": "Ask for the images again: target profile or pet; ref = profile key or pet id/name."
  },
- "look_upcoming": {
+ "look_next": {
   "summary": "The themes of the next days."
  },
  "look_choice": {
@@ -312,7 +312,7 @@
    "calendar_id": "Calendar ID (empty = primary)"
   }
  },
- "dnd_off": {
+ "presence_dnd_off": {
   "summary": "Turns off «Do not disturb»."
  },
  "docs_check": {
@@ -324,13 +324,13 @@
    "html": "content in simple HTML"
   }
  },
- "document_list": {
+ "document_created_list": {
   "summary": "The documents created recently."
  },
- "document_delete": {
+ "document_created_delete": {
   "summary": "Deletes a created document."
  },
- "document_send": {
+ "document_created_send": {
   "summary": "Sends the file of a created document again."
  },
  "documents.search": {
@@ -573,7 +573,7 @@
    "limit": "Maximum number of tasks (default 50)"
   }
  },
- "away_set": {
+ "away_enable": {
   "summary": "Turns on or off the address to use Hestia from outside home; only on the user's explicit request."
  },
  "away_status": {
@@ -649,7 +649,7 @@
  "hephaestus_tasks": {
   "summary": "List of recent remediation tasks."
  },
- "image_workflows": {
+ "image_flows": {
   "summary": "The uploaded workflows and whether the generator is linked."
  },
  "image_list": {
@@ -712,7 +712,7 @@
  "metis_dataset_build": {
   "summary": "Build a cleaned, deduplicated, balanced dataset from graded feedback records."
  },
- "metis_dataset_download": {
+ "metis_training_export": {
   "summary": "Exports the training dataset to download.",
   "params": {
    "in_chiaro": "true = real data, false = masked (default)",
@@ -753,7 +753,7 @@
  "models_download": {
   "summary": "Download a local model for the brain, by its Ollama name, e.g."
  },
- "dnd_on": {
+ "presence_dnd_on": {
   "summary": "Turns on «Do not disturb»: only urgent notifications get through.",
   "params": {
    "minutes": "Duration in minutes (empty = default)",
@@ -872,7 +872,7 @@
  "selfcare_check": {
   "summary": "Compatibility of the actives: of a routine, or of a product / list of actives against those in use."
  },
- "selfcare_journal_voice": {
+ "selfcare_diary_voice": {
   "summary": "Spoken diary: the user tells about the day with a voice message; it is transcribed and saved in the diary."
  },
  "selfcare_journal_add": {
@@ -1004,16 +1004,16 @@
  "voice_downloads": {
   "summary": "The voices and listening I am downloading or have downloaded, with progress."
  },
- "voice_print": {
+ "voiceprint": {
   "summary": "Whether I have your voiceprint and where I recognise only you."
  },
- "voice_print_record": {
+ "voiceprint_record": {
   "summary": "Record at least 10 seconds of your voice: then other voices don't end up in your messages where you chose so.",
   "params": {
    "audio": "A voice message of at least 10 seconds where you speak"
   }
  },
- "voice_print_remove": {
+ "voiceprint_remove": {
   "summary": "Forget your voiceprint: I listen to all voices."
  },
  "voice_word": {
@@ -1091,13 +1091,13 @@
  "notifications_active": {
   "summary": "Show the active automatic notifications"
  },
- "notices_recent": {
+ "alerts_recent": {
   "summary": "Show the latest notices sent"
  },
- "notification_off": {
+ "notification_disable": {
   "summary": "Turn off a notification by subscription_id"
  },
- "notification_on": {
+ "notification_enable": {
   "summary": "Turn a notification back on by subscription_id"
  },
  "calendar_subscribe": {
@@ -1119,7 +1119,7 @@
    "domain": "Optional domain to limit the reconciliation to"
   }
  },
- "assistant_status": {
+ "presence_status": {
   "summary": "Assistant activity state: awake, waiting, nap, deep sleep, do not disturb, last interaction, jobs running and effects."
  }
 }

@@ -9,7 +9,7 @@ services:
       - ./app/.env
     environment:
       # Tunables (Forge limits/switches, remediation approval/timeout/retries, log level) are central
-      # settings (Themis, WebUI → Impostazioni → Hephaestus); env = infrastructure only.
+      # settings (Themis, WebUI → Settings → Hephaestus); env = infrastructure only.
       - HUB_API_URL=http://hestia_hub:19001/api              # Hub base URL for service registration
       - SERVICE_NAME=hephaestus                              # Registered service name on Hub
       - SERVICE_BASE_URL=http://hestia_hephaestus:19010      # This service's public URL as seen by Hub

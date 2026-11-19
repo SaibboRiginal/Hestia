@@ -7,7 +7,7 @@ from any client needs no restart and no reconfiguration.
 
   generic   → oracle.general     chat, classify, tool selection, memory extraction, formatting
   reasoning → oracle.reasoning deep thinking, complex multi-step analysis
-  code      → oracle.code       code generation, debugging, technical tasks
+  code      → oracle.codice       code generation, debugging, technical tasks
   documents → oracle.documents    documents, images, audio (vision-capable chain)
   embedding → oracle.embedding    vector embeddings (several models: each vector keeps its model)
 

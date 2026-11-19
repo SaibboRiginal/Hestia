@@ -25,7 +25,7 @@ export class HygieiaJournal extends HestiaElement {
     .entry { display: flex; gap: 10px; padding: 8px 0; border-bottom: 1px solid var(--border); font-size: 13px; }
     .entry:last-child { border-bottom: none; }
   `];
-  constructor() { super(); this.m = null; this.data = undefined; this.area = 'viso'; this.scores = {}; this.tags = []; this.note = ''; this.date = today(); this.saving = false; }
+  constructor() { super(); this.m = null; this.data = undefined; this.area = 'face'; this.scores = {}; this.tags = []; this.note = ''; this.date = today(); this.saving = false; }
   connectedCallback() { super.connectedCallback(); this.load(); this.onHost('refresh', () => this.load()); }
   private async load() {
     this.m = await meta(this.host);

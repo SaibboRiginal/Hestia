@@ -1,6 +1,6 @@
 # Hestia-Demeter 🥗
 
-**Role:** Nutrition («Alimentazione») — diet, meals, supplements and intakes; a coach of the weekly plan
+**Role:** Nutrition («Nutrition») — diet, meals, supplements and intakes; a coach of the weekly plan
 **Node:** main host (with the other domain modules)
 **Stack:** Python · FastAPI · Docker · `hestia_common.module_kit`
 **Port:** 19026 · Dossier: `docs/work/2026-10-24-whole-cindy-brainstorm/` (W5, brainstorm A5)
@@ -19,23 +19,23 @@
   «only on training days» → `with: {tag: workout, relation: same_day}` so the plan puts it next to the workout.
   Taking one reports `done` to the planner; any change of diet or supplements reports `changed`.
 - Hygieia keeps the products in the cabinet (stock, purchases); Demeter decides what is taken and when.
-- Recap piece «Alimentazione» (yesterday's meals and kcal, today's supplements). Export/import sections `dieta`,
-  `pasti`, `integratori`.
+- Recap piece «Nutrition» (yesterday's meals and kcal, today's supplements). Export/import sections `diet`,
+  `meals`, `supplements`.
 
 ## API (`/api/food`)
 
 `GET /today?day=` · `GET/POST /meals` · `PUT/DELETE /meals/{id}` · `GET/PUT /diet` · `GET/POST /supplements` ·
 `PUT/DELETE /supplements/{id}` · `POST /supplements/{id}/take` · coach contract `/api/coach/needs|fit|placed|review`.
 
-## Tools (Telegram area «Alimentazione»)
+## Tools (Telegram area «Nutrition»)
 
 `food_today`, `food_meal`, `food_meals`, `food_meal_delete`, `food_diet`, `food_supplements`, `food_supplement`,
 `food_taken`, `food_supplement_delete`. `food_diet` without arguments only shows the diet and answers
-`unchanged: true` (the chat shows no «Fatto»).
+`unchanged: true` (the chat shows no «Done»).
 
 ## WebUI plugin
 
-Pages **Alimentazione** (`demeter-today`: day by day, kcal and protein against the diet, meals added, edited, deleted with «Annulla», supplements «Preso»), **Dieta** (`demeter-diet`) and **Integratori** (`demeter-supplements`: weekdays, pause); widget «Alimentazione di oggi» (the frame draws the title, the body shows only kcal and meals). Built from `ui/` in the image (`hestia_common.module_kit` `kit.webui`).
+Pages **Alimentazione** (`demeter-today`: day by day, kcal and protein against the diet, meals added, edited, deleted with «Cancel», supplements «Taken»), **Dieta** (`demeter-diet`) and **Integratori** (`demeter-supplements`: weekdays, pause); widget «Today's nutrition» (the frame draws the title, the body shows only kcal and meals). Built from `ui/` in the image (`hestia_common.module_kit` `kit.webui`).
 
 ## Tests
 
@@ -44,8 +44,8 @@ Pages **Alimentazione** (`demeter-today`: day by day, kcal and protein against t
 
 **2026-11-14 (backend English, dossier `docs/work/2026-11-14-english-backend`)**: tool descriptions, the module manual and the meal estimate prompt are English. What people read about the tools comes from `hestia_common/locales/<lang>/tools.json`.
 
-**2026-11-15 (owner's language, dossier `docs/work/2026-11-14-english-backend`)**: the notices, errors and cards this module shows go through `hestia_common.i18n.t` and follow «Lingua».
+**2026-11-15 (owner's language, dossier `docs/work/2026-11-14-english-backend`)**: the notices, errors and cards this module shows go through `hestia_common.i18n.t` and follow «Language».
 
-**2026-11-15 (WebUI page in the owner's language, dossier `docs/work/2026-11-14-english-backend`)**: the texts of this module's WebUI page and widgets go through `tr` of `@hestia/webui-sdk` and follow «Lingua»; source texts in English, Italian in `Hestia-Shared/hestia_common/locales/it/messages.json`.
+**2026-11-15 (WebUI page in the owner's language, dossier `docs/work/2026-11-14-english-backend`)**: the texts of this module's WebUI page and widgets go through `tr` of `@hestia/webui-sdk` and follow «Language»; source texts in English, Italian in `Hestia-Shared/hestia_common/locales/it/messages.json`.
 
 **2026-11-16 (no Italian in the code, dossier `docs/work/2026-11-14-english-backend` v2.0)**: every text is English in the code; Italian lives only in `Hestia-Shared/hestia_common/locales/it/messages.json`. Labels declared at registration (manifest, capabilities, agenda rules, settings) are plain English, translated at the edge.

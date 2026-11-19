@@ -4,9 +4,9 @@ import { UI } from '../../ui';
 import { SetupApi, SetupState } from './setup.api';
 import { TrPipe, tr } from '../../core/i18n';
 
-const LABELS: Record<string, string> = { cervello: tr('models'), voce: tr('voice'), telegram: 'Telegram', backup: tr('backup'), esterni: tr('external accounts') };
+const LABELS: Record<string, string> = { brain: tr('models'), voice: tr('voice'), telegram: 'Telegram', backup: tr('backup'), external_ais: tr('external accounts') };
 
-/** Home card «Da finire»: what the guided setup left for later (no nag, it just stays here until done). */
+/** Home card «To finish»: what the guided setup left for later (no nag, it just stays here until done). */
 @Component({
   selector: 'hx-setup-card',
   imports: [TrPipe, ...UI, RouterLink],
@@ -31,8 +31,8 @@ export class SetupCardComponent {
   open = computed(() => {
     const s = this.state();
     if (!s) return [];
-    const left = s.later.filter(k => k !== 'esterni' && !(k === 'telegram' && s.telegram.linked) && !(k === 'backup' && s.backup.passphrase));
-    if (!s.completed && !s.brain.recipe && !left.includes('cervello')) left.unshift('cervello');
+    const left = s.later.filter(k => k !== 'external_ais' && !(k === 'telegram' && s.telegram.linked) && !(k === 'backup' && s.backup.passphrase));
+    if (!s.completed && !s.brain.recipe && !left.includes('brain')) left.unshift('brain');
     return left.map(k => LABELS[k] || k);
   });
 

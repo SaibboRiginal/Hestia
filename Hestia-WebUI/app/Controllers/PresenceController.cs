@@ -6,7 +6,7 @@ using Hestia.WebUI.Services;
 
 /// <summary>
 /// Assistant presence for the browser (SPEC docs/work/2026-10-10-assistant-presence): current state
-/// (badge in the sidebar) and «Non disturbare». Thin proxy: browser → WebUI → Hub → Chronos.
+/// (badge in the sidebar) and «Do not disturb». Thin proxy: browser → WebUI → Hub → Chronos.
 /// </summary>
 [ApiController]
 [Route("api/webui/presence")]

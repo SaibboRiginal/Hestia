@@ -35,7 +35,7 @@ public class PluginsController : ControllerBase
     public async Task<IActionResult> Catalog([FromQuery] bool fresh = false)
     {
         var cat = await _catalog.GetAsync(fresh, HttpContext.RequestAborted);
-        return cat is JsonElement c ? Ok(c) : StatusCode(503, new { detail = "Hub non raggiungibile" });
+        return cat is JsonElement c ? Ok(c) : StatusCode(503, new { detail = Texts.Tr("Not available") });
     }
 
     /// <summary>A file of the module's WebUI bundle (fetched by the frontend, imported as a module).</summary>
@@ -46,7 +46,7 @@ public class PluginsController : ControllerBase
         if (file.Contains("..") || !ContentTypes.TryGetValue(Path.GetExtension(file), out var ctype)) return NotFound();
         var (status, payload) = await _hub.RouteRawAsync(module, $"/ui/{PluginCatalog.Client}/{file}", HttpMethod.Get,
             timeoutSeconds: 15, ct: HttpContext.RequestAborted);
-        if (status >= 400) return StatusCode(status == 404 ? 404 : 502, new { detail = $"{module} non raggiungibile" });
+        if (status >= 400) return StatusCode(status == 404 ? 404 : 502, new { detail = Texts.Tr("Not available") });
         // Hub wraps non-JSON answers as {"raw": text}; JSON files come back parsed.
         var text = payload.ValueKind == JsonValueKind.Object && payload.TryGetProperty("raw", out var raw)
             ? raw.GetString() ?? "" : payload.GetRawText();

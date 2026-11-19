@@ -53,8 +53,8 @@ def build(*, trace_id: str, session_id: str, client: str, route: str, mode: str,
 
 def wanted(*, origin: dict | None, save_history: bool, session_id: str) -> bool:
     """Only turns the owner typed in a real conversation (routines, modules and external AIs are another set)."""
-    return bool(session_id) and bool(save_history) and str((origin or {}).get("level") or "utente") == "utente" \
-        and str((origin or {}).get("kind") or "") != "esterno"
+    return bool(session_id) and bool(save_history) and str((origin or {}).get("level") or "user") == "user" \
+        and str((origin or {}).get("kind") or "") != "external"
 
 
 def send(hub, trace: dict) -> None:

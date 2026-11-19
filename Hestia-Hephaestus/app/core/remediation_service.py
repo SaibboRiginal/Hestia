@@ -81,7 +81,7 @@ class RemediationService:
                     self.agenda.show(key, tr("🛠️ Repair to approve — {0}", label),
                                      datetime.now(timezone.utc),
                                      description=f"Runbook {snapshot.get('runbook_id')}. "
-                                                 f"Approva: \"approva riparazione {snapshot['task_id'][:8]}\".",
+                                                 f"Approve: \"approve repair {snapshot['task_id'][:8]}\".",
                                      params={"task_id": snapshot["task_id"]})
                 elif state == "failed" and not snapshot.get("dry_run"):
                     attempts = int(snapshot.get("attempts") or 1)

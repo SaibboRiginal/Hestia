@@ -6,7 +6,7 @@ using Hestia.WebUI.Models;
 using Hestia.WebUI.Services;
 
 /// <summary>
-/// Impostazioni → Personali. Tone and personal instructions are central settings shared by every
+/// Settings → Personal. Tone and personal instructions are central settings shared by every
 /// client (Themis <c>oracle.chat.*</c>, scope profile = your defaults; Oracle applies them itself).
 /// The reasoning display is a WebUI presentation choice and stays here.
 /// </summary>

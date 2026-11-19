@@ -56,7 +56,7 @@ def memory_review() -> dict[str, Any]:
 
 @router.get("/api/athena/memory/proposals")
 def memory_proposals() -> dict[str, Any]:
-    """Clean-up proposals still waiting for the owner (page «Cosa ho imparato»)."""
+    """Clean-up proposals still waiting for the owner (page «What I learned»)."""
     rows = learning.pending_proposals()
     return {"count": len(rows), "items": rows}
 

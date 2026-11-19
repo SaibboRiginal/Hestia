@@ -10,7 +10,7 @@ export interface ChatTag { name: string; color: string; }
 export interface ChatSummary {
   session_id: string; title: string; first_at: string | null; last_at: string | null; messages: number;
   tags: ChatTag[]; pinned: boolean;
-  /** «Non usare per l'allenamento»: no turn of it goes in the training dataset. */
+  /** «Don't use for training»: no turn of it goes in the training dataset. */
   training_off?: boolean;
 }
 export interface ChatQuery { q?: string; tag?: string; since?: string; until?: string; limit?: number; offset?: number; }
@@ -82,7 +82,7 @@ export class ChatsService {
     return true;
   }
 
-  /** «Elimina» from any list of conversations: asks first, then tells how it went. */
+  /** «Delete» from any list of conversations: asks first, then tells how it went. */
   async confirmRemove(c: ChatSummary): Promise<boolean> {
     const ok = await this.dialogs.confirm(tr('Delete the conversation?'),
       tr("«{0}» is deleted forever with all its messages. What the assistant learned about you stays.", c.title), tr('Delete'), true);

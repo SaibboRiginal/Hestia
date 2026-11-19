@@ -1,4 +1,4 @@
-"""Task artifacts for the WebUI "Sviluppo" page.
+"""Task artifacts for the WebUI "Development" page.
 
 Every Forge task gets a folder ``<data>/forge/tasks/<id>/``:
 

@@ -9,7 +9,8 @@ on:
     paths:
       - "install.sh"
       - "install.ps1"
-      - "Installa-Hestia.cmd"
+      - "Install-Hestia.cmd"
+      - "Hestia-Shared/hestia_common/locales/*/installer.tsv"
       - "up-all.sh"
       - "tools/init_env.py"
       - "tools/release/**"
@@ -110,7 +111,7 @@ jobs:
       - name: Launcher is CRLF
         shell: bash
         run: |
-          file Installa-Hestia.cmd | grep -q CRLF
+          file Install-Hestia.cmd | grep -q CRLF
 
   real-linux:
     if: ${{ github.event_name == 'workflow_dispatch' && inputs.real_run }}
@@ -120,7 +121,7 @@ jobs:
       - name: Install from this branch (no Ollama on the runner)
         run: |
           git clone --branch "${GITHUB_REF_NAME}" "https://github.com/${GITHUB_REPOSITORY}.git" "$HOME/Hestia"
-          HESTIA_REPO_URL="https://github.com/${GITHUB_REPOSITORY}.git" HESTIA_CHANNEL=novita \
+          HESTIA_REPO_URL="https://github.com/${GITHUB_REPOSITORY}.git" HESTIA_CHANNEL=news \
             bash "$HOME/Hestia/install.sh" --no-browser
       - name: Health
         run: curl -fsS http://localhost:19001/health && curl -fsS -o /dev/null http://localhost:19015

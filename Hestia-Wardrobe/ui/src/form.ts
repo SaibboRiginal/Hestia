@@ -1,6 +1,6 @@
 /**
- * <wardrobe-piece-form> — add / edit one piece: photo (with «Riconosci con AI»), the few fields that matter first,
- * the rest under «Altri dettagli». Emits `save` (detail {data, photo, again}) and `cancel`.
+ * <wardrobe-piece-form> — add / edit one piece: photo (with «Recognise with AI»), the few fields that matter first,
+ * the rest under «More details». Emits `save` (detail {data, photo, again}) and `cancel`.
  */
 import { HestiaElement, css, html, nothing, tr } from '@hestia/webui-sdk';
 import type { HestiaHost, Upload } from '@hestia/webui-sdk';
@@ -80,7 +80,7 @@ export class WardrobePieceForm extends HestiaElement {
     this.dispatchEvent(new CustomEvent('save', { detail: { data, photo: this.upload[0] || null, again }, bubbles: true, composed: true }));
   }
 
-  /** Clears the form after «Salva e aggiungi un altro» (keeps category, season and status: often the same). */
+  /** Clears the form after «Save and add another» (keeps category, season and status: often the same). */
   reset() {
     this.d = { ...this.d, name: '', colors: [], brand: '', size: '', notes: '', price: null, date: '', materials: '' };
     this.upload = []; this.aiMsg = '';

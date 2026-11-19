@@ -54,7 +54,7 @@ class Tool:
         return [str(r) for r in req if str(r) in props]
 
 
-_DESTRUCTIVE = re.compile(r"(delete|elimina|annulla|cancel|remove|rollback|reject|rifiuta|revoke|disattiva)", re.I)
+_DESTRUCTIVE = re.compile(r"(delete|cancel|remove|rollback|reject|revoke|disable)", re.I)   # tool names (English)
 
 _lock = threading.Lock()
 _tools: dict[str, Tool] = {}

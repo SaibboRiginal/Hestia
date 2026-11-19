@@ -17,5 +17,5 @@ class HephaestusService(HestiaServiceBase):
                                   "pause, rollback only when the owner says so. aggiornamenti_*: Hestia updates.")
         caps.setdefault("title", "Development")
         caps["mcp_endpoint"] = f"{self.descriptor.base_url.rstrip('/')}/mcp"
-        caps.update(ui.capabilities(self.descriptor.base_url))   # WebUI plugin manifest (Sistema)
+        caps.update(ui.capabilities(self.descriptor.base_url))   # WebUI plugin manifest (System)
         return caps

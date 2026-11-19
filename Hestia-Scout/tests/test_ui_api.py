@@ -90,7 +90,7 @@ def test_stats_and_manifest(client):
     s = c.get("/api/ui/stats").json()
     assert s["total"] == 2 and s["new"] == 1 and s["favorites"] == 1 and len(s["weeks"]) == 8
     m = c.get("/api/ui/manifest").json()
-    assert {p["id"] for p in m["clients"]["webui"]["page"]} == {"houses", "houses/:id", "statistics"}
+    assert {p["id"] for p in m["clients"]["webui"]["page"]} == {"houses", "houses/:id", "stats"}
     assert c.get("/api/ui/listings/doesnotexist").status_code == 404
 
 

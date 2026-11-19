@@ -647,7 +647,7 @@ def flow_presence(ctx: dict) -> None:
     step(A, "«idle» threshold changed from the panel applies at once; the chat wakes up")(idle_live_setting)
 
     def tool_and_context():
-        r = chat("come stai? #tool assistant_status {}")
+        r = chat("come stai? #tool presence_status {}")
         need(r["tools"] and r["tools"][0]["ok"], f"status: {r['tools'][:1]}")
         return f"status → {r['tools'][0]['preview'][:120]}"
     step(A, "Tool «status» from the chat (how are you?)")(tool_and_context)
@@ -824,10 +824,10 @@ def flow_mcp(ctx: dict) -> None:
 # ── WebUI in Chromium: pages with data, Home, notifications, chat ────────────
 
 PAGES = ["/home", "/p/hercules/training", "/p/hercules/plans", "/p/hercules/history", "/p/hercules/progress",
-         "/p/hercules/body", "/p/hygieia/today", "/p/hygieia/routine", "/p/hygieia/products", "/p/hygieia/statistics",
-         "/p/hygieia/shopping", "/p/wardrobe/items", "/p/wardrobe/outfit", "/p/wardrobe/what-to-wear",
-         "/p/wardrobe/statistics", "/p/wardrobe/lists", "/p/hermes/notifications", "/p/hermes/deliveries",
-         "/p/chronos/agenda", "/p/chronos/runs", "/p/mcp/accesses", "/p/themis/log", "/settings"]
+         "/p/hercules/body", "/p/hygieia/today", "/p/hygieia/routine", "/p/hygieia/products", "/p/hygieia/stats",
+         "/p/hygieia/groceries", "/p/wardrobe/pieces", "/p/wardrobe/outfit", "/p/wardrobe/what-to-wear",
+         "/p/wardrobe/stats", "/p/wardrobe/lists", "/p/hermes/notifications", "/p/hermes/deliveries",
+         "/p/chronos/agenda", "/p/chronos/runs", "/p/mcp/access", "/p/themis/log", "/settings"]
 
 
 def browser():

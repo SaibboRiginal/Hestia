@@ -64,9 +64,9 @@ Oracle and streams the NDJSON response back with proper line delimiters (Hub add
 | POST | `/mcp` | **Public MCP door for external AIs** (`McpDoorController`): body + `Authorization: Bearer` → Hub → Hestia-MCP `/mcp/external` (token, scope, rate limit there); no WebUI login, always a token, also at home. GET/DELETE → 405 |
 | GET | `/.well-known/oauth-protected-resource[/mcp]` · `/.well-known/oauth-authorization-server` | OAuth metadata (`OAuthDoorController` → Hub → Hestia-MCP, with `X-Hestia-Public-Base`) |
 | POST | `/oauth/register` · `/oauth/token` · `/oauth/revoke` | OAuth 2.1 for claude.ai / ChatGPT connectors (form or JSON body + `Authorization` forwarded) |
-| GET | `/oauth/authorize` | Parks the request on Hestia-MCP → 302 to `/p/mcp/accesses?oauth=<id>` (consent card, behind login); refused client/redirect → plain error page; other errors → 302 to the client's registered redirect |
+| GET | `/oauth/authorize` | Parks the request on Hestia-MCP → 302 to `/p/mcp/access?oauth=<id>` (consent card, behind login); refused client/redirect → plain error page; other errors → 302 to the client's registered redirect |
 | GET | `/api/webui/plugins/{module}/image?path=` | Module image as bytes |
-| GET | `/api/webui/transfer/modules` | Modules with the `transfer` capability (Hub registry) — «Esporta e importa» |
+| GET | `/api/webui/transfer/modules` | Modules with the `transfer` capability (Hub registry) — «Export and import» |
 | GET · POST | `/api/webui/transfer/{module}/describe` · `/{module}/items|export|import|files` · GET `/{module}/files/{id}` | Forwarded to the module's `/api/transfer/*` (only modules advertising `transfer`) |
 | GET · POST · GET · DELETE | `/api/webui/transfer/restore-points[/{id}]` | Restore points: WebUI Archive blobs (gzip JSON, meta `kind: transfer-restore`), newest `webui.transfer.restore_points` kept |
 | GET/POST | `/api/settings/effective` · `/api/settings/reload` | WebUI's own Themis settings (internal network only) |
@@ -85,7 +85,7 @@ Oracle and streams the NDJSON response back with proper line delimiters (Hub add
 | GET | `/api/webui/chat/context` | Context gauge of the current conversation → Oracle `/api/chat/context` (provider in use, window %, this conversation's tokens) |
 | POST | `/api/webui/chat/compact` | Compact the current conversation → Oracle `/api/chat/compact` |
 | POST | `/api/webui/chat/document` | Upload file (multipart) → base64 JSON via Hub → Oracle `/api/chat/document/json`, NDJSON streamed back (📎 in the chat bar) |
-| POST | `/api/webui/voice/transcribe` · `speak` | Voice → Echo (`VoiceController`): voice message of the chat (use `webui.vocale`, recording kept with the message `web:<session>:<msg>`) · «Ascolta» under a reply (`webui.listen`, mp3, kept with the reply) |
+| POST | `/api/webui/voice/transcribe` · `speak` | Voice → Echo (`VoiceController`): voice message of the chat (use `webui.voice_note`, recording kept with the message `web:<session>:<msg>`) · «Ascolta» under a reply (`webui.listen`, mp3, kept with the reply) |
 | POST | `/api/webui/voice/listen` · `say` · `{listen\|say}/{sid}/{chunk\|text\|end}` | Live mode **Parla**: mic stream (partials) and answer spoken sentence by sentence (`webui.live.*`) |
 | GET | `/api/webui/voice/live` · `audio-for?ref_id=` · `audio/{id}` | Live settings (`silence_ms`) · kept audio of a message · one kept audio |
 | GET | `/api/webui/agenda/feed.ics` · `feed-info` | Read-only ICS feed (→ Chronos `/api/agenda/ics`); auth = token **or** `?key=` = `WEBUI_ICS_KEY` (that path only). The rest of the agenda API moved with the page into Chronos's plugin (2026-10-19) |
@@ -105,12 +105,12 @@ Oracle and streams the NDJSON response back with proper line delimiters (Hub add
   imports it as a blob module; the bundle imports the shared SDK (`/plugins/_sdk/sdk.js`, built from
   `Hestia-Shared/webui-sdk` in the Dockerfile) through the import map in `index.html`. Elements get `host` + `ctx`.
 - **Home** (`/home`, first module) = quick-action strip + dashboard grid; until edited it is composed from widgets
-  marked `auto` of the domain modules. A ready-made *Sistema* dashboard (`/d/sistema`) takes the core modules' `auto`
+  marked `auto` of the domain modules. A ready-made *Sistema* dashboard (`/d/system`) takes the core modules' `auto`
   widgets (hidden while there is none; deleting it leaves a `removed` marker in `webui.dashboards`). Other dashboards at `/d/:id` (tabs + sidebar "Dashboard"). Edit mode: add, drag, size, configure,
   remove; Oracle-created dashboards carry `created_by: oracle`.
 - Module pages at `/p/<module>/<page>` (sidebar "Moduli", core modules under "Sistema"; detail pages hidden).
   Sidebar: one scroll area between a fixed top and bottom, collapsible sections, entries pinned to "Fissati" leave
-  their section; plugin pages may show a `badge` counter (DESIGN-SYSTEM §9). Ctrl/⌘+K palette: «Adesso», quick actions,
+  their section; plugin pages may show a `badge` counter (DESIGN-SYSTEM §9). Ctrl/⌘+K palette: «Now», quick actions,
   module pages, dashboards, WebUI pages and, while typing, every setting.
 - Client config (Themis, scope user, layer `client`): `webui.plugins.hidden`, `webui.plugins.order`,
   `webui.home.quick` (pinned chips), `webui.dashboards` (`{dashboards: [...]}`), `webui.plugins.prefs`,
@@ -128,7 +128,7 @@ Oracle and streams the NDJSON response back with proper line delimiters (Hub add
 - Icon set (`ui/icon.component.ts`, mirrored by the SDK `hxk-icon`): 2026-10-20 added `bookmark` (Oracle page **Memoria**: what Hestia remembers, from chat or an external AI via `memory_note`); 2026-10-19 added `wallet`, `upload`, `target`,
   `mail`. New plugins that use them: **Spese** (module `plutus`, decade 60: Panoramica, Movimenti, Budget,
   Abbonamenti, Importa, Statistiche, Categorie e regole; widgets *Spese del mese* / *Ultimi movimenti*; quick action
-  *Spesa veloce*) and Iris' core page **Email** (subscriptions, deliveries, «Controlla email»). No WebUI code: both
+  *Spesa veloce*) and Iris' core page **Email** (subscriptions, deliveries, «Check emails»). No WebUI code: both
   come from the Hub plugin catalog.
 
 ### Adesso, Scopri, aspetto, Web Push (2026-10-29, dossier `docs/work/2026-10-24-whole-cindy-brainstorm` W7)
@@ -137,11 +137,11 @@ Oracle and streams the NDJSON response back with proper line delimiters (Hub add
   → `webui.<path>`) and every quick action or suggested tool run is a tap, sent in batches (20 s, 40 max, on tab
   hide) to `POST /api/metis/usage` `{taps:[{client: webui, kind: page|action|tool, ref, label, at}]}` through the
   Metis plugin door. Offline taps wait for the next one.
-- **Adesso** (`features/plugins/adesso-row.component.ts`): Home row above the quick strip, from
-  `GET /api/metis/adesso?client=webui` (up to 6, each with its reason); a tap opens the tool on the *Comandi* page
+- **Adesso** (`features/plugins/now-row.component.ts`): Home row above the quick strip, from
+  `GET /api/metis/now?client=webui` (up to 6, each with its reason); a tap opens the tool on the *Comandi* page
   (`/p/mcp/commands?command=…&args=…&run=1`: run at once when nothing required is missing). Hidden when empty. The
   Ctrl/⌘+K palette lists the same items first, in the group *Adesso*.
-- **Scopri** (`/scopri`, `features/scopri/`; like «Sistema», its header leaves 56 px for the phone menu button): features never or rarely used (`GET /api/metis/scopri?limit=50`),
+- **Scopri** (`/discover`, `features/discover/`; like «System», its header leaves 56 px for the phone menu button): features never or rarely used (`GET /api/metis/discover?limit=50`),
   grouped by module, search, *Prova* opens the tool like *Adesso*.
 - **Aspetto** (`services/appearance.service.ts`, `layout/appearance-layer.component.ts`): `GET /api/appearance/now`
   through the Aphrodite plugin door at start, when the catalog shows the module and when the tab comes back after
@@ -163,22 +163,22 @@ Oracle and streams the NDJSON response back with proper line delimiters (Hub add
 
 ### Sidebar, conversations, chat parts, live everywhere (2026-10-29, same dossier W7 part 3b)
 
-- **Sidebar** (`layout/shell.component.ts`): SVG logo; under «Crea con Hestia» a visible **Cerca** (opens the Ctrl+K
+- **Sidebar** (`layout/shell.component.ts`): SVG logo; under «Create with Hestia» a visible **Cerca** (opens the Ctrl+K
   palette through the window event `hestia:palette`) and **Parla**; sections *Generale* (now above) · *Fissati* ·
   *Conversazioni* (pinned conversations, else the 3 latest; *Tutte le conversazioni* opens the history) ·
   *Dashboard* · *Moduli*; the system modules' pages are behind one **Sistema** entry at the bottom (sum of their
-  counters) → page `/sistema` (`features/system/`, modules with their pages, pin to *Fissati*, link to the *Sistema*
+  counters) → page `/system` (`features/system/`, modules with their pages, pin to *Fissati*, link to the *Sistema*
   dashboard). A pinned system page still shows in *Fissati*. Compact mode = the collapsed sidebar (icons only).
 - **History** (`features/chat/chat-history.component.ts`, `services/chats.service.ts`): second sidebar, every
   conversation (pinned first), search in titles and messages, from/to dates, tag filter, *Carica altre*; per
-  conversation pin, title, coloured tags (9 fixed hues) and, in the same panel, «Non usare per l'allenamento»
+  conversation pin, title, coloured tags (9 fixed hues) and, in the same panel, «Don't use for training»
   (`training_off`: its turns never enter the training dataset and the saved ones are dropped). Opening one loads its messages (`/api/ui/chats/{id}/messages`,
   markdown answers rendered) and sets it as the session the next message goes to. Through the Oracle plugin door.
 - **Answer parts** (`features/chat/answer-blocks.component.ts`): ```` ```hestia-ui ```` blocks (also when the answer
   arrived as HTML `<pre><code class=language-hestia-ui>`) become card, stat, table, list, checklist, chart (SVG bars or
   line) and button (sends its text as your message); tone = role colours of the theme.
 - **Ho fatto** (Oracle `changes` frame, Cindy 13; .NET `OracleEvent.items`): the writes of the answer with
-  «Annulla» = the inverse tool through Hestia-MCP `POST /api/mcp/ui/tools/call`; undone rows are struck through.
+  «Cancel» = the inverse tool through Hestia-MCP `POST /api/mcp/ui/tools/call`; undone rows are struck through.
 - **Origin** (Cindy 6; `final.origin`, .NET `OracleEvent.origin`): a small label above an answer started by a
   routine, a module or an external AI.
 - **Parla everywhere** (`layout/live-overlay.component.ts`): from the sidebar, the Home header or Ctrl+Shift+Space;
@@ -186,7 +186,7 @@ Oracle and streams the NDJSON response back with proper line delimiters (Hub add
   talking), *Interrompi*, *Apri la chat*, close. The Chat page keeps its own panel.
   A question of the assistant is read with its options («Puoi dire: A, B o C», `spokenOptions`); the spoken answer is
   the next message, which closes the question in Oracle (dossier `docs/work/2026-10-30-questions-in-notifications`). A Hermes notification with
-  `question` counts as pending in the shell toast («Rispondi»); the card is in the Hermes *Notifiche* page.
+  `question` counts as pending in the shell toast («Reply»); the card is in the Hermes *Notifiche* page.
 - **Detta** (chat composer): speak, the text lands in the box to read again; use case `webui.dictation` (declared by
   `VoiceController`), nothing is kept.
 
@@ -194,31 +194,31 @@ Oracle and streams the NDJSON response back with proper line delimiters (Hub add
 
 - Chat composer: with an empty field the send button is a **microphone**. Touch: hold to record, release to send,
   slide left to cancel. Mouse: click to record, then bin or send. The voice message appears at once as an audio
-  bubble (play, duration) with «Trascrivo…», then its transcript; the text goes to Hestia like a typed message
+  bubble (play, duration) with «Transcribing…», then its transcript; the text goes to Hestia like a typed message
   (`ChatService.sendVoice`, `services/voice.service.ts`).
 - **Ascolta** (volume icon) under every reply: Echo reads it (kept, a second play is not generated again).
 - **Parla** (header, waveform icon, `services/live-voice.service.ts`): live conversation by voice with the same chat.
   The browser measures the mic level: speech start opens Echo's `listen` stream (chunks every 800 ms, partial text
   shown), a pause of `echo.live.silence_ms` (1250 ms; with a voiceprint, other voices are muted by Echo first, so the
   TV does not keep the turn open) ends the turn; the answer, while it is written, goes to Echo's `say` stream
-  and the sentences play in order; speaking again (or «Interrompi») stops the voice and the answer. No external live
+  and the sentences play in order; speaking again (or «Stop») stops the voice and the answer. No external live
   service. The panel shows Ti ascolto / Ti sento / Ci penso / Sto parlando. Its turns go to Oracle with
   `spoken: true` (SignalR `chat` message → `ChatHubMessage.Spoken`): short spoken answers, no lists.
 - **Name of the assistant** (`services/identity.service.ts`, dossier `docs/work/2026-11-12-identity-and-proactivity`):
   reads/saves the five personal settings (`themis.personal.assistant_name|assistant_gender|owner_name|owner_call|language`)
-  through the central-settings door. The chat («Scrivi a …», «Parla con … a voce») and the setup greeting show the
-  chosen name; the product stays «Hestia». Guided setup, second step **«Tu e io»**: your name (needed to go on), how
-  to call you, her/his name, a she or a he, «La tua lingua» (notifications and the messages she writes first;
+  through the central-settings door. The chat («Write to …», «Talk to … by voice») and the setup greeting show the
+  chosen name; the product stays «Hestia». Guided setup, second step **«You and me»**: your name (needed to go on), how
+  to call you, her/his name, a she or a he, «Your language» (notifications and the messages she writes first;
 in chat she answers in the language you write) → saved live. Later: Sistema → Impostazioni → Personali.
-- **She wrote first**: a Hermes push whose payload has `_chat` (Athena «parla con te») is also added to the open
+- **She wrote first**: a Hermes push whose payload has `_chat` (Athena «talks to you») is also added to the open
   chat as a message of hers (it stays in Notifiche too).
 - **Reactions** (dossier `docs/work/2026-11-06-living-hestia`): Oracle's `reaction` frame shows Hestia's emoji on the
   owner's bubble; `final.reaction_only` removes the empty answer bubble. Under her messages the smile button opens
   six emoji (👍 ❤️ 😂 😮 😢 🙏); a tap shows it at once and posts `POST /api/webui/chat/reaction` (same emoji again =
   taken away). Chat reactions are real emoji (chat content), the rest of the UI keeps the stroke icons; the list lives in `features/chat/reaction-emoji.ts`, the one file the icon gate (`check_icons.py`) exempts.
-- Hub registration declares `voice_usecases` (`webui.vocale`, `webui.listen`, `webui.live.listening`, `webui.live.voice`).
-- Icons `frown`, `meh`, `laugh` (with `smile`: the five mood faces of «Umore», 2026-10-30) in the shared icon set
-  (`hx-icon` and the SDK's `hxk-icon`); the chat notice `mood.saved` «Umore segnato» needs no client change.
+- Hub registration declares `voice_usecases` (`webui.voice_note`, `webui.listen`, `webui.live.listening`, `webui.live.voice`).
+- Icons `frown`, `meh`, `laugh` (with `smile`: the five mood faces of «Mood», 2026-10-30) in the shared icon set
+  (`hx-icon` and the SDK's `hxk-icon`); the chat notice `mood.saved` «Mood noted» needs no client change.
 - Icons `mic`, `mic-off`, `volume`, `waveform` in the shared icon set (`hx-icon` and the SDK's `hxk-icon`).
 
 ### Notifiche (2026-10-10; since 2026-10-19 Hermes' plugin page `/p/hermes/notifications`, `services/notifications.service.ts`)
@@ -246,12 +246,12 @@ move/resize, skip/restore, pause, run now, cancel, "only this occurrence" vs "wh
 Look (2026-10-29): 14 colour themes (Claude, Ardesia, Oceano, Foresta, Lavanda, Cipria, Sabbia and their dark twins,
 Mezzanotte) × 3 styles (Classico, Vetro, Netto) with knobs for corners, borders, transparency/blur and animations,
 per browser (`core/theme/looks.ts`); thin themed scrollbars; sidebar shows one status line (assistant state; the
-connection only when it is not «Connesso»).
+connection only when it is not «Connected»).
 Rules for new UI: **`frontend/DESIGN-SYSTEM.md`**.
 
 ### Sviluppo page (2026-10-04; since 2026-10-19 Hephaestus' plugin page `/p/hephaestus/development`)
 
-Moved into Hephaestus (`Hestia-Hephaestus/ui/src/sviluppo.ts` + `ui/src/forge/`, adds *Copia per AI*); `/forge`
+Moved into Hephaestus (`Hestia-Hephaestus/ui/src/development.ts` + `ui/src/forge/`, adds *Copia per AI*); `/forge`
 redirects keeping `?task=` / `?view=`. Same behaviour as described here. Comandi & MCP (`/commands` →
 `/p/mcp/commands`) and Documenti (`/documents` → `/p/oracle/documents`) moved the same way; their old WebUI
 controllers are gone (chat upload stays in `ChatController`).
@@ -292,7 +292,7 @@ Codex / Claude Code style page for Forge, Hestia's self-development engine:
   services without settings yet. A module = its groups; a group with presets shows *Economico / … /
   Personalizzato* (custom = values match no preset). Settings that declare `row` + `column` render as a table.
   Filters *Solo modificate* and *Avanzate (N)*.
-- Settings with `editor: places` (personal «Luoghi», `themis.personal.places`) use `<hx-places-editor>`
+- Settings with `editor: places` (personal «Places», `themis.personal.places`) use `<hx-places-editor>`
   (`places-editor.component.ts`): inline rows name / address / kind (Casa, Lavoro, Altro; one Casa), add/remove,
   each row shows how Hecate resolved it (options from `hecate:/api/gateway/weather/places`). Weather icons (sun,
   cloud-sun, cloud, fog, drizzle, rain, snow, storm, run) are in the shared icon set.
@@ -302,7 +302,7 @@ Codex / Claude Code style page for Forge, Hestia's self-development engine:
 - `<hx-setting-control>` (`setting-control.component.ts`) picks the input by type (toggle, segmented ≤4 short
   options else dropdown, number + unit, model name with suggestions from `options`, 24h time, text, list one per
   line, JSON). An `object` setting with an `editor` hint (`llm_providers`, `llm_chains`, `llm_usecases`: Oracle's
-  providers, chains and use cases) also shows the link «Modifica in Oracle · Cervello · Modelli» to its dedicated
+  providers, chains and use cases) also shows the link «Edit in Oracle · Brain · Models» to its dedicated
   editor (`/p/oracle/brain`, tab Modelli); the JSON stays editable. Emits only complete values; Themis validates
   and its Italian error goes to a toast.
   Reusable outside the page (chat quick menu, P4).
@@ -338,7 +338,7 @@ Codex / Claude Code style page for Forge, Hestia's self-development engine:
 - **Shortcuts to settings** (2026-11-12, `docs/work/2026-11-12-context-and-shortcuts/`): one component,
   `<hx-setting-link>` (`ui/setting-link.component.ts`), next to a value that comes from a setting; it opens
   Impostazioni on that setting, scrolled to and highlighted (`/settings?key=<central key>` or
-  `?section=<personal section>&row=<row>`; filters and «Avanzate» are opened when needed). Used in the context
+  `?section=<personal section>&row=<row>`; filters and «Advanced» are opened when needed). Used in the context
   popover, the chat mode picker, the chat quick settings; every module page gets one gear (top right, drawn once by
   `plugin-page.component.ts`) that opens that module's settings; modules can call `host.openSetting(key?)`.
   The Ctrl/⌘+K palette finds every setting (central and personal) by name, help or key while you type.
@@ -419,10 +419,10 @@ The page asks Hestia through the plugin host (`host.assistant(...)`), logs come 
 ## Esporta e importa (Impostazioni → Dati, dossier `docs/work/2026-10-20-import-export`)
 
 `features/settings/transfer-settings.component.ts` (+ `transfer.api.ts`), deep link `/settings?tab=transfer`. Three
-tabs: **Esporta** (tree modules → sections with counts, «Scegli» for single items, «Solo modifiche dal», «Includi
+tabs: **Esporta** (tree modules → sections with counts, «Choose» for single items, «Only changes since», «Includi
 foto» → downloads `hestia-AAAA-MM-GG.hestia`, gzip JSON via `CompressionStream`), **Importa** (open/drop a file → same
-tree, mode Aggiungi/Unisci/Sostituisci globally or per section, «Anteprima» = dry run with counts and item lists,
-«Importa» saves a restore point first, then uploads files and imports), **Ripristino** (restore points: Ripristina =
+tree, mode Aggiungi/Unisci/Sostituisci globally or per section, «Preview» = dry run with counts and item lists,
+«Import» saves a restore point first, then uploads files and imports), **Ripristino** (restore points: Ripristina =
 open in Importa with Sostituisci, Elimina). Settings of each module come from Themis and show under that module.
 Themis setting `webui.transfer.restore_points` (system, default 5, 1–20).
 
@@ -511,15 +511,15 @@ Built Angular app served as static files from `wwwroot/`.
 
 ## Assistant presence
 
-Backend: `PresencePinger` (60 s debounce) pings Chronos on authenticated non-GET `/api/webui/*` actions (setting `chronos.presence.count_ui_actions`); chat messages travel on the SignalR socket, so they count through Oracle, which pings presence for every chat that carries `client` (the WebUI sends `client="webui"`); `PresenceController` exposes `GET /api/webui/presence`, `GET /api/webui/presence/history`, `POST`/`DELETE /api/webui/presence/dnd`. Frontend: presence badge in the shell sidebar (polled every 60 s and on tab focus) with a popover: state and its plain explanation, last interaction, activities, tab «Cosa cambia» (effects in plain words), tab «Storico» (last 15 state changes with the reason), Non disturbare on/off with what it does, link to Impostazioni. The popover is `position: fixed` (computed from the badge) because the sidebar clips its overflow; Esc or a window resize closes it.
+Backend: `PresencePinger` (60 s debounce) pings Chronos on authenticated non-GET `/api/webui/*` actions (setting `chronos.presence.count_ui_actions`); chat messages travel on the SignalR socket, so they count through Oracle, which pings presence for every chat that carries `client` (the WebUI sends `client="webui"`); `PresenceController` exposes `GET /api/webui/presence`, `GET /api/webui/presence/history`, `POST`/`DELETE /api/webui/presence/dnd`. Frontend: presence badge in the shell sidebar (polled every 60 s and on tab focus) with a popover: state and its plain explanation, last interaction, activities, tab «What changes» (effects in plain words), tab «History» (last 15 state changes with the reason), Non disturbare on/off with what it does, link to Impostazioni. The popover is `position: fixed` (computed from the badge) because the sidebar clips its overflow; Esc or a window resize closes it.
 
 **Oracle offline** (SPEC `docs/work/2026-10-19-oracle-offline`): `OracleStreamService` yields `oracle_unavailable`
 when the Hub answers 404/502/503/504 or is unreachable before the stream starts; `ChatHub` queues the Chat-page message
 in Archive (`ChatQueueService`, client `webui`, with mode/model/instructions in `meta`) and sends `queued` (bubble
 «🕒 In coda»). `POST /api/chat-queue/drain` (internal network only, capability `chat_queue_drain`, called by Chronos
 when Oracle is back) and startup replay the queue server-side (no browser needed; Oracle saves the history) and
-push `queued_answer` to every tab, which replaces the bubble. The Chat page shows a strip «⏳ Non disponibile» while
-the presence effect `chat.reply` is `queued`; the badge popover lists the overlay. The «Crea con Hestia» drawer does
+push `queued_answer` to every tab, which replaces the bubble. The Chat page shows a strip «⏳ Unavailable» while
+the presence effect `chat.reply` is `queued`; the badge popover lists the overlay. The «Create with Hestia» drawer does
 not queue (it answers «riprova appena torna»).
 
 **Writing while the answer runs** (dossier `docs/work/2026-11-18-real-test-problems` B): Enter while an answer
@@ -538,10 +538,10 @@ tool answers in natural language) goes in the conversation as «/Title» + answe
 **v3** (same SPEC): the drain sends all the queued messages of one chat to Oracle in one turn (`queued`), the
 assistant decides how to answer (each, merged, or asks); `queued_answer` carries `queue_ids` and the reply goes under
 the last bubble. Questions of the assistant (`question` frames with `ask_…` ids, also during a drain) are drawn by
-`hx-question-card` (Chat page and «Crea con Hestia» drawer): confirm, single choice, multiple choice (toggles +
-«Invia»), «Altro…», free text, «Salta». `ChatHub` answers via Oracle `question-answer` and sends `resume`, which the
+`hx-question-card` (Chat page and «Create with Hestia» drawer): confirm, single choice, multiple choice (toggles +
+«Send»), «Other…», free text, «Skip». `ChatHub` answers via Oracle `question-answer` and sends `resume`, which the
 page sends as the next message. After a reload the page asks `/api/webui/chat/pending` and shows again the hourglass
-bubbles of queued messages and the open question. «Limitato» shows as a presence overlay (icon `battery-low`).
+bubbles of queued messages and the open question. «Limited» shows as a presence overlay (icon `battery-low`).
 
 ## Icons, not emoji
 
@@ -552,32 +552,32 @@ emoji that module texts carry for Telegram (`noEmoji`). Favicon `/icon.svg`.
 
 ## Guided setup «Benvenuto» (dossier `docs/work/2026-10-30-one-click-setup`)
 
-`/setup` (`features/setup/`; the old `/benvenuto` redirects there) is a full-screen page outside the shell, one
+`/setup` (`features/setup/`; the old `/welcome` redirects there) is a full-screen page outside the shell, one
 question per screen: Inizio → **Modelli → Memoria** → models ready → **Ascolto → Voce** → Telegram → Backup →
-calendar, mail and Garmin → outside home → «Tutto pronto». Layout (round 7): one centred column; a bar on top with
+calendar, mail and Garmin → outside home → «All set». Layout (round 7): one centred column; a bar on top with
 the step («3/11 Memoria», with the number of downloads running) that opens a drop-down with every step (a row jumps
-back) and the downloads (every module's, with progress and time left, `/api/webui/downloads`), and «Finisco dopo»;
+back) and the downloads (every module's, with progress and time left, `/api/webui/downloads`), and «I finish after»;
 a thin progress line; the buttons (Indietro · Più tardi · Avanti) in a footer always visible. One short line under
 each title, nothing about modules or features outside the setup. The four bold steps are ONE component,
-`setup-chain`, only the module behind it changes: on top «Scelti» (what is used, in order, each with ↑ ↓ and ×;
+`setup-chain`, only the module behind it changes: on top «Chosen» (what is used, in order, each with ↑ ↓ and ×;
 the local one first by default, then any order, local and cloud models mixed: sent as `order` for the models,
-as the order of the steps for the voice), below two tabs. «Locale» (this computer or another of the home network) = one choice from
+as the order of the steps for the voice), below two tabs. «Local» (this computer or another of the home network) = one choice from
 `setup-pick` (search box always shown, the same icons in every step, filter chips by model family / program /
 engine, first few and «Mostra tutti»; tap the chosen one again to leave it out), the links to install Ollama or LM
-Studio when nothing is found, and «È su un altro computer della rete?» (remembered in the browser, sent as `?hosts=`
-to both catalogs, «Cerca di nuovo» looks again for models and speech programs). «Cloud» = one row per service that
-opens in place: key typed once and tried in a second (a saved key is checked by itself), «La chiave funziona» with
-the models already chosen in the same picker, «Cambia chiave». A cloud service is preselected only when its key (or
+Studio when nothing is found, and «Is it on another computer in the network?» (remembered in the browser, sent as `?hosts=`
+to both catalogs, «Search again» looks again for models and speech programs). «Cloud» = one row per service that
+opens in place: key typed once and tried in a second (a saved key is checked by itself), «The key works» with
+the models already chosen in the same picker, «Change key». A cloud service is preselected only when its key (or
 the Claude code) is already saved, in every step. Modelli lists only chat models and has a tab per mode
-(Generale, Ragionamento, Codice, Immagini): the three others say «Gli stessi di Generale» (ticked by default);
-unticked, the mode gets its own copy of the same step, with its own «Scelti» to change and reorder (sent as
+(Generale, Ragionamento, Codice, Immagini): the three others say «The same as General» (ticked by default);
+unticked, the mode gets its own copy of the same step, with its own «Chosen» to change and reorder (sent as
 `modes {mode: {steps: [{provider, model}]}}`; the keys are shared between the modes, the model lists are read by
-each step when a service is opened). «I modelli sono pronti» shows the assistant's first message, written
-with the models just chosen (`brain/hello`, «Scritto con <model>»), drawn by the chat's own `hx-assistant-text`
+each step when a service is opened). «The models are ready» shows the assistant's first message, written
+with the models just chosen (`brain/hello`, «Written with <model>»), drawn by the chat's own `hx-assistant-text`
 (`features/chat/assistant-text.component.ts`: prose, answer blocks, typing dots, caret), so it looks like the chat; when the local model is still downloading it
 writes again once the download is over. In Voce every voice has «Ascolta», in the lists too, before choosing it (a short sentence with that voice,
-`voice/preview`; `setup-pick` `trial`), in Ascolto «Prova a parlare» on every engine (tap, speak, tap: «Ho capito: …»,
-`voice/hear`); a local engine not downloaded yet says it can be tried after «Conferma», a sound the browser refuses
+`voice/preview`; `setup-pick` `trial`), in Ascolto «Try speaking» on every engine (tap, speak, tap: «Ho capito: …»,
+`voice/hear`); a local engine not downloaded yet says it can be tried after «Confirm», a sound the browser refuses
 to play says so (never a silent play); every sound goes through the site's one player (`VoiceService.play`), so a
 new try stops the one playing (chat included), a second tap on the same voice stops it, and a late answer never
 plays over a newer one. Voce says it speaks in the language you write in; voices are filtered by a language selector next to the
@@ -589,76 +589,76 @@ Voce: one local engine (with a line per engine when there are several), then opt
 Voce writes both chains and queues the downloads. The «I tuoi servizi» screen mounts Hecate's one list of
 services `<hecate-connections>` (ctx `params.place = setup`) through `hx-plugin-outlet`, the same list as the
 Dispositivi page (every service the same card):
-Google connects by hand there (OAuth client with a short guide, «Collega Google», pasted address as fallback).
-«Fuori casa»: one line on what it is, «Attiva» right there, the steps while it starts, then the address with «Apri»
-and «Copia», a warning with «Riprova» when no address comes in 90 s. «Tutto pronto»: each choice as a row that goes
+Google connects by hand there (OAuth client with a short guide, «Link Google», pasted address as fallback).
+«Outside home»: one line on what it is, «Active» right there, the steps while it starts, then the address with «Open»
+and «Copy», a warning with «Try again» when no address comes in 90 s. «All set»: each choice as a row that goes
 back to it. In the cloud rows a saved key
-is never typed again: its model list is read at once (no tokens), «Salva e prova» saves a new one. `setupGuard`
+is never typed again: its model list is read at once (no tokens), «Save and try» saves a new one. `setupGuard`
 redirects only when Hestia itself is opened (home), so a link opened from the setup in another tab (Download,
 Dispositivi) opens that page. Every choice (local, memory's, cloud models, voices) uses the same card picker
 `setup-pick` (search always, first 5 and «Mostra tutti», the chosen one always visible). The Hub client has no
 global timeout (the old 30 s cap cut the 180 s setup calls, e.g. saving a key while the module restarts); each call
-sets its own, and the setup re-reads the state when an answer is lost. «Da fuori casa» starts in the background
-(phases: image download, shown in Download as «Programma», then address). Recommended answer
-preselected, «Più tardi» on the optional screens, the current screen remembered in the browser. `setupGuard` opens it once per browser session while
-the setup is not completed (Hestia not answering → straight in); the Home shows a «Da finire» card for the steps left
+sets its own, and the setup re-reads the state when an answer is lost. «From outside home» starts in the background
+(phases: image download, shown in Download as «Program», then address). Recommended answer
+preselected, «Later» on the optional screens, the current screen remembered in the browser. `setupGuard` opens it once per browser session while
+the setup is not completed (Hestia not answering → straight in); the Home shows a «To finish» card for the steps left
 for later. Backend: `SetupController` forwards only the screens' paths of `/api/webui/setup/*` to Hephaestus
 `/api/setup/*` through the Hub (`telegram/claim` is the bot's, never forwarded); usual WebUI access rules (home
 network, or token).
 
-## Macchine page (`/macchine`, dossier `docs/work/2026-10-30-one-click-setup` §4.0)
+## Macchine page (`/machines`, dossier `docs/work/2026-10-30-one-click-setup` §4.0)
 
-`features/machines/` (button «Macchine» in Sistema; «Dispositivi» is the page of phones and watches): this machine
+`features/machines/` (button «Machines» in Sistema; «Devices» is the page of phones and watches): this machine
 (role, video card, LAN address) and its satellites (address, online, what they do in plain words: voce, allenamento
-dei modelli). «Collega una macchina» shows the 6-digit code (10 minutes) and the one-line command for Windows
+dei modelli). «Link a machine» shows the 6-digit code (10 minutes) and the one-line command for Windows
 (PowerShell) and Linux with `--join CODE --central <address>`; the list refreshes every 5 s while a code waits and
-says when the machine joined. «Usa la sua scheda video» / «Riporta qui i modelli» move the brain's local models;
-«Scollega» asks first (and brings the models back first when they were there). Backend: `SetupController`
+says when the machine joined. «Use its graphics card» / «Bring the models back here» move the brain's local models;
+«Unlink» asks first (and brings the models back first when they were there). Backend: `SetupController`
 whitelist `GET machines`, `POST machines/pair|revoke|brain` (→ Hephaestus `/api/setup/machines*`).
-Card «Da fuori casa»: *Attiva* (asks first) / *Spegni* the Cloudflare quick tunnel (`GET|POST /api/webui/setup/tunnel`,
-also the setup screen `fuori`). `PublicUrlService` reads the tunnel's address from `http://hestia_tunnel:20241/quicktunnel`
+Card «From outside home»: *Attiva* (asks first) / *Spegni* the Cloudflare quick tunnel (`GET|POST /api/webui/setup/tunnel`,
+also the setup screen `away`). `PublicUrlService` reads the tunnel's address from `http://hestia_tunnel:20241/quicktunnel`
 at most once a minute in the background (never blocking a request; a manual URL wins; the address is forgotten when
 the tunnel is off), so the login links follow it; requests to that host always need the token.
 
-## Aggiornamenti page (`/aggiornamenti`, dossier `docs/work/2026-10-30-one-click-setup` §4.4)
+## Aggiornamenti page (`/updates`, dossier `docs/work/2026-10-30-one-click-setup` §4.4)
 
-`features/updates/` (button «Aggiornamenti» in Sistema): installed version and channel (link to the setting), the new
-version with what's new, «Installa» (asks first), the running step every 3 s, history, «Torna alla versione di
+`features/updates/` (button «Updates» in Sistema): installed version and channel (link to the setting), the new
+version with what's new, «Install» (asks first), the running step every 3 s, history, «Torna alla versione di
 prima». Backend: `SetupController` whitelist `GET update`, `POST update/check|apply|back` (180 s; → Hephaestus).
 
 ## Download page (`/download`, dossier `docs/work/2026-10-30-one-click-setup` §4.3)
 
 `features/downloads/` (kept in git by a `!` line in `.gitignore`, whose generic `downloads/` rule would hide it; button «Download» in Sistema): every download of every module with the `downloads`
 capability (Oracle's models, Echo's voices), progress, speed, time left; Pausa · Riprendi · Riprova · Annulla ·
-Elimina (to free space, asks first); «Scarica le voci» (→ Echo `/api/voice/models/prefetch`). Polls every 2 s while
+Elimina (to free space, asks first); «Download the voices» (→ Echo `/api/voice/models/prefetch`). Polls every 2 s while
 something moves, every 10 s otherwise. Backend `DownloadsController`: `GET /api/webui/downloads` (asks each module
 through the Hub; one not answering is listed as offline, never named to the user) and `POST
 /api/webui/downloads/{module}/{op}` with body `{id}` (ids carry «:»).
 
 ### Sidebar with one rule, conversations, bubble, microphone, dividers (2026-11-13, dossier `docs/work/2026-11-13-sidebar-and-chat`)
 
-Replaces what the 2026-10-29 section says about the sidebar's top and the «Sistema» entry.
+Replaces what the 2026-10-29 section says about the sidebar's top and the «System» entry.
 
 - **Sidebar** (`layout/shell.component.ts`): top = logo, bell with the unread notifications (→ Notifiche), collapse,
   then **Chat** and **Cerca**. Sections, all foldable: *Generale* (Home, Scopri) · *Fissati* · *Conversazioni* ·
-  *Dashboard* · *Moduli* · **Sistema** (Panoramica = `/sistema`, the system modules' pages, Aggiornamenti, Macchine,
+  *Dashboard* · *Moduli* · **Sistema** (Panoramica = `/system`, the system modules' pages, Aggiornamenti, Macchine,
   Download). A module with sub-pages folds too (`webui.sidebar.collapsed`, key `m:<entry id>`). The page on screen is
   marked with its parent, a folded section or module opens by itself around it, and `Sezione › Modulo › Pagina` is
   written above pages of Fissati, Dashboard, Moduli and Sistema. On phones the menu button shows the unread count.
 - **Conversations**: «…» on each one in the sidebar (rename in place, pin, delete after a confirmation) and the same
-  in «Cronologia»; `ChatsService.remove` → Oracle `DELETE /api/ui/chats/{id}`. Deleting the one on screen starts a new one.
-- **Bubble** (`layout/quick-bubble.component.ts`), bottom right of every page except Chat: «Scrivi qui» (the side
-  panel, Ctrl+J) and «Parla» (continuous voice, Ctrl+Shift+Space), each with a line that says what it does. They are
+  in «History»; `ChatsService.remove` → Oracle `DELETE /api/ui/chats/{id}`. Deleting the one on screen starts a new one.
+- **Bubble** (`layout/quick-bubble.component.ts`), bottom right of every page except Chat: «Write here» (the side
+  panel, Ctrl+J) and «Talk» (continuous voice, Ctrl+Shift+Space), each with a line that says what it does. They are
   no longer sidebar entries.
 - **Chat**: one microphone, always visible (tap = dictation into the box, hold = voice message, release sends, slide
   left cancels; keyboard = dictation). «Ascolta» shows a spinner while the voice is prepared and, when there is no
-  sound, the reason with «Apri Voce» (`VoiceService.failed`, `listenError`). Wavy dividers (`.hx-divider`) for a new
+  sound, the reason with «Open Voice» (`VoiceService.failed`, `listenError`). Wavy dividers (`.hx-divider`) for a new
   day (Oggi, Ieri, «mer 5 nov») and for another model answering (`final.model`, kept with the message).
-- **Download**: «Scarica le voci» moved to the Voce page as «Prepara la voce adesso»; the page is listed in Sistema.
+- **Download**: «Download the voices» moved to the Voce page as «Prepare the voice now»; the page is listed in Sistema.
 
 ## Owner's language (2026-11-15, dossier `docs/work/2026-11-14-english-backend`)
 
-Every fixed text of the shell and of the plugins follows «Lingua» (`themis.personal.language`). `index.html` loads
+Every fixed text of the shell and of the plugins follows «Language» (`themis.personal.language`). `index.html` loads
 `/api/webui/i18n.js` (public, no-store: `I18nController` → Hub → Themis `/api/settings/i18n`) before any bundle; it sets
 `globalThis.__hestiaI18n = {language, messages}`. Code: `tr('Text', ...args)` (`core/i18n.ts`, `{0}` placeholders),
 templates `{{ 'Text' | tr }}` / `[title]="'Text' | tr"` (`TrPipe`); plugins `tr` of `@hestia/webui-sdk`. The English
@@ -674,7 +674,7 @@ them; no personal data).
 
 **2026-11-16 (no Italian in the code, dossier `docs/work/2026-11-14-english-backend` v2.0)**: every text is English in the code; Italian lives only in `Hestia-Shared/hestia_common/locales/it/messages.json`. Labels declared at registration (manifest, capabilities, agenda rules, settings) are plain English, translated at the edge.
 The catalog also brings `assistant` and `gender` (dossier `docs/work/2026-11-16-name-everywhere`): `tr` fills
-`{assistant}` and `{g:her|his}` («Create with {assistant}»), and so do the SDK `tr` of the plugins and the plugin
+`{assistant}` and `{g:lei|lui}` («Create with {assistant}»), and so do the SDK `tr` of the plugins and the plugin
 manifests (`plugins.service.ts` `namedCatalog`: titles, labels, help, descriptions). Saving the assistant's name or
 she/he reloads the page (`followIdentity`), except during the setup.
 

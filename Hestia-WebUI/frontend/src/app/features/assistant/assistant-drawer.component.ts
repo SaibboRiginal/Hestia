@@ -21,7 +21,7 @@ const DEFAULT_SUGGESTIONS: Record<string, string[]> = {
 };
 
 /**
- * "Crea con Hestia": right-side assistant drawer (full screen on phones), opened from any page
+ * "Create with the assistant": right-side assistant drawer (full screen on phones), opened from any page
  * through AssistantService.open(ctx). Own ChatService instance on channel "assistant" and its own
  * Oracle session; the context packet travels with every message as client instructions.
  * Lazy (@defer in the shell); shortcut Ctrl/⌘+J lives in the shell.
@@ -216,7 +216,7 @@ export class AssistantDrawerComponent implements AfterViewChecked {
   send() {
     const t = this.text.trim();
     if (!t || this.chat.isStreaming()) return;
-    void this.chat.sendMessage(t, this.sessionId, 'auto', 'generic', this.packet() || 'page=generico');
+    void this.chat.sendMessage(t, this.sessionId, 'auto', 'generic', this.packet() || 'page=generic');
     this.text = '';
     queueMicrotask(() => this.grow());
   }
@@ -227,7 +227,7 @@ export class AssistantDrawerComponent implements AfterViewChecked {
   }
 
   answer(id: string, v: string) {
-    this.chat.answerQuestion(id, v, this.sessionId, 'auto', this.packet() || 'page=generico');
+    this.chat.answerQuestion(id, v, this.sessionId, 'auto', this.packet() || 'page=generic');
   }
 
   onKey(e: KeyboardEvent) {

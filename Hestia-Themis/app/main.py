@@ -59,7 +59,7 @@ registry.register(SELF_OWNER, list(PERSONAL.values()))
 app = FastAPI(title="Hestia-Themis", version=SERVICE_VERSION)
 app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"])
 
-# ── WebUI plugin (core module, System section): Log ────────────────────
+# ── WebUI plugin (core module, System section): Log ──────────────────────────
 UI_DIST = os.getenv("THEMIS_UI_DIST", "/ui/dist")   # outside /code: the compose dev mount of app/ must not hide it
 ui = PluginClient("themis", title="Settings log", icon="settings", color="gray", kind="core", dist=UI_DIST,
                   description="Who changed which setting, when and how: changes, proposals, undo.",
@@ -156,7 +156,7 @@ def settings_modules():
 def settings_i18n(lang: str = ""):
     """The fixed-text catalog for clients (WebUI shell and plugins): ``{language, messages, assistant, gender}`` where
     ``messages`` maps the English source text to the owner's language (English = empty map: the source is already
-    English) and ``assistant``/``gender`` fill ``{assistant}`` and ``{g:her|his}`` in those texts
+    English) and ``assistant``/``gender`` fill ``{assistant}`` and ``{g:her-form|his-form}`` in those texts
     (docs/work/2026-11-16-name-everywhere). Public through the WebUI: only the assistant's name, never the owner's."""
     from hestia_common import identity
     ident = _i18n.identity_now()
@@ -375,8 +375,8 @@ _REGISTRATION = {
                      "mcp_endpoint": f"{SERVICE_BASE_URL.rstrip('/')}/mcp",
                      # Assistant tools appear when the chat is about Hestia itself / its settings.
                      "module_tool_domains": ["system", "settings"],
-                     # Owner of the "settings" tools: without it Oracle's domain gate dropped them, so «rispondimi
-                     # more direct» became a memory instead of a proposal (bench with a real model, 2026-10-30).
+                     # Owner of the "settings" tools: without it Oracle's domain gate dropped them, so «answer
+                     # more directly» became a memory instead of a proposal (bench with a real model, 2026-10-30).
                      "owns_tool_domains": ["settings"],
                      "settings": "/api/settings", "settings_register": "/api/settings/register",
                      "settings_revision": "/api/settings/revision"},

@@ -5,8 +5,8 @@ import { ButtonComponent, IconComponent } from '../../ui';
 import { TrPipe } from '../../core/i18n';
 
 /**
- * A question from the assistant (Chat page and "Crea con Hestia" drawer): confirm, single choice, multiple choice
- * (pick then «Invia») or free text; choice kinds with `allowOther` also take a free answer («Altro…»).
+ * A question from the assistant (Chat page and "Create with the assistant" drawer): confirm, single choice, multiple choice
+ * (pick then «Send») or free text; choice kinds with `allowOther` also take a free answer («Other…»).
  * Multiple answers are sent one per line (oracle-offline v3 A).
  */
 @Component({

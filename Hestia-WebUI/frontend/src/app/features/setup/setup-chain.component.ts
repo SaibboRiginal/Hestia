@@ -21,12 +21,12 @@ export interface ServiceRow {
   tokenLabel?: string;
   tokenPlaceholder?: string;
 }
-/** «Prova»: the key works or not, what the service has (models or voices) and the ones to choose by themselves. */
+/** «Try»: the key works or not, what the service has (models or voices) and the ones to choose by themselves. */
 export interface ServiceCheck { ok: boolean; detail?: string; options: PickItem[]; recommended: string[]; }
 
 interface ChosenRow { key: string; title: string; where: string; waiting: boolean; kind: 'home' | 'model' | 'service'; svc?: string; id?: string; }
 
-/** The keys of «Scelti» in their natural order: 'h' (the local choice), 'm:<service>:<model>', 's:<service>' (a
+/** The keys of «Chosen» in their natural order: 'h' (the local choice), 'm:<service>:<model>', 's:<service>' (a
  * service with nothing to pick, e.g. the Claude subscription). */
 export function chosenKeys(home: string, order: string[], picks: Record<string, string[]>): string[] {
   const out = home ? ['h'] : [];
@@ -41,7 +41,7 @@ export function ranked(keys: string[], rank: string[]): string[] {
   const pos = (k: string, i: number) => { const r = rank.indexOf(k); return r < 0 ? rank.length + i : r; };
   return keys.map((k, i) => ({ k, p: pos(k, i) })).sort((a, b) => a.p - b.p).map(x => x.k);
 }
-/** A «Scelti» key as a chain step: the local choice is «program|model». */
+/** A «Chosen» key as a chain step: the local choice is «program|model». */
 export function keyStep(key: string, home: string): { provider: string; model: string } {
   if (key === 'h') { const [provider, ...rest] = home.split('|'); return { provider, model: rest.join('|') }; }
   const [, svc, ...id] = key.split(':');
@@ -49,10 +49,10 @@ export function keyStep(key: string, home: string): { provider: string; model: s
 }
 
 /**
- * THE step of the guided setup (docs/work/2026-10-30-one-click-setup, round 7): Modelli, Memoria, Ascolto and Voce are
+ * THE step of the guided setup (docs/work/2026-10-30-one-click-setup, round 7): Models, Memory, Listening and Voice are
  * this same component, only the module behind it changes.
  *
- * On top «Scelti»: what Hestia will use, in order (the local one first, then the cloud ones), each with ↑ and ×.
+ * On top «Chosen»: what Hestia will use, in order (the local one first, then the cloud ones), each with ↑ and ×.
  * Under it two tabs to add: «Locale» (one, from the programs found on this computer or another of the network: search,
  * filters, the programs to install when none is found) and «Cloud» (services: the key is typed once and tried at
  * once, a saved key is tried by itself; when it works its models are already chosen and can be changed right there).
@@ -77,9 +77,9 @@ export function keyStep(key: string, home: string): { provider: string; model: s
             @if (trialState()?.key === r.key && trialState()!.busy) { <span class="ib"><hx-spinner /></span> }
             @else {
               <button type="button" class="ib try" [class.rec]="trialState()?.key === r.key && trialState()!.recording"
-                      [attr.aria-label]="trial() === 'voce' ? ('Listen' | tr) : (trialState()?.key === r.key && trialState()!.recording ? ('Stop and try' | tr) : ('Try speaking' | tr))"
+                      [attr.aria-label]="trial() === 'voice' ? ('Listen' | tr) : (trialState()?.key === r.key && trialState()!.recording ? ('Stop and try' | tr) : ('Try speaking' | tr))"
                       (click)="emitTry(r.key)">
-                <hx-icon [name]="trialState()?.key === r.key && (trialState()!.recording || trialState()!.playing) ? 'stop' : (trial() === 'voce' ? 'play' : 'mic')" [size]="16" />
+                <hx-icon [name]="trialState()?.key === r.key && (trialState()!.recording || trialState()!.playing) ? 'stop' : (trial() === 'voice' ? 'play' : 'mic')" [size]="16" />
               </button>
             }
           }
@@ -131,7 +131,7 @@ export function keyStep(key: string, home: string): { provider: string; model: s
           }
           <div class="links">
             @if (!netOpen()) { <button type="button" class="link" (click)="netOpen.set(true)">{{ "Is it on another computer in the network?" | tr }}</button> }
-            <button type="button" class="link" [disabled]="searching()" (click)="again.emit()">{{ searching() ? 'Cerco…' : ('Search again' | tr) }}</button>
+            <button type="button" class="link" [disabled]="searching()" (click)="again.emit()">{{ searching() ? ('Searching…' | tr) : ('Search again' | tr) }}</button>
           </div>
         </div>
       </section>
@@ -251,8 +251,8 @@ export class SetupChainComponent {
   cloudEmpty = input<string>(tr('No cloud service for this step.'));
   emptyList = input<string>(tr('The key works, but the service has nothing to choose here.'));
   single = input<boolean>(false);
-  /** «Prova» on each chosen row: hear a voice ('voce') or speak and see what it understood ('ascolto'). */
-  trial = input<'' | 'voce' | 'ascolto'>('');
+  /** «Try» on each chosen row: hear a voice ('voice') or speak and see what it understood ('listen'). */
+  trial = input<'' | 'voice' | 'listen'>('');
   trialState = input<{ key: string; busy?: boolean; recording?: boolean; playing?: boolean; text?: string } | null>(null);
   tryRow = output<{ key: string; provider: string; model: string }>();
 
@@ -266,7 +266,7 @@ export class SetupChainComponent {
   ready = model<Record<string, boolean>>({});
   /** Codes typed for 'token' services (sent with the choice). */
   tokens = model<Record<string, string>>({});
-  /** «Scelti» in the user's order (keys of ``chosenKeys``), set by ↑ ↓: local and cloud mixed freely. */
+  /** «Chosen» in the user's order (keys of ``chosenKeys``), set by ↑ ↓: local and cloud mixed freely. */
   rank = model<string[]>([]);
 
   addHost = output<string>();
@@ -315,7 +315,7 @@ export class SetupChainComponent {
   listed(name: string): boolean { return name in this.lists(); }
   inUse(name: string): boolean { return this.order().includes(name); }
 
-  /** «Scelti»: every choice, in the user's order (by default the local one first, then each service's models). */
+  /** «Chosen»: every choice, in the user's order (by default the local one first, then each service's models). */
   rows = computed<ChosenRow[]>(() => {
     const home = this.home();
     return ranked(chosenKeys(home, this.order(), this.picks()), this.rank()).map(key => {
@@ -388,7 +388,7 @@ export class SetupChainComponent {
     const opening = this.open() !== p.name;
     this.open.set(opening ? p.name : '');
     // the list is read here when this step has not read it yet: the key can be ready from another step (each mode
-    // of Modelli is its own step sharing the same keys), so «ready» alone does not mean the models are known
+    // of Models is its own step sharing the same keys), so «ready» alone does not mean the models are known
     if (opening && p.kind === 'key' && (p.keySet || this.ready()[p.name]) && !(p.name in this.lists()) && this.testing() !== p.name) void this.check(p.name, false);
   }
   typeToken(name: string, value: string) {
@@ -416,7 +416,7 @@ export class SetupChainComponent {
     this.addHost.emit(h);
   }
 
-  /** «Salva e prova» / «Prova». When a typed key works the recommended ones are chosen by themselves (``adopt``); a
+  /** «Save and try» / «Try». When a typed key works the recommended ones are chosen by themselves (``adopt``); a
    * saved key tried by itself only refreshes the list of a service already in use. */
   async check(name: string, adopt = true): Promise<void> {
     const typed = (this.keys[name] || '').trim();

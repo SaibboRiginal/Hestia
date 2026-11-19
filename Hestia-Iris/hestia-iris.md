@@ -19,7 +19,7 @@ Iris owns email-domain business logic (search/send/thread abstractions). Provide
 - POST /api/email/subscriptions — a module declares its full rule set `{owner, rules}` (idempotent; new/changed rules → backfill)
 - GET /api/email/subscriptions?owner= — list subscriptions
 - DELETE /api/email/subscriptions/{owner}/{key}
-- POST /api/email/subscriptions/{owner}/{key}/backfill — `{days}`; re-deliver matching mail of the last days (module «controlla ora»)
+- POST /api/email/subscriptions/{owner}/{key}/backfill — `{days}`; re-deliver matching mail of the last days (module «Check now»)
 - POST /api/email/incoming — new mail headers from Hecate's watcher `{messages, source}`; 503 when a matched mail could not be stored
 - GET /api/email/dispatch — subscriptions, last deliveries, counters, Hecate watcher state (used by the «Email» page)
 - POST /api/email/check — ask Hecate's watcher for one check now
@@ -79,14 +79,14 @@ Tool titles are plain Italian without emoji; each tool says where it goes on Tel
 The Hub registration declares `capabilities.when_to_use` (one line in the assistant's «MODULI» index) and
 `capabilities.manual` (short manual the assistant loads with `module_manual` only when it needs it).
 
-**2026-10-29 (texts for people, dossier `docs/work/2026-10-29-frontend-review-and-tests`)**: Plugin title «Email»; offline text «Account non raggiungibili».
+**2026-10-29 (texts for people, dossier `docs/work/2026-10-29-frontend-review-and-tests`)**: Plugin title «Email»; offline text «Accounts not reachable».
 
 
 **2026-11-14 (backend English, dossier `docs/work/2026-11-14-english-backend`)**: tool descriptions and the module manual are English (for the model). What people read about the tools comes from `hestia_common/locales/<lang>/tools.json`.
 
-**2026-11-15 (owner's language, dossier `docs/work/2026-11-14-english-backend`)**: the notices, errors and cards this module shows go through `hestia_common.i18n.t` and follow «Lingua».
+**2026-11-15 (owner's language, dossier `docs/work/2026-11-14-english-backend`)**: the notices, errors and cards this module shows go through `hestia_common.i18n.t` and follow «Language».
 
-**2026-11-15 (WebUI page in the owner's language, dossier `docs/work/2026-11-14-english-backend`)**: the texts of this module's WebUI page and widgets go through `tr` of `@hestia/webui-sdk` and follow «Lingua»; source texts in English, Italian in `Hestia-Shared/hestia_common/locales/it/messages.json`.
+**2026-11-15 (WebUI page in the owner's language, dossier `docs/work/2026-11-14-english-backend`)**: the texts of this module's WebUI page and widgets go through `tr` of `@hestia/webui-sdk` and follow «Language»; source texts in English, Italian in `Hestia-Shared/hestia_common/locales/it/messages.json`.
 
 **2026-11-16 (no Italian in the code, dossier `docs/work/2026-11-14-english-backend` v2.0)**: every text is English in the code; Italian lives only in `Hestia-Shared/hestia_common/locales/it/messages.json`. Labels declared at registration (manifest, capabilities, agenda rules, settings) are plain English, translated at the edge. It now follows «Lingua» at startup (`SettingsClient("iris").follow_personal()`).
 

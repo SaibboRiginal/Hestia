@@ -12,7 +12,7 @@ const KINDS: { value: Place['kind']; label: string; icon: string }[] = [
 
 /**
  * <hx-places-editor [key] [value] (commit)> — personal setting `themis.personal.places` (editor "places").
- * One row per place (name, city or address, kind). Exactly one Casa: the default place for the weather.
+ * One row per place (name, city or address, kind). Exactly one Home: the default place for the weather.
  * After saving, each row shows what the weather service found for it (Themis → options_source on Hecate).
  */
 @Component({
@@ -90,7 +90,7 @@ export class PlacesEditorComponent implements OnInit {
         if (field === 'address') { delete next.lat; delete next.lon; }
         return next;
       }
-      // one Casa only: choosing Casa elsewhere turns the old one into Altro
+      // one Home only: choosing Home elsewhere turns the old one into Other
       return field === 'kind' && v === 'home' && r.kind === 'home' ? { ...r, kind: 'other' } : r;
     }));
     this.dirty.set(true);
@@ -111,7 +111,7 @@ export class PlacesEditorComponent implements OnInit {
     if (names.some((n, i) => n && names.indexOf(n) !== i)) { this.error.set(tr('Two places with the same name')); return; }
     const used = new Set<string>();
     for (const r of rows) {
-      let id = r.id || slug(r.name || r.address) || 'luogo';
+      let id = r.id || slug(r.name || r.address) || 'place';
       while (used.has(id)) id += '-2';
       used.add(id); r.id = id;
     }

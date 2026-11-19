@@ -288,13 +288,13 @@ class PresenceEngine:
         if end is None:
             end = _now() + timedelta(minutes=float(minutes or PS.settings.get(PS.DND_DEFAULT) or 120))
         ttl = max(60.0, (end - _now()).total_seconds())
-        return self.set_signal("manual.dnd", _iso(end), meta={"by": "user"}, ttl=ttl, reason="dnd_on")
+        return self.set_signal("manual.dnd", _iso(end), meta={"by": "user"}, ttl=ttl, reason="presence_dnd_on")
 
     def clear_dnd(self) -> dict:
-        return self.clear_signal("manual.dnd", reason="dnd_off")
+        return self.clear_signal("manual.dnd", reason="presence_dnd_off")
 
     def set_manual(self, state: str, minutes: float | None = None) -> dict:
-        """The owner says how they are («sto mangiando», «vado a dormire»): that state until ``minutes`` (or until
+        """The owner says how they are («I'm eating», «going to sleep»): that state until ``minutes`` (or until
         cleared). Any defined state, base or overlay."""
         if state not in self.states():
             raise KeyError(state)
@@ -445,7 +445,7 @@ class PresenceEngine:
         if before_reply == "queued" and after_reply == "live":
             self._drain_chat_queues()
             since, self._queued_since = self._queued_since, None
-            self._catch_up(since)    # «Mentre non c'ero» (v3 D)
+            self._catch_up(since)    # «While I was away» (v3 D)
 
     def _emit_default(self, event_type: str, payload: dict) -> None:
         publish_event("assistant", event_type, "presence", {**payload, "_source": "chronos"})
@@ -460,7 +460,7 @@ class PresenceEngine:
             logger.warning("[🔄] event=presence_release_held_failed error=%s", exc)
 
     def _catch_up(self, since: datetime | None) -> None:
-        """The agenda work missed while unavailable: redo what is recent, one «Mentre non c'ero» message."""
+        """The agenda work missed while unavailable: redo what is recent, one «While I was away» message."""
         try:
             from services import catchup
             catchup.run(since)

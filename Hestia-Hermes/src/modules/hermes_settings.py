@@ -24,8 +24,8 @@ BATCH_WINDOW = "hermes.batch.window"
 BATCH_MAX_ATTEMPTS = "hermes.batch.max_attempts"
 RETRACT_AFTER = "hermes.retract.after"
 REPEAT_RESET_AFTER_DAYS = "hermes.repeat.reset_after_days"
-PENDING_REMIND_HOURS = "hermes.waiting.recall_hours"
-ACTIVE_CLIENT_MINUTES = "hermes.delivery.active_client_minutes"
+PENDING_REMIND_HOURS = "hermes.wait.recall_hours"
+ACTIVE_CLIENT_MINUTES = "hermes.delivery.client_active_minutes"
 NOTIFICATION_STYLE = "hermes.notifications.style"
 STYLES = [("scheda", "Card"), ("frase", "{assistant}'s sentence")]
 
@@ -37,16 +37,16 @@ settings.declare([
     setting(DELIVERY_RETRY_INTERVAL, "Interval between attempts", "int", 120, group="Delivery",
             min=15, max=3600, unit="s", advanced=True,
             help="How often I retry failed deliveries."),
-    setting(DEDUPE_RECURRING_MAX_AGE, "Repeat recurring notices after", "int", 3600, group="Anti-duplicati",
+    setting(DEDUPE_RECURRING_MAX_AGE, "Repeat recurring notices after", "int", 3600, group="Duplicates",
             min=60, max=86400, unit="s",
             help="A recurring notice (e.g. module in error) already sent is not repeated before this time; after it, if the problem persists, I notify you again."),
     setting(DEDUPE_RECURRING_TYPES, "Recurring notice types", "list",
-            ["service.action_required", "service.health"], group="Anti-duplicati", advanced=True,
+            ["service.action_required", "service.health"], group="Duplicates", advanced=True,
             help="Event types the timed repetition applies to; the others are never repeated."),
-    setting(BATCH_WINDOW, "Wait to group listings", "int", 30, group="Raggruppamento",
+    setting(BATCH_WINDOW, "Wait to group listings", "int", 30, group="Grouping",
             min=5, max=1800, unit="s",
             help="After a new listing I wait this long with nothing new and then send you a single message with all those arrived."),
-    setting(BATCH_MAX_ATTEMPTS, "Attempts for a group of listings", "int", 6, group="Raggruppamento",
+    setting(BATCH_MAX_ATTEMPTS, "Attempts for a group of listings", "int", 6, group="Grouping",
             min=1, max=20, advanced=True,
             help="How many times I retry sending a group of listings (with growing waits) before giving up."),
     setting(RETRACT_AFTER, "Remove handled notifications from the chat after", "int", 6, group="Cleanup",
@@ -67,8 +67,8 @@ settings.declare([
 
 
 def notification_style() -> str:
-    value = str(settings.get(NOTIFICATION_STYLE) or "scheda")
-    return value if value in {k for k, _ in STYLES} else "scheda"
+    value = str(settings.get(NOTIFICATION_STYLE) or "card")
+    return value if value in {k for k, _ in STYLES} else "card"
 
 
 def recurring_event_types() -> frozenset[str]:

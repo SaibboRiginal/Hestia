@@ -157,7 +157,7 @@ public class ChatHub : Hub
             // "Create with the assistant": the user opened the assistant from a page; act on it with tools.
             if (pageContext.Length > 2000) pageContext = pageContext[..2000];
             clientInstructions += "\nCreate panel. Page context: " + pageContext +
-                "\nAgisci con gli strumenti (assistant_agenda_*, comandi). Conferma breve cosa hai creato/modificato." +
+                "\nAct with tools (agenda_assistant_*, commands). Confirm briefly what you created/changed." +
                 "\nIf no tool can do it: propose a development (forge_develop) and ask to confirm.";
             _logger.LogInformation("event=assistant_drawer_turn connection={Conn} context_len={Len}",
                 Context.ConnectionId, pageContext.Length);
@@ -194,7 +194,7 @@ public class ChatHub : Hub
                 if (evt.Type == OracleStreamService.UnavailableType)
                 {
                     await Clients.Caller.SendAsync("ReceiveEvent",
-                        new { type = "error", content = "I can't answer now: try again later." }, cts.Token);
+                        new { type = "error", content = Texts.Tr("I can't answer right now: try again later.") }, cts.Token);
                     break;
                 }
                 await Clients.Caller.SendAsync("ReceiveEvent", evt, cts.Token);
@@ -318,8 +318,8 @@ public class ChatHub : Hub
                     kind = ok ? "action.done" : "action.failed",
                     level = ok ? (approved ? "success" : "info") : "error",
                     icon = ok ? "check" : "alert",
-                    title = ok ? (approved ? "f::Approved" : "f::Rejected") : "alt::Failed",
-                    detail = ok ? "" : "The answer did not reach the module: try again from the notifications",
+                    title = ok ? (approved ? Texts.Tr("Approved") : Texts.Tr("Rejected")) : Texts.Tr("Failed"),
+                    detail = ok ? "" : Texts.Tr("The answer did not arrive: try again from the notifications"),
                     data = new { question_id = questionId, answer },
                 });
             }
@@ -337,7 +337,7 @@ public class ChatHub : Hub
                 await Clients.Caller.SendAsync("ReceiveEvent", new
                 {
                     type = "notice", kind = "action.failed", level = "warning", icon = "clock",
-                    title = "Question expired", detail = "This question is no longer open: write to me again",
+                    title = Texts.Tr("Question expired"), detail = Texts.Tr("This question is no longer open: write to me again"),
                     data = new { question_id = questionId },
                 });
             }

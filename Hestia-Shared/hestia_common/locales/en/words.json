@@ -319,5 +319,1529 @@
  ],
  "people.anniversary": [
   "anniversary"
+ ],
+ "address.street_word": [
+  "street",
+  "road",
+  "avenue",
+  "lane",
+  "square",
+  "st\\.",
+  "rd\\.",
+  "ave\\."
+ ],
+ "common.greeting": [
+  "hi",
+  "hello",
+  "hey",
+  "ok",
+  "thanks",
+  "thank you",
+  "good morning",
+  "good evening"
+ ],
+ "common.next_week": [
+  "next",
+  "next week"
+ ],
+ "common.no": [
+  "no",
+  "cancel",
+  "never mind",
+  "forget it",
+  "leave it"
+ ],
+ "common.no_word": [
+  "no",
+  "n",
+  "false",
+  "0"
+ ],
+ "common.none_word": [
+  "none",
+  "no",
+  "nothing",
+  "nobody"
+ ],
+ "common.yes": [
+  "yes",
+  "yeah",
+  "ok",
+  "okay",
+  "sure",
+  "go ahead",
+  "go",
+  "do it",
+  "confirm",
+  "confirmed",
+  "of course",
+  "agreed",
+  "perfect",
+  "fine"
+ ],
+ "common.yes_word": [
+  "yes",
+  "y",
+  "ok",
+  "okay",
+  "sure",
+  "confirm",
+  "go",
+  "true",
+  "1"
+ ],
+ "control.hint": [
+  "remind",
+  "notif",
+  "quiet",
+  "proactiv",
+  "stop\\s+(?:asking|sending|writing)",
+  "don'?t\\s+ask",
+  "don'?t\\s+write",
+  "at\\s+night",
+  "more\\s+often",
+  "less\\s+often",
+  "now\\s+and\\s+then",
+  "disturb",
+  "silen",
+  "(?:at|from|until)\\s+\\d"
+ ],
+ "date.day_after_tomorrow": [
+  "day after tomorrow",
+  "the day after tomorrow"
+ ],
+ "date.day_before_yesterday": [
+  "day before yesterday",
+  "the day before yesterday"
+ ],
+ "date.month.1": [
+  "january"
+ ],
+ "date.month.10": [
+  "october"
+ ],
+ "date.month.11": [
+  "november"
+ ],
+ "date.month.12": [
+  "december"
+ ],
+ "date.month.2": [
+  "february"
+ ],
+ "date.month.3": [
+  "march"
+ ],
+ "date.month.4": [
+  "april"
+ ],
+ "date.month.5": [
+  "may"
+ ],
+ "date.month.6": [
+  "june"
+ ],
+ "date.month.7": [
+  "july"
+ ],
+ "date.month.8": [
+  "august"
+ ],
+ "date.month.9": [
+  "september"
+ ],
+ "date.month_abbr.1": [
+  "jan"
+ ],
+ "date.month_abbr.10": [
+  "oct"
+ ],
+ "date.month_abbr.11": [
+  "nov"
+ ],
+ "date.month_abbr.12": [
+  "dec"
+ ],
+ "date.month_abbr.2": [
+  "feb"
+ ],
+ "date.month_abbr.3": [
+  "mar"
+ ],
+ "date.month_abbr.4": [
+  "apr"
+ ],
+ "date.month_abbr.5": [
+  "may"
+ ],
+ "date.month_abbr.6": [
+  "jun"
+ ],
+ "date.month_abbr.7": [
+  "jul"
+ ],
+ "date.month_abbr.8": [
+  "aug"
+ ],
+ "date.month_abbr.9": [
+  "sep"
+ ],
+ "date.time_prefix": [
+  "at",
+  "at the"
+ ],
+ "date.today": [
+  "today"
+ ],
+ "date.tomorrow": [
+  "tomorrow"
+ ],
+ "date.weekday.0": [
+  "monday"
+ ],
+ "date.weekday.1": [
+  "tuesday"
+ ],
+ "date.weekday.2": [
+  "wednesday"
+ ],
+ "date.weekday.3": [
+  "thursday"
+ ],
+ "date.weekday.4": [
+  "friday"
+ ],
+ "date.weekday.5": [
+  "saturday"
+ ],
+ "date.weekday.6": [
+  "sunday"
+ ],
+ "date.yesterday": [
+  "yesterday"
+ ],
+ "goal.stop": [
+  "stop",
+  "enough",
+  "cancel",
+  "drop"
+ ],
+ "goal.word": [
+  "goal"
+ ],
+ "hercules.activity.bike": [
+  "bike",
+  "cycling",
+  "cycle",
+  "bicycle"
+ ],
+ "hercules.activity.run": [
+  "run",
+  "running",
+  "jogging",
+  "jog"
+ ],
+ "hercules.activity.swim": [
+  "swim",
+  "swimming",
+  "pool"
+ ],
+ "hercules.activity.walk": [
+  "walk",
+  "walking",
+  "hike",
+  "hiking"
+ ],
+ "hercules.body.ankle": [
+  "ankles"
+ ],
+ "hercules.body.biceps": [
+  "arms"
+ ],
+ "hercules.body.chest": [
+  "chest"
+ ],
+ "hercules.body.elbow": [
+  "elbows"
+ ],
+ "hercules.body.hip": [
+  "hips"
+ ],
+ "hercules.body.knee": [
+  "knees"
+ ],
+ "hercules.body.lower_back": [
+  "back",
+  "lower back"
+ ],
+ "hercules.body.quads": [
+  "legs"
+ ],
+ "hercules.body.shoulder": [
+  "shoulders"
+ ],
+ "hercules.body.wrist": [
+  "wrists"
+ ],
+ "hercules.exercise.ab_wheel": [
+  "ab wheel rollout"
+ ],
+ "hercules.exercise.arnold_press": [
+  "arnold press"
+ ],
+ "hercules.exercise.assisted_dip": [
+  "assisted dip machine"
+ ],
+ "hercules.exercise.assisted_pull_up": [
+  "assisted pull up",
+  "gravitron"
+ ],
+ "hercules.exercise.back_extension": [
+  "back extension",
+  "hyperextension"
+ ],
+ "hercules.exercise.back_squat": [
+  "back squat",
+  "squat"
+ ],
+ "hercules.exercise.band_pull_apart": [
+  "band pull apart"
+ ],
+ "hercules.exercise.barbell_curl": [
+  "barbell curl"
+ ],
+ "hercules.exercise.barbell_row": [
+  "barbell row",
+  "bent over row"
+ ],
+ "hercules.exercise.barbell_shrug": [
+  "barbell shrug"
+ ],
+ "hercules.exercise.bench_dip": [
+  "bench dip"
+ ],
+ "hercules.exercise.bench_press": [
+  "bench press"
+ ],
+ "hercules.exercise.bodyweight_squat": [
+  "air squat",
+  "bodyweight squat"
+ ],
+ "hercules.exercise.bulgarian_split_squat": [
+  "bulgarian split squat"
+ ],
+ "hercules.exercise.burpee": [
+  "burpee"
+ ],
+ "hercules.exercise.cable_crunch": [
+  "cable crunch"
+ ],
+ "hercules.exercise.cable_curl": [
+  "cable curl"
+ ],
+ "hercules.exercise.cable_fly": [
+  "cable crossover",
+  "cable fly"
+ ],
+ "hercules.exercise.cable_kickback": [
+  "cable glute kickback"
+ ],
+ "hercules.exercise.cable_lateral_raise": [
+  "cable lateral raise"
+ ],
+ "hercules.exercise.chest_press_machine": [
+  "chest press machine"
+ ],
+ "hercules.exercise.chest_supported_row": [
+  "chest supported row",
+  "seal row"
+ ],
+ "hercules.exercise.chin_up": [
+  "chin up"
+ ],
+ "hercules.exercise.close_grip_bench_press": [
+  "close grip bench press"
+ ],
+ "hercules.exercise.close_grip_pulldown": [
+  "close grip lat pulldown",
+  "v-bar pulldown"
+ ],
+ "hercules.exercise.concentration_curl": [
+  "concentration curl"
+ ],
+ "hercules.exercise.crunch": [
+  "crunch"
+ ],
+ "hercules.exercise.db_bench_press": [
+  "dumbbell bench press"
+ ],
+ "hercules.exercise.db_curl": [
+  "dumbbell curl"
+ ],
+ "hercules.exercise.db_fly": [
+  "dumbbell fly"
+ ],
+ "hercules.exercise.db_incline_press": [
+  "incline dumbbell press"
+ ],
+ "hercules.exercise.db_romanian_deadlift": [
+  "dumbbell romanian deadlift"
+ ],
+ "hercules.exercise.db_row": [
+  "dumbbell row",
+  "one arm row"
+ ],
+ "hercules.exercise.db_shoulder_press": [
+  "dumbbell shoulder press"
+ ],
+ "hercules.exercise.db_shrug": [
+  "dumbbell shrug"
+ ],
+ "hercules.exercise.db_tricep_extension": [
+  "dumbbell tricep extension"
+ ],
+ "hercules.exercise.dead_bug": [
+  "dead bug"
+ ],
+ "hercules.exercise.deadlift": [
+  "deadlift"
+ ],
+ "hercules.exercise.decline_bench_press": [
+  "decline bench press"
+ ],
+ "hercules.exercise.decline_sit_up": [
+  "decline sit up"
+ ],
+ "hercules.exercise.dip": [
+  "dips",
+  "chest dip"
+ ],
+ "hercules.exercise.ez_curl": [
+  "ez bar curl"
+ ],
+ "hercules.exercise.face_pull": [
+  "face pull"
+ ],
+ "hercules.exercise.farmer_carry": [
+  "farmer carry",
+  "farmer walk"
+ ],
+ "hercules.exercise.front_raise": [
+  "front raise"
+ ],
+ "hercules.exercise.front_squat": [
+  "front squat"
+ ],
+ "hercules.exercise.glute_bridge": [
+  "glute bridge"
+ ],
+ "hercules.exercise.goblet_squat": [
+  "goblet squat"
+ ],
+ "hercules.exercise.good_morning": [
+  "good morning"
+ ],
+ "hercules.exercise.hack_squat": [
+  "hack squat"
+ ],
+ "hercules.exercise.hammer_curl": [
+  "hammer curl"
+ ],
+ "hercules.exercise.hanging_knee_raise": [
+  "hanging knee raise"
+ ],
+ "hercules.exercise.hanging_leg_raise": [
+  "hanging leg raise"
+ ],
+ "hercules.exercise.high_bar_squat": [
+  "high bar squat"
+ ],
+ "hercules.exercise.hip_abduction": [
+  "hip abduction machine"
+ ],
+ "hercules.exercise.hip_adduction": [
+  "hip adduction machine"
+ ],
+ "hercules.exercise.hip_thrust": [
+  "hip thrust"
+ ],
+ "hercules.exercise.incline_bench_press": [
+  "incline bench press"
+ ],
+ "hercules.exercise.incline_db_curl": [
+  "incline dumbbell curl"
+ ],
+ "hercules.exercise.inverted_row": [
+  "inverted row",
+  "australian pull up"
+ ],
+ "hercules.exercise.kb_goblet_squat": [
+  "kettlebell goblet squat"
+ ],
+ "hercules.exercise.kb_swing": [
+  "kettlebell swing"
+ ],
+ "hercules.exercise.lat_pulldown": [
+  "lat pulldown"
+ ],
+ "hercules.exercise.lateral_raise": [
+  "lateral raise",
+  "side raise"
+ ],
+ "hercules.exercise.leg_curl_lying": [
+  "lying leg curl"
+ ],
+ "hercules.exercise.leg_curl_seated": [
+  "seated leg curl"
+ ],
+ "hercules.exercise.leg_extension": [
+  "leg extension"
+ ],
+ "hercules.exercise.leg_press": [
+  "leg press"
+ ],
+ "hercules.exercise.leg_press_calf_raise": [
+  "calf press"
+ ],
+ "hercules.exercise.lying_leg_raise": [
+  "lying leg raise"
+ ],
+ "hercules.exercise.machine_lateral_raise": [
+  "lateral raise machine"
+ ],
+ "hercules.exercise.machine_row": [
+  "row machine"
+ ],
+ "hercules.exercise.nordic_curl": [
+  "nordic hamstring curl"
+ ],
+ "hercules.exercise.overhead_press": [
+  "overhead press",
+  "military press",
+  "ohp"
+ ],
+ "hercules.exercise.overhead_tricep_extension": [
+  "overhead tricep extension",
+  "overhead cable extension"
+ ],
+ "hercules.exercise.pallof_press": [
+  "pallof press"
+ ],
+ "hercules.exercise.pec_deck": [
+  "pec deck",
+  "chest fly machine"
+ ],
+ "hercules.exercise.pendlay_row": [
+  "pendlay row"
+ ],
+ "hercules.exercise.plank": [
+  "plank"
+ ],
+ "hercules.exercise.power_clean": [
+  "power clean"
+ ],
+ "hercules.exercise.preacher_curl": [
+  "preacher curl"
+ ],
+ "hercules.exercise.pull_up": [
+  "pull up"
+ ],
+ "hercules.exercise.push_up": [
+  "push up"
+ ],
+ "hercules.exercise.rack_pull": [
+  "rack pull"
+ ],
+ "hercules.exercise.rear_delt_fly": [
+  "rear delt fly",
+  "reverse fly"
+ ],
+ "hercules.exercise.reverse_curl": [
+  "reverse curl"
+ ],
+ "hercules.exercise.reverse_lunge": [
+  "reverse lunge"
+ ],
+ "hercules.exercise.reverse_pec_deck": [
+  "reverse pec deck",
+  "rear delt machine"
+ ],
+ "hercules.exercise.romanian_deadlift": [
+  "romanian deadlift",
+  "rdl"
+ ],
+ "hercules.exercise.rope_pushdown": [
+  "rope pushdown"
+ ],
+ "hercules.exercise.russian_twist": [
+  "russian twist"
+ ],
+ "hercules.exercise.seated_cable_row": [
+  "seated cable row"
+ ],
+ "hercules.exercise.seated_calf_raise": [
+  "seated calf raise"
+ ],
+ "hercules.exercise.shoulder_press_machine": [
+  "shoulder press machine"
+ ],
+ "hercules.exercise.side_plank": [
+  "side plank"
+ ],
+ "hercules.exercise.skull_crusher": [
+  "skull crusher",
+  "lying tricep extension"
+ ],
+ "hercules.exercise.sled_push": [
+  "sled push"
+ ],
+ "hercules.exercise.smith_bench_press": [
+  "smith machine bench press"
+ ],
+ "hercules.exercise.smith_squat": [
+  "smith machine squat"
+ ],
+ "hercules.exercise.standing_calf_raise": [
+  "standing calf raise"
+ ],
+ "hercules.exercise.step_up": [
+  "step up"
+ ],
+ "hercules.exercise.stiff_leg_deadlift": [
+  "stiff leg deadlift"
+ ],
+ "hercules.exercise.straight_arm_pulldown": [
+  "straight arm pulldown"
+ ],
+ "hercules.exercise.sumo_deadlift": [
+  "sumo deadlift"
+ ],
+ "hercules.exercise.t_bar_row": [
+  "t bar row"
+ ],
+ "hercules.exercise.thruster": [
+  "thruster"
+ ],
+ "hercules.exercise.trap_bar_deadlift": [
+  "trap bar deadlift",
+  "hex bar deadlift"
+ ],
+ "hercules.exercise.tricep_kickback": [
+  "tricep kickback"
+ ],
+ "hercules.exercise.tricep_pushdown": [
+  "tricep pushdown",
+  "pushdown"
+ ],
+ "hercules.exercise.upright_row": [
+  "upright row"
+ ],
+ "hercules.exercise.walking_lunge": [
+  "walking lunge"
+ ],
+ "hercules.exercise.weighted_dip": [
+  "weighted dip"
+ ],
+ "hercules.exercise.weighted_pull_up": [
+  "weighted pull up"
+ ],
+ "hercules.exercise.weighted_push_up": [
+  "weighted push up"
+ ],
+ "hercules.exercise.wrist_curl": [
+  "wrist curl"
+ ],
+ "hercules.template.legs": [
+  "leg",
+  "squat"
+ ],
+ "hercules.template.pull": [
+  "pull",
+  "back"
+ ],
+ "hercules.template.push": [
+  "push",
+  "chest"
+ ],
+ "kairos.category.bill": [
+  "bill",
+  "electricity",
+  "gas",
+  "water",
+  "energy",
+  "invoice",
+  "utilit"
+ ],
+ "kairos.category.car_tax": [
+  "car tax",
+  "road tax",
+  "vehicle tax"
+ ],
+ "kairos.category.document": [
+  "identity card",
+  "id card",
+  "passport",
+  "driving licen[cs]e",
+  "permit",
+  "visa"
+ ],
+ "kairos.category.inspection": [
+  "inspection",
+  "mot\\b"
+ ],
+ "kairos.category.insurance": [
+  "insur",
+  "policy"
+ ],
+ "kairos.category.service": [
+  "car service",
+  "servicing",
+  "maintenance"
+ ],
+ "kairos.category.subscription": [
+  "subscription",
+  "renewal"
+ ],
+ "kairos.category.tax": [
+  "tax\\b",
+  "taxes",
+  "council tax",
+  "hmrc",
+  "irs"
+ ],
+ "kairos.due": [
+  "due",
+  "deadline",
+  "expir",
+  "by the",
+  "to pay",
+  "renew",
+  "inspection",
+  "car tax",
+  "invoice",
+  "bill",
+  "payment due"
+ ],
+ "kairos.mail_subject": [
+  "deadline",
+  "expires",
+  "bill",
+  "invoice",
+  "renewal",
+  "car tax",
+  "inspection",
+  "policy",
+  "payment"
+ ],
+ "memory.fact_stop": [
+  "the",
+  "user",
+  "with",
+  "for",
+  "and",
+  "that",
+  "his",
+  "her",
+  "their",
+  "usually",
+  "also",
+  "very",
+  "is",
+  "are",
+  "be"
+ ],
+ "memory.forget": [
+  "delete",
+  "remove",
+  "forget",
+  "reset",
+  "clear"
+ ],
+ "memory.noise": [
+  "hi",
+  "hey",
+  "hello",
+  "ok",
+  "okay",
+  "thanks",
+  "thank you",
+  "test",
+  "testing",
+  "yes",
+  "no",
+  "fine",
+  "perfect",
+  "good morning",
+  "good evening",
+  "good night",
+  "good",
+  "great",
+  "top",
+  "got it",
+  "clear",
+  "lol",
+  "ah ok",
+  "ok thanks"
+ ],
+ "memory.notify": [
+  "alert",
+  "notify me",
+  "let me know",
+  "send me",
+  "monitor",
+  "keep me posted",
+  "tell me when"
+ ],
+ "memory.preference": [
+  "prefer",
+  "i like",
+  "i don't like",
+  "i want",
+  "looking for",
+  "avoid",
+  "i hate",
+  "i love",
+  "budget",
+  "area",
+  "rooms",
+  "square meters"
+ ],
+ "memory.remember": [
+  "remember",
+  "keep in mind",
+  "note that",
+  "don't forget",
+  "from now on",
+  "always ",
+  "never again"
+ ],
+ "memory.remind_me": [
+  "remind me"
+ ],
+ "memory.self": [
+  "i am",
+  "i'm",
+  "my",
+  "i have",
+  "i live",
+  "i work",
+  "i study",
+  "i prefer",
+  "i hate",
+  "i love",
+  "my wife",
+  "my husband",
+  "my son",
+  "my daughter"
+ ],
+ "memory.write": [
+  "save",
+  "remember",
+  "store",
+  "delete",
+  "remove",
+  "forget",
+  "add",
+  "create",
+  "set",
+  "change",
+  "edit",
+  "move",
+  "cancel",
+  "enable",
+  "disable",
+  "turn on",
+  "turn off",
+  "notify",
+  "book",
+  "schedule",
+  "plan",
+  "send",
+  "mark",
+  "log",
+  "record",
+  "insert",
+  "put",
+  "note",
+  "update",
+  "pin",
+  "tick",
+  "upload",
+  "develop"
+ ],
+ "metis.correction": [
+  "no+\\b",
+  "that's not (?:it|what i (?:meant|asked))",
+  "i meant",
+  "i said",
+  "wrong",
+  "you got it wrong",
+  "you didn't understand",
+  "i didn't ask",
+  "actually\\b"
+ ],
+ "mood.adverb": [
+  "really",
+  "very",
+  "a bit",
+  "quite",
+  "so",
+  "too",
+  "pretty"
+ ],
+ "mood.angry": [
+  "angry",
+  "pissed off",
+  "furious",
+  "mad"
+ ],
+ "mood.anxious": [
+  "anxious",
+  "worried",
+  "stressed",
+  "stressed out",
+  "panicking"
+ ],
+ "mood.bored": [
+  "bored",
+  "apathetic"
+ ],
+ "mood.but": [
+  "but",
+  "then",
+  "and then",
+  "however"
+ ],
+ "mood.calm": [
+  "calm",
+  "relaxed",
+  "at peace",
+  "serene"
+ ],
+ "mood.charged": [
+  "pumped",
+  "energetic",
+  "in shape",
+  "fit"
+ ],
+ "mood.charged_high": [
+  "full of energy",
+  "super pumped",
+  "on fire"
+ ],
+ "mood.continue_prefix": [
+  "i am"
+ ],
+ "mood.day_1": [
+  "(?:a |what a )?(?:shitty|horrible|awful|terrible) day"
+ ],
+ "mood.day_2": [
+  "(?:a |what a )?(?:rough|bad) day"
+ ],
+ "mood.day_4": [
+  "(?:a |what a )?(?:calm|quiet|easy|light) day"
+ ],
+ "mood.day_5": [
+  "(?:a |what a )?(?:great|fantastic|wonderful|beautiful|perfect|top) day"
+ ],
+ "mood.day_tired": [
+  "(?:a |what a )?(?:heavy|hard|long|endless) day"
+ ],
+ "mood.down": [
+  "down",
+  "demoralised",
+  "demoralized",
+  "in a bad mood",
+  "discouraged",
+  "bad"
+ ],
+ "mood.down_low": [
+  "terrible",
+  "awful",
+  "like crap",
+  "like shit",
+  "a wreck"
+ ],
+ "mood.first_person": [
+  "i am",
+  "i'm",
+  "im",
+  "i feel",
+  "i'm feeling",
+  "today",
+  "this morning",
+  "tonight",
+  "this evening",
+  "lately",
+  "these days",
+  "what a day",
+  "i have (?:a fever|a headache|the flu)",
+  "what a"
+ ],
+ "mood.good_words": [
+  "good",
+  "well",
+  "fine",
+  "great",
+  "in shape",
+  "fit"
+ ],
+ "mood.happy": [
+  "happy",
+  "glad",
+  "cheerful",
+  "in a good mood",
+  "satisfied",
+  "good",
+  "well",
+  "fine"
+ ],
+ "mood.happy_high": [
+  "over the moon",
+  "fantastic",
+  "great",
+  "amazing",
+  "awesome"
+ ],
+ "mood.motivated": [
+  "motivated",
+  "inspired"
+ ],
+ "mood.needs_verb": [
+  "good",
+  "bad",
+  "great",
+  "terrible",
+  "normal",
+  "so so",
+  "fine",
+  "well",
+  "tense",
+  "fit"
+ ],
+ "mood.negation": [
+  "not",
+  "never",
+  "don't",
+  "no longer",
+  "not at all"
+ ],
+ "mood.nervous": [
+  "nervous",
+  "irritated",
+  "agitated",
+  "tense",
+  "under pressure",
+  "on edge"
+ ],
+ "mood.not_now": [
+  "yesterday",
+  "last week",
+  "i was",
+  "i would be",
+  "i will be",
+  "you will be"
+ ],
+ "mood.not_now_start": [
+  "why",
+  "how come",
+  "if",
+  "when",
+  "even if",
+  "in case",
+  "who",
+  "what"
+ ],
+ "mood.sad": [
+  "sad",
+  "depressed",
+  "downhearted",
+  "melancholic",
+  "low spirits"
+ ],
+ "mood.sick": [
+  "sick",
+  "ill",
+  "have the flu",
+  "have a cold",
+  "have a fever",
+  "have a headache"
+ ],
+ "mood.so_so": [
+  "so so",
+  "so-so",
+  "meh",
+  "ok-ish",
+  "normal"
+ ],
+ "mood.subject_verb": [
+  "i am",
+  "i'm",
+  "im",
+  "i feel",
+  "i'm feeling",
+  "i felt"
+ ],
+ "mood.third_person": [
+  "is",
+  "are",
+  "was",
+  "were",
+  "seems",
+  "you are",
+  "you're",
+  "we are"
+ ],
+ "mood.tired": [
+  "tired",
+  "sleepy",
+  "drained",
+  "low on energy"
+ ],
+ "mood.tired_heavy": [
+  "dead tired",
+  "exhausted",
+  "worn out",
+  "wiped out",
+  "shattered",
+  "knackered"
+ ],
+ "mood.undo": [
+  "don't (?:log|record|save|write) (?:it|that|my mood)",
+  "remove (?:it|that|my mood|the mood)",
+  "delete (?:my mood|the last mood|the mood)",
+  "that's not true"
+ ],
+ "oracle.advice": [
+  "advice",
+  "advise",
+  "suggest",
+  "recommend",
+  "what do you think",
+  "what about"
+ ],
+ "oracle.build_ask": [
+  "develop",
+  "implement",
+  "program",
+  "build",
+  "create (?:a|an) (?:command|module|function|tool|plugin)",
+  "add (?:to|in) hestia",
+  "forge"
+ ],
+ "oracle.claimed_action": [
+  "i(?:'ve| have)\\s+(?:already\\s+)?(?:logged|saved|noted|marked|set|created|added|removed|cancelled|canceled|deleted|moved|reduced|scheduled|stored|enabled|disabled)\\b",
+  "i(?:'ll| will)\\s+(?:log|note|reduce|move|cancel|delete|set|schedule|store)\\s+(?:the|it|your|all|every)\\b"
+ ],
+ "oracle.delete_ask": [
+  "delete",
+  "remove",
+  "cancel",
+  "forget",
+  "unsubscribe",
+  "unlink",
+  "stop"
+ ],
+ "oracle.documents_hint": [
+  "document",
+  "file",
+  "pdf",
+  "attachment",
+  "saved",
+  "archived",
+  "uploaded",
+  "have",
+  "know about",
+  "remember"
+ ],
+ "plutus.merchant_prefix": [
+  "payment\\s+(?:pos|card)\\s+"
+ ],
+ "plutus.money_hint": [
+  "payment",
+  "receipt",
+  "refund",
+  "money",
+  "order",
+  "subscription"
+ ],
+ "plutus.paypal.amount_label": [
+  "total",
+  "amount",
+  "payment of",
+  "you sent",
+  "you received",
+  "refund of",
+  "you paid"
+ ],
+ "plutus.paypal.merchant": [
+  "(?:payment)\\s+(?:to)\\s+(.+?)(?:\\s+(?:for|of)\\s+[-€$£\\d]|[.\\n|]|$)",
+  "(?:you sent)\\s+(?:a payment)?\\s*(?:of)?\\s*[^\\n]*?\\s+(?:to)\\s+(.+?)(?:[.\\n|]|$)",
+  "(?:refund)\\s+(?:from)\\s+(.+?)(?:[.\\n|]|$)",
+  "(.+?)\\s+(?:sent you|has sent you|refunded)",
+  "(?:merchant|seller)\\s*[:\\n]\\s*(.+?)(?:\\n|$)"
+ ],
+ "plutus.paypal.payment": [
+  "receipt for your payment",
+  "you sent a payment",
+  "you(?:'ve| have)? paid",
+  "you authorized a payment",
+  "payment to",
+  "your payment",
+  "subscription",
+  "order"
+ ],
+ "plutus.paypal.received": [
+  "you(?:'ve| have)? received (?:money|a payment|\\d)",
+  "sent you"
+ ],
+ "plutus.paypal.refund": [
+  "refund",
+  "you(?:'ve| have) (?:got|received) a refund"
+ ],
+ "plutus.paypal.transaction_id": [
+  "transaction id"
+ ],
+ "plutus.phone.in": [
+  "received",
+  "refund",
+  "salary",
+  "credited",
+  "deposit"
+ ],
+ "plutus.phone.merchant_after": [
+  "on",
+  "with",
+  "of",
+  "in",
+  "at",
+  "for"
+ ],
+ "plutus.phone.merchant_before": [
+  "at",
+  "to",
+  "from",
+  "on"
+ ],
+ "plutus.phone.out": [
+  "paid",
+  "payment",
+  "purchase",
+  "sent",
+  "spent",
+  "withdrawal",
+  "charged",
+  "transaction",
+  "authori[sz]ed"
+ ],
+ "plutus.rule.care": [
+  "sephora",
+  "douglas",
+  "hairdresser",
+  "barber",
+  "beautician",
+  "lookfantastic",
+  "notino"
+ ],
+ "plutus.rule.groceries": [
+  "tesco",
+  "sainsbury",
+  "asda",
+  "waitrose",
+  "whole foods",
+  "walmart",
+  "supermarket",
+  "grocery"
+ ],
+ "plutus.rule.health": [
+  "pharmacy",
+  "doctor",
+  "dentist",
+  "hospital",
+  "optician"
+ ],
+ "plutus.rule.home": [
+  "ikea",
+  "vodafone",
+  "rent",
+  "electricity",
+  "utilities"
+ ],
+ "plutus.rule.leisure": [
+  "cinema",
+  "theatre",
+  "theater",
+  "concert",
+  "steam",
+  "playstation",
+  "nintendo",
+  "xbox",
+  "bookshop",
+  "bookstore"
+ ],
+ "plutus.rule.restaurants": [
+  "restaurant",
+  "pizzeria",
+  "bar ",
+  "cafe",
+  "coffee",
+  "mcdonald",
+  "burger king",
+  "deliveroo",
+  "just eat",
+  "starbucks",
+  "sushi"
+ ],
+ "plutus.rule.shopping": [
+  "amazon",
+  "zalando",
+  "zara",
+  "h&m",
+  "decathlon",
+  "ebay",
+  "aliexpress",
+  "vinted",
+  "shein",
+  "uniqlo"
+ ],
+ "plutus.rule.subscriptions": [
+  "netflix",
+  "spotify",
+  "disney",
+  "prime video",
+  "amazon prime",
+  "youtube premium",
+  "icloud",
+  "google one",
+  "apple.com/bill",
+  "chatgpt",
+  "openai",
+  "anthropic",
+  "claude.ai",
+  "github"
+ ],
+ "plutus.rule.transport": [
+  "uber",
+  "lime",
+  "bird",
+  "bike",
+  "esso",
+  "shell",
+  "fuel",
+  "parking",
+  "train",
+  "taxi"
+ ],
+ "plutus.rule.travel": [
+  "booking.com",
+  "airbnb",
+  "ryanair",
+  "easyjet",
+  "expedia",
+  "hotel",
+  "flixbus"
+ ],
+ "plutus.statement.card": [
+  "card"
+ ],
+ "plutus.statement.header": [
+  "transaction list",
+  "statement",
+  "book balance",
+  "available balance",
+  "opening balance",
+  "closing balance",
+  "value date",
+  "transaction date",
+  "iban",
+  "transactions"
+ ],
+ "plutus.statement.income": [
+  "credit",
+  "transfer received",
+  "incoming transfer",
+  "top.?up",
+  "refund",
+  "salary",
+  "income",
+  "received",
+  "cashback",
+  "interest"
+ ],
+ "plutus.statement.payment_channel": [
+  "pos",
+  "card",
+  "online",
+  "contactless",
+  "by card"
+ ],
+ "plutus.statement.payment_prefix": [
+  "payment",
+  "purchase",
+  "debit",
+  "card payment"
+ ],
+ "plutus.statement.skip": [
+  "(?:opening|closing|available|book) balance",
+  "total",
+  "page \\d",
+  "statement",
+  "transaction list",
+  "(?:transaction|value) date",
+  "^\\s*date\\s"
+ ],
+ "plutus.statement.time_word": [
+  "at"
+ ],
+ "plutus.total": [
+  "total",
+  "all"
+ ],
+ "scout.label.air_conditioning": [
+  "air conditioning"
+ ],
+ "scout.label.balcony": [
+  "balcony"
+ ],
+ "scout.label.bathrooms": [
+  "bathrooms",
+  "bathroom"
+ ],
+ "scout.label.bedrooms": [
+  "bedrooms",
+  "bedroom"
+ ],
+ "scout.label.built_in": [
+  "built in"
+ ],
+ "scout.label.condo_fees": [
+  "service charge",
+  "condo fees"
+ ],
+ "scout.label.contract": [
+  "contract"
+ ],
+ "scout.label.elevator": [
+  "lift",
+  "elevator"
+ ],
+ "scout.label.energy_class": [
+  "energy class",
+  "energy rating"
+ ],
+ "scout.label.floor": [
+  "floor"
+ ],
+ "scout.label.furnished": [
+  "furnished"
+ ],
+ "scout.label.ground_floor": [
+  "ground floor",
+  "raised ground floor"
+ ],
+ "scout.label.heating": [
+  "heating"
+ ],
+ "scout.label.kitchen": [
+  "kitchen"
+ ],
+ "scout.label.listing_updated": [
+  "listing updated"
+ ],
+ "scout.label.no_elevator": [
+  "no lift",
+  "no elevator"
+ ],
+ "scout.label.of": [
+  "of"
+ ],
+ "scout.label.other": [
+  "Other"
+ ],
+ "scout.label.parking": [
+  "parking",
+  "garage",
+  "box"
+ ],
+ "scout.label.partly_furnished": [
+  "partly furnished",
+  "part furnished"
+ ],
+ "scout.label.price": [
+  "price"
+ ],
+ "scout.label.price_per_m2": [
+  "price per m"
+ ],
+ "scout.label.property_price": [
+  "property price"
+ ],
+ "scout.label.property_type": [
+  "property type"
+ ],
+ "scout.label.reference": [
+  "reference",
+  "ref\\."
+ ],
+ "scout.label.rooms": [
+  "rooms"
+ ],
+ "scout.label.state": [
+  "condition"
+ ],
+ "scout.label.surface": [
+  "surface",
+  "floor area"
+ ],
+ "scout.label.surface_type": [
+  "surface type"
+ ],
+ "scout.label.terrace": [
+  "terrace"
+ ],
+ "scout.label.year_built": [
+  "year built"
+ ],
+ "scout.near": [
+  "in",
+  "near",
+  "around"
+ ],
+ "scout.nearby": [
+  "nearby",
+  "around",
+  "close to"
+ ],
+ "scout.page.sold": [
+  "property sold",
+  "no longer available",
+  "listing removed",
+  "this property is no longer"
+ ],
+ "scout.status.available": [
+  "\\bimmediately\\s+available\\b",
+  "\\bavailable\\s+now\\b"
+ ],
+ "scout.status.negotiation": [
+  "\\bunder\\s+offer\\b",
+  "\\bunder\\s+negotiation\\b"
+ ],
+ "scout.status.occupied": [
+  "\\btenant\\s+occupied\\b",
+  "\\bsold\\s+with\\s+tenant\\b",
+  "\\blet\\b"
+ ],
+ "scout.status.sold": [
+  "\\bsold\\b",
+  "\\bsale\\s+agreed\\b"
+ ],
+ "scout.value.none": [
+  "none",
+  "absent"
+ ],
+ "wardrobe.attachment_hint": [
+  "wardrobe",
+  "closet",
+  "new item"
  ]
 }

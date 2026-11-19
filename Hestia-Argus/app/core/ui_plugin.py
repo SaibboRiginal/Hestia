@@ -1,7 +1,7 @@
-"""Argus WebUI plugin (core module, Sistema section) — SPEC docs/work/2026-10-18-core-modules-and-external-mcp §A2/A6.
+"""Argus WebUI plugin (core module, System section) — SPEC docs/work/2026-10-18-core-modules-and-external-mcp §A2/A6.
 
-Page *Salute* (health over time, incidents and what Argus did, log viewer, Ricontrolla), widget *Stato sistema*,
-quick action *Ricontrolla <servizio>* (one chip per service that is not up). Every path is under ``/api/argus/``.
+Page *Health* (health over time, incidents and what Argus did, log viewer, Recheck), widget *System status*,
+quick action *Recheck <service>* (one chip per service that is not up). Every path is under ``/api/argus/``.
 """
 from __future__ import annotations
 

@@ -1,6 +1,6 @@
 # Hestia-Apollo 🎨
 
-**Role:** Images through a remote ComfyUI («Immagini») — flows per purpose, a job queue, images in Archive blobs
+**Role:** Images through a remote ComfyUI («Images») — flows per purpose, a job queue, images in Archive blobs
 **Node:** main host; the generator runs where the GPU is (Marko's PC or a rented one)
 **Stack:** Python · FastAPI · Docker · `websockets` · `hestia_common.module_kit`
 **Port:** 19022 · Dossier: `docs/work/2026-10-24-whole-cindy-brainstorm/` (W5, brainstorm A1)
@@ -12,14 +12,14 @@
 - The only module that talks to image generators. Env: `APOLLO_COMFYUI_URL`, `APOLLO_COMFYUI_KEY` (optional bearer
   token of a proxy). Empty → requests fail at once with `not_configured` and a notice.
 - **Flows**: ComfyUI workflows in API format (ComfyUI → Save (API Format); the whole `/prompt` body is accepted too),
-  one default per purpose (`generic, portrait, background, mascot, icon, illustration`). Inputs (prompt, negative,
+  one default per purpose (`generico, ritratto, sfondo, mascotte, icona, illustrazione`). Inputs (prompt, negative,
   width, height, seed) are detected on the usual txt2img nodes or given as `inputs: {prompt: "6.inputs.text", …}`.
   A purpose without a flow uses the `generic` one.
 - **Jobs** (Archive `images-store`, kind `job`): one worker thread woken by new jobs (no timer); each job is queued on
   ComfyUI, followed on its websocket (`executing` with node null = done, `execution_error` = failed), the images are
   read from `/history` + `/view` and stored as Archive blobs. A job left `running` by a restart runs again.
 - Results by **push**: `callback {service, path}` gets `{job_id, status, blob_ids, purpose, ref, error}` through Hub
-  (the appearance module uses it); `notify` → a Hermes notice «Immagine pronta».
+  (the appearance module uses it); `notify` → a Hermes notice «Image ready».
 - Missing flow → job `failed` (`missing_flow`) and a Hermes notice saying where to upload one. Nothing is dropped.
 
 ## API (`/api/images`)
@@ -28,14 +28,14 @@
 `GET /jobs/{id}`. For the WebUI page:
 `GET /jobs/{id}/image/{n}` (`{mime, data_b64}`).
 
-## Tools (Telegram area «Immagini e aspetto»)
+## Tools (Telegram area «Images and look»)
 
-`image_create` (waits up to 60 s, then says it will notify), `image_status`, `image_list`, `image_workflows`.
+`image_create` (waits up to 60 s, then says it will notify), `image_status`, `image_list`, `image_flows`.
 Images reach Telegram as photos through `display.files`.
 
 ## WebUI plugin
 
-Pages **Images** (`apollo-images`: new image, grid of the jobs, refreshed every 4 s while one is queued or running), **Image** (`job/:id`) and **Workflows** (`apollo-flows`: upload the ComfyUI API JSON per purpose, default flow). Built from `ui/` in the image (`hestia_common.module_kit` `kit.webui`).
+Pages **Immagini** (`apollo-images`: new image, grid of the jobs, refreshed every 4 s while one is queued or running), **Immagine** (`job/:id`) and **Flussi** (`apollo-flows`: upload the ComfyUI API JSON per purpose, default flow). Built from `ui/` in the image (`hestia_common.module_kit` `kit.webui`).
 
 ## Tests
 
@@ -44,8 +44,8 @@ Pages **Images** (`apollo-images`: new image, grid of the jobs, refreshed every 
 
 **2026-11-14 (backend English, dossier `docs/work/2026-11-14-english-backend`)**: tool descriptions and the module manual are English (for the model). What people read about the tools comes from `hestia_common/locales/<lang>/tools.json`.
 
-**2026-11-15 (owner's language, dossier `docs/work/2026-11-14-english-backend`)**: the notices, errors and cards this module shows go through `hestia_common.i18n.t` and follow «Lingua».
+**2026-11-15 (owner's language, dossier `docs/work/2026-11-14-english-backend`)**: the notices, errors and cards this module shows go through `hestia_common.i18n.t` and follow «Language».
 
-**2026-11-15 (WebUI page in the owner's language, dossier `docs/work/2026-11-14-english-backend`)**: the texts of this module's WebUI page and widgets go through `tr` of `@hestia/webui-sdk` and follow «Lingua»; source texts in English, Italian in `Hestia-Shared/hestia_common/locales/it/messages.json`.
+**2026-11-15 (WebUI page in the owner's language, dossier `docs/work/2026-11-14-english-backend`)**: the texts of this module's WebUI page and widgets go through `tr` of `@hestia/webui-sdk` and follow «Language»; source texts in English, Italian in `Hestia-Shared/hestia_common/locales/it/messages.json`.
 
 **2026-11-16 (no Italian in the code, dossier `docs/work/2026-11-14-english-backend` v2.0)**: every text is English in the code; Italian lives only in `Hestia-Shared/hestia_common/locales/it/messages.json`. Labels declared at registration (manifest, capabilities, agenda rules, settings) are plain English, translated at the edge.

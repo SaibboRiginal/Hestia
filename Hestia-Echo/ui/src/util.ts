@@ -1,5 +1,5 @@
 import { locale, tr } from '@hestia/webui-sdk';
-/** Helpers shared by the Voce page: API prefix, labels, audio in the browser (play base64, record the mic). */
+/** Helpers shared by the Voice page: API prefix, labels, audio in the browser (play base64, record the mic). */
 export const API = '/api/voice';
 
 export const STATES: Record<string, { label: string; tone: string }> = {
@@ -13,7 +13,7 @@ export const STATES: Record<string, { label: string; tone: string }> = {
   wrong_direction: { label: tr('wrong direction'), tone: 'danger' },
 };
 
-export const DIRECTIONS = [{ value: 'ascolto', label: tr('Listening (voice → text)') }, { value: 'voce', label: tr('Voice (text → speech)') }];
+export const DIRECTIONS = [{ value: 'listen', label: tr('Listening (voice → text)') }, { value: 'voice', label: tr('Voice (text → speech)') }];
 
 export function slug(s: string): string {
   return s.trim().toLowerCase().replace(/[^a-z0-9_-]+/g, '-').replace(/^-+|-+$/g, '');

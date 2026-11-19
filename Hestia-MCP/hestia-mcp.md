@@ -83,16 +83,16 @@ access in the list like claude.ai's.
 
 **WebUI plugin** (core module, *Sistema*, bundle `ui/` → `/ui/dist/webui/mcp.js`, outside `/code` so the compose dev
 mount does not hide it):
-- page *Comandi & MCP* (`comandi` → `mcp-commands`, order 190; on a phone the title takes its own line and the search wraps below; ported from the built-in WebUI page, SPEC §A4): every
+- page *Comandi & MCP* (`commands` → `mcp-commands`, order 190; on a phone the title takes its own line and the search wraps below; ported from the built-in WebUI page, SPEC §A4): every
   tool the WebUI sees grouped by module, search, description, `METHOD path`, arguments from the JSON schema (enum →
   select, boolean → sì/no, array/object → JSON or `a, b, c`), *Esegui* (a tool that changes something asks first),
   raw result; tools with `response_mode=oracle_natural` then get Oracle's readable text (second call, own 30 s budget
   of the WebUI proxy); *Chiedi a Hestia* opens the assistant with the tool as context. Reads `/api/mcp/ui/tools…`
   (`core/ui_tools.py`): the same `MCPServer.tools_list` / `tools_call` as `/mcp` with client `webui` (same visibility,
   `X-Hestia-Client: webui` towards the module), call timeout 20 s. Deep link `?command=<tool>` opens that tool,
-  `&args=<json>` fills its form and `&run=1` runs it at once when no required argument is missing (WebUI «Adesso»,
-  «Scopri», notification buttons with `execute: command`; brainstorm W7).
-- sub-page *Accessi AI* (`accessi` → `mcp-accesses`, parent `comandi`): new token with the ready `claude mcp add` line
+  `&args=<json>` fills its form and `&run=1` runs it at once when no required argument is missing (WebUI «Now»,
+  «Discover», notification buttons with `execute: command`; brainstorm W7).
+- sub-page *Accessi AI* (`access` → `mcp-accesses`, parent `commands`): new token with the ready `claude mcp add` line
   and JSON config, revoke, renew, delete, tool choice; OAuth consent card when opened with `?oauth=<id>`; badge
   *OAuth* on grants; *Servizi esterni* list.
 
@@ -147,22 +147,22 @@ Env keeps only infrastructure: `HUB_API_URL`, `MCP_SERVICE_BASE_URL`, `MCP_SERVI
 `MCP_UI_DIST` (set by the Dockerfile), `LOG_LEVEL` (boot default only). No token in env: accesses are data.
 
 ## Origin of the call (dossier `docs/work/2026-10-24-whole-cindy-brainstorm`, Cindy 6)
-Every tool call carries the origin of the turn: external AIs are stamped `esterno:<access name>` (header
+Every tool call carries the origin of the turn: external AIs are stamped `external:<access name>` (header
 `X-Hestia-Origin` on the module request, next to `X-Hestia-Access`); internal callers forward `hestia.origin`
 (set by Oracle from the chat's `X-Hestia-Origin`). Modules may read it; Oracle uses it to gate writes.
 
-**2026-10-29 (texts for people, dossier `docs/work/2026-10-29-frontend-review-and-tests`)**: `/api/mcp/ui/tools` commands carry `summary` (for people), `area`, `area_label`, `area_order`; the «Comandi» page groups by area and shows the model text only under «Istruzioni per l'assistente»; `summary` is a tool meta key.
+**2026-10-29 (texts for people, dossier `docs/work/2026-10-29-frontend-review-and-tests`)**: `/api/mcp/ui/tools` commands carry `summary` (for people), `area`, `area_label`, `area_order`; the «Commands» page groups by area and shows the model text only under «Instructions for the assistant»; `summary` is a tool meta key.
 
 **2026-11-14 (backend English, dossier `docs/work/2026-11-14-english-backend`)**: tool descriptions are English
 (for the model); the `summary` of `/api/mcp/ui/tools` comes from the tool's own `summary` or the people catalog
-`hestia_common/locales/<lang>/tools.json` (by tool name), so «Comandi» and «Scopri» stay in the owner's language; tool titles go through `i18n.t` as well.
+`hestia_common/locales/<lang>/tools.json` (by tool name), so «Commands» and «Discover» stay in the owner's language; tool titles go through `i18n.t` as well.
 
-**2026-11-15 (owner's language, dossier `docs/work/2026-11-14-english-backend`)**: the notices, errors and cards this module shows go through `hestia_common.i18n.t` and follow «Lingua».
+**2026-11-15 (owner's language, dossier `docs/work/2026-11-14-english-backend`)**: the notices, errors and cards this module shows go through `hestia_common.i18n.t` and follow «Language».
 
-**2026-11-15 (WebUI page in the owner's language, dossier `docs/work/2026-11-14-english-backend`)**: the texts of this module's WebUI page and widgets go through `tr` of `@hestia/webui-sdk` and follow «Lingua»; source texts in English, Italian in `Hestia-Shared/hestia_common/locales/it/messages.json`.
+**2026-11-15 (WebUI page in the owner's language, dossier `docs/work/2026-11-14-english-backend`)**: the texts of this module's WebUI page and widgets go through `tr` of `@hestia/webui-sdk` and follow «Language»; source texts in English, Italian in `Hestia-Shared/hestia_common/locales/it/messages.json`.
 
 **2026-11-16 (no Italian in the code, dossier `docs/work/2026-11-14-english-backend` v2.0)**: every text is English in the code; Italian lives only in `Hestia-Shared/hestia_common/locales/it/messages.json`. Labels declared at registration (manifest, capabilities, agenda rules, settings) are plain English, translated at the edge.
-**2026-11-15 (WebUI page in the owner's language, dossier `docs/work/2026-11-14-english-backend`)**: the texts of this module's WebUI page and widgets go through `tr` of `@hestia/webui-sdk` and follow «Lingua»; English texts in `Hestia-Shared/hestia_common/locales/en/messages.json`.
+**2026-11-15 (WebUI page in the owner's language, dossier `docs/work/2026-11-14-english-backend`)**: the texts of this module's WebUI page and widgets go through `tr` of `@hestia/webui-sdk` and follow «Language»; English texts in `Hestia-Shared/hestia_common/locales/en/messages.json`.
 
 **2026-11-16** (dossier `docs/work/2026-11-16-name-everywhere`): the fixed texts of this module that speak of the assistant
 as a person (pages, help, agenda titles, notes) write `{assistant}` and say the name the owner chose; texts about the

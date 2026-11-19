@@ -11,8 +11,7 @@ import threading
 from pathlib import Path
 
 from fastapi import Body
-from hestia_common import i18n
-from hestia_common.i18n import t as tr  # fixed texts in the owner's language
+from hestia_common.i18n import t as tr, words  # owner language; owner words per language
 
 try:
     import hestia_common  # noqa: F401
@@ -36,7 +35,7 @@ API = "/api/deadlines"
 DOMAIN = "deadlines"
 MAIL_KEY = "mail"
 ADVICE_USE = "kairos.advice"
-DEFAULT_MAIL_WORDS = list(i18n.words("kairos.mail"))   # every language: locales/<lang>/words.json
+DEFAULT_MAIL_WORDS = words("kairos.mail_subject")          # subject words of every language (locales/*/words.json)
 
 kit = ModuleKit("kairos", port=19028, api=API, domain=DOMAIN, title="Deadlines", store="deadlines-store",
                 when_to_use="deadlines: bills, insurance, car tax, car inspection, service, documents, subscriptions",

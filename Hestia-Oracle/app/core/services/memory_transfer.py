@@ -26,7 +26,7 @@ class MemorySection(Section):
     """``route(method, endpoint, body=None, query=None)`` = MemoryService._route_archive (``/memory…`` paths)."""
 
     def __init__(self, route: Callable[..., object]):
-        super().__init__("memorie", tr("Memories"), icon="memory",
+        super().__init__("memories", tr("Memories"), icon="memory",
                          help=tr("What the assistant remembers about you (preferences, facts, skills). Not the chats."))
         self.route = route
 

@@ -90,7 +90,7 @@ class _TelegramHTMLSanitizer(HTMLParser):
 
 
 # "•item" is a bullet even without a space (prompts ask for • directly); "-"/"*"
-# need a space, otherwise "**Nota**" or "-5°C" were split off and reordered.
+# need a space, otherwise "**Note**" or "-5°C" were split off and reordered.
 _BULLET_RE = r"^(?:[-*]\s+|•\s*)"
 
 

@@ -14,11 +14,13 @@ using Hestia.WebUI.Services;
 public class I18nController : ControllerBase
 {
     private readonly HubClient _hub;
+    private readonly Texts _texts;
     private readonly ILogger<I18nController> _logger;
 
-    public I18nController(HubClient hub, ILogger<I18nController> logger)
+    public I18nController(HubClient hub, Texts texts, ILogger<I18nController> logger)
     {
         _hub = hub;
+        _texts = texts;
         _logger = logger;
     }
 
@@ -66,7 +68,10 @@ public class I18nController : ControllerBase
         // Short timeout: the page waits for this script before drawing anything.
         var (status, payload) = await _hub.RouteRawAsync("themis", "/api/settings/i18n", HttpMethod.Get, timeoutSeconds: 3);
         if (status < 400 && payload.ValueKind == JsonValueKind.Object && payload.TryGetProperty("messages", out _))
+        {
+            _texts.Use(payload);
             return payload;
+        }
         // Unreachable settings: the English source texts (empty map), never an error page.
         _logger.LogWarning("[🔄] event=webui_i18n_unavailable status={Status}", status);
         return new { language = "en", messages = new Dictionary<string, string>() };

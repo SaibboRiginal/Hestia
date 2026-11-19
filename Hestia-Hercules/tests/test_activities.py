@@ -128,8 +128,9 @@ def test_best_of_day_skips_busy_hours():
 
 
 def test_kind_aliases():
-    assert act.kind_of("correre") == "corsa" and act.kind_of("bike") == "bici" and act.kind_of("") == "corsa"
-    assert act.kind_of("yoga") == "altro"
+    assert act.kind_of("correre") == "run" and act.kind_of("bici") == "bike" and act.kind_of("") == "run"
+    assert act.kind_of("running") == "run" and act.kind_of("swimming") == "swim"
+    assert act.kind_of("yoga") == "other"
 
 
 # ── propose / confirm ───────────────────────────────────────────────────────
@@ -234,7 +235,7 @@ def test_missed_marks_the_event(env):
 
 def test_log_without_plan_goes_to_history_and_unlog_removes_it(env):
     h, hub, ag, a = env
-    out = a.log("camminata", minutes=40)
+    out = a.log("walk", minutes=40)
     assert out["logged"] and out["kind"] == "Camminata"
     (ev,) = hub.events.values()
     assert ev["event"]["title"] == "Camminata ✓" and ev["calendar_id"] == "cal-allenamenti"

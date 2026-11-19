@@ -51,7 +51,7 @@ CLIENT_MODULES = {"webui", "telegram"}
 
 def _describe(value: Any, d: dict | None = None) -> str:
     """Readable preview for a confirmation card: lists of titled objects become «A» (3), «B» (5); a choice
-    shows its label («Direct» translated, not «direct»)."""
+    shows its label («Direct», not «direct»)."""
     for option in (d or {}).get("options") or []:
         if isinstance(option, dict) and option.get("value") == value and option.get("label"):
             return str(option["label"])
@@ -359,7 +359,7 @@ class Themis:
             if actors and not any(who == a or who.startswith(f"{a}:") for a in actors):
                 continue
             reason = str(r.get("reason") or "")
-            kind = ("undo" if reason == "undo" else "reset" if r.get("new_value") is None
+            kind = ("undo" if reason == "cancel" else "reset" if r.get("new_value") is None
                     else "approved" if reason.startswith("proposal approved") else
                     "preset" if reason.startswith("preset ") else "change")
             out.append({**r, "label": d.get("label") or r.get("key"), "module": row_module, "type": d.get("type"),
@@ -378,7 +378,7 @@ class Themis:
         old = rows[0].get("old_value")
         if old is None:
             return self.reset(key, scope=scope, scope_id=scope_id, actor=actor)
-        return self.set(key, old, scope=scope, scope_id=scope_id, actor=actor, reason="undo")
+        return self.set(key, old, scope=scope, scope_id=scope_id, actor=actor, reason="cancel")
 
     def apply_preset(self, module: str, preset_id: str, *, actor: str = "user") -> dict:
         preset = next((p for p in self.registry.presets(module) if p.get("id") == preset_id), None)
@@ -470,9 +470,9 @@ class Themis:
     @staticmethod
     def _decision_actions(pid: str) -> list[dict]:
         return [
-            {"id": "approve", "label": tr("Approve"), "text": "✅ Approva", "style": "primary", "service": "themis",
+            {"id": "approve", "label": tr("Approve"), "text": "✅ " + tr("Approve"), "style": "primary", "service": "themis",
              "method": "POST", "path": f"/api/settings/proposals/{pid}/approve", "body": {"by": "<client>"}},
-            {"id": "reject", "label": tr("Reject"), "text": "❌ Rifiuta", "style": "danger", "service": "themis",
+            {"id": "reject", "label": tr("Reject"), "text": "❌ " + tr("Reject"), "style": "danger", "service": "themis",
              "method": "POST", "path": f"/api/settings/proposals/{pid}/reject", "body": {"by": "<client>"}},
         ]
 
@@ -517,7 +517,7 @@ class Themis:
             raise
         self._bump(f"proposal_{status}:{proposal['proposal_id']}")
         if notify:
-            outcome = {"approved": tr("alt::Approved"), "rejected": tr("alt::Rejected"), "expired": "Expired"}.get(status, status)
+            outcome = {"approved": tr("alt::Approved"), "rejected": tr("alt::Rejected"), "expired": tr("alt::Expired")}.get(status, status)
             self._emit("settings.proposal_closed", f"settings.proposal_closed:{proposal['proposal_id']}",
                        {"proposal_id": proposal["proposal_id"], "decision": status, "key": proposal.get("key"),
                         "closes": f"settings.proposal:{proposal['proposal_id']}",

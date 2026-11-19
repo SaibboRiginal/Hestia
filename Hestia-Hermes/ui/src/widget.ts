@@ -1,4 +1,4 @@
-/** <hermes-today-widget> — «Consegne oggi»: notifications of today, held, failed, waiting for an answer. */
+/** <hermes-today-widget> — «Deliveries today»: notifications of today, held, failed, waiting for an answer. */
 import { HestiaElement, html, css, nothing, tr } from '@hestia/webui-sdk';
 import { API, hermesStyles, todayStart } from './util';
 

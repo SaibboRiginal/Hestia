@@ -1,7 +1,7 @@
 /**
- * <chronos-week> — «La tua settimana»: the weekly plan the coaches asked for, placed in the free time around the
+ * <chronos-week> — «Your week»: the weekly plan the coaches asked for, placed in the free time around the
  * calendar. Seven columns (one day at a time on a phone), blocks with their area's icon, slots as chips, targets,
- * «Non entra», last week's review. Drag a block to another day (or «Sposta») = the user's move, never undone.
+ * «Doesn't fit», last week's review. Drag a block to another day (or «Move») = the user's move, never undone.
  * SPEC docs/work/2026-10-20-coach-of-every-kind §6. Endpoints: /api/agenda/coach/*.
  */
 import { HestiaElement, html, css, nothing, locale, tr } from '@hestia/webui-sdk';
