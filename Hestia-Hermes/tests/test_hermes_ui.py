@@ -46,7 +46,7 @@ class TestDeliveryView:
         from modules.ui_view import delivery_view
         v = delivery_view(_row("n9", n={"title": "<b>Nuova casa</b> a Udine"}))
         assert v["title"] == "Nuova casa a Udine"
-        assert v["area"]["key"] == "case" and v["area"]["icon"] == "home"
+        assert v["area"]["key"] == "houses" and v["area"]["icon"] == "home"
 
     def test_answer_and_pending(self):
         from modules.ui_view import delivery_view
