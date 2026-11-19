@@ -133,7 +133,7 @@ class Echo:
         seconds = audio.wav_duration(pcm)
         if seconds <= 0.1:
             raise Invalid(tr("empty audio"))
-        if seconds > float(self.get("echo.ascolto.max_seconds", 600) or 600):
+        if seconds > float(self.get("echo.listening.max_seconds", 600) or 600):
             raise Invalid(tr("audio too long"))
 
         def call(provider, step):
@@ -167,7 +167,7 @@ class Echo:
         if not raw:
             raise Invalid(tr("empty audio"))
         mime = str(body.get("mime_type") or "audio/ogg").split(";")[0].strip().lower()
-        uc = str(body.get("use_case") or "echo.prova.ascolto")
+        uc = str(body.get("use_case") or "echo.test.listening")
         result, info, _ = self._heard(raw, mime, uc, self.language(body.get("language")))
         blob_id = self._keep(body.get("keep"), "recording", raw, mime,
                              {"use_case": uc, "duration_s": result["duration_s"], "text": result["text"],
@@ -254,7 +254,7 @@ class Echo:
 
     def prepare_text(self, text: str) -> str:
         clean = audio.speakable(text)
-        short, cut = audio.shorten(clean, int(self.get("echo.voce.max_chars", 1200) or 1200))
+        short, cut = audio.shorten(clean, int(self.get("echo.voice.max_chars", 1200) or 1200))
         return short + (tr(" The rest is in the text.") if cut else "")
 
     def speak(self, body: dict) -> dict:
@@ -262,7 +262,7 @@ class Echo:
         if not text:
             raise Invalid(tr("empty text"))
         fmt = str(body.get("format") or "ogg_opus")
-        uc = str(body.get("use_case") or "echo.prova.voce")
+        uc = str(body.get("use_case") or "echo.test.voice")
         keep = body.get("keep") if isinstance(body.get("keep"), dict) else None
         ref = str((keep or {}).get("message_id") or (keep or {}).get("notification_id") or "")
         if ref:                                      # already made for this message: play it again
@@ -328,7 +328,7 @@ class Echo:
         return {"stream_id": sid}
 
     def listen_open(self, body: dict) -> dict:
-        return self._open("listen", use_case=str(body.get("use_case") or "echo.prova.ascolto"),
+        return self._open("listen", use_case=str(body.get("use_case") or "echo.test.listening"),
                           mime=str(body.get("mime_type") or "audio/webm").split(";")[0].strip().lower(),
                           language=self.language(body.get("language")), buf=bytearray(), partial="", seq=-1,
                           keep=body.get("keep"), vcache={})
@@ -367,7 +367,7 @@ class Echo:
                                 "keep": (body or {}).get("keep") or st.get("keep")})
 
     def say_open(self, body: dict) -> dict:
-        return self._open("say", use_case=str(body.get("use_case") or "echo.prova.voce"),
+        return self._open("say", use_case=str(body.get("use_case") or "echo.test.voice"),
                           fmt=str(body.get("format") or "mp3"), voice=str(body.get("voice") or ""),
                           language=self.speak_language("", body.get("language")), sure=bool(body.get("language")),
                           cutter=audio.SentenceCutter(), seq=0, pcm=[], text="", keep=body.get("keep"), failed=0)
@@ -399,7 +399,7 @@ class Echo:
         st = self._stream(sid, "say")
         delta = str(body.get("delta") or "")
         st["text"] += delta
-        if len(st["text"]) > int(self.get("echo.voce.max_chars", 1200) or 1200) * 4:
+        if len(st["text"]) > int(self.get("echo.voice.max_chars", 1200) or 1200) * 4:
             return {"blocks": []}                     # very long replies: the text is there, the voice stops
         return {"blocks": self._say_blocks(st, st["cutter"].feed(delta))}
 

@@ -104,7 +104,7 @@ def test_ideas_are_validated_stored_and_shown():
     u, hub = _usage(answer='Ecco: [{"tool":"diario_scrivi","reason":"Fine giornata"},'
                            '{"tool":"inventato","reason":"x"},{"tool":"spese_elimina","reason":"no"}]')
     assert u.refresh_ideas("telegram") == {"ideas": 1}
-    assert hub.prompts[0][1]["use_case"] == "metis.adesso"
+    assert hub.prompts[0][1]["use_case"] == "metis.now"
     items = u.adesso("telegram")["items"]
     assert [(i["tool"], i["source"], i["reason"]) for i in items] == [("diario_scrivi", "idea", "Fine giornata")]
 
@@ -173,10 +173,10 @@ def test_endpoints_and_tool_cards():
         assert c.get("/api/metis/usage/stats").json()["taps"] == 1
         assert "pruned" in c.post("/api/metis/adesso/refresh", json={}).json()
     rules = main._agenda_rules()
-    assert [r["key"] for r in rules if r["type"] == "job"] == ["metis.adesso.0700", "metis.adesso.1230",
-                                                                "metis.adesso.1800", "metis.dataset.review"]
+    assert [r["key"] for r in rules if r["type"] == "job"] == ["metis.now.0700", "metis.now.1230",
+                                                                "metis.now.1800", "metis.dataset.review"]
     assert [u["id"] for u in main._HUB_REGISTRATION_PAYLOAD["capabilities"]["llm_usecases"]] == [
-        "metis.adesso", "metis.dataset.review"]
+        "metis.now", "metis.dataset.review"]
 
 
 def test_recent_lists_last_taps_newest_first_within_hours():

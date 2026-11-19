@@ -93,7 +93,7 @@ within the cooldown window.
 - The module decides with its own setting `<module>.notifiche.voce` (`hestia_common.reminders.voice_setting`) and puts
   `_voice: true` in the event payload (`reminder_event(voice=…)`; batched domains keep the flag for the batch).
 - Hermes publishes the written notification as always, then in the background asks Echo (`VoiceClient.speak`, use
-  `hermes.notifica` declared in `voice_usecases`, `ogg_opus`, kept as class `notification`), stores
+  `hermes.notification` declared in `voice_usecases`, `ogg_opus`, kept as class `notification`), stores
   `payload.voice {blob_id, duration_s, mime_type}` and sends every client an `update {voice: {blob_id, duration_s,
   mime_type, audio_b64}}`: Telegram sends a voice message replying to the notification; the WebUI inbox shows
   «Ascolta» (`view.voice`, bytes via `GET /api/ui/inbox/{id}/voice`).
@@ -103,11 +103,11 @@ within the cooldown window.
 ## Da decidere, active client, secret form, Web Push (dossier `docs/work/2026-10-24-whole-brainstorm-cindy` W2)
 
 - **«Da decidere»** (Cindy 5): agenda job `hermes.notifications.remind_pending` (hourly) → `POST
-  /api/notifications/remind-pending`. Notifications still waiting for an answer after `hermes.attesa.richiamo_ore`
+  /api/notifications/remind-pending`. Notifications still waiting for an answer after `hermes.waiting.recall_hours`
   (default 4 h) get ONE grouped reminder «Da decidere: N» (repeat chain `hermes.pending_reminder`, so the previous
   reminder is replaced), each notification recalled once (`reminded_at`). The link opens the inbox filter `pending`.
 - **Rings only where the owner is** (Cindy 20): if the presence says the owner used a client (`last_interaction_client`)
-  within `hermes.consegna.client_attivo_minuti` (default 10, 0 = everywhere), the other clients get the notification
+  within `hermes.delivery.active_client_minutes` (default 10, 0 = everywhere), the other clients get the notification
   `silent` (inbox only). Urgent ones (`_urgent`) and `origin` notifications keep their own rule; an unknown client
   (one Hermes does not deliver to) rings everywhere.
 - **Secret form** (Cindy 4): an event with `_secret: {service, path, fields: [{name, label, type password|text|token}]}`
@@ -140,7 +140,7 @@ within the cooldown window.
 
 ## Notification style «Frase di Hestia» (dossier `docs/work/2026-11-06-hestia-alive` F5)
 
-Setting `hermes.notifiche.stile`: `scheda` (default, unchanged) or `frase`. With `frase`, before publishing,
+Setting `hermes.notifications.style`: `scheda` (default, unchanged) or `frase`. With `frase`, before publishing,
 `conversational_message()` asks Oracle (`/api/llm/generate` via `narrate`) to say an informative notification as
 one short sentence of Hestia, like in chat. Warnings, errors, `service.action_required` / `service.health`, and
 events with `_actions`, `_question` or `_secret` stay cards. Oracle down or empty answer → the card text as is.
@@ -274,7 +274,7 @@ Declared in `src/modules/hermes_settings.py` (`SettingsClient("hermes")`, router
 | `hermes.batch.max_attempts` | int 6 | Attempts for a failed batch before giving up |
 | `hermes.retract.after` | int 6 h (1–46) | Handled notifications are retracted from Telegram after this delay |
 | `hermes.repeat.reset_after_days` | int 30 days (1–365) | A repeat chain idle longer than this starts again from zero |
-| `hermes.notifiche.stile` | enum `scheda` (default) · `frase` | `frase` = informative notifications said as one sentence of Hestia (see below) |
+| `hermes.notifications.style` | enum `scheda` (default) · `frase` | `frase` = informative notifications said as one sentence of Hestia (see below) |
 | `hermes.log.level` | enum (boot = `LOG_LEVEL`) | Log verbosity |
 
 Env keeps only infrastructure: `HUB_API_URL`, `ARCHIVE_API_URL`, `HERMES_SERVICE_BASE_URL`,

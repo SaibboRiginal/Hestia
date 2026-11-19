@@ -51,7 +51,7 @@ class Presence:
 @pytest.fixture
 def lh():
     ha, pres = FakeHA(), Presence()
-    settings = {"lares.persona": "person.me"}
+    settings = {"lares.person": "person.me"}
     return Home(Store(FakeArchive(), "home-store", min_refresh_seconds=0), ha, lambda k, d=None: settings.get(k, d),
                 presence=pres), ha, pres
 

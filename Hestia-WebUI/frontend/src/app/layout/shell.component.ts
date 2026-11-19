@@ -32,9 +32,9 @@ interface NavSection { key: 'pinned' | 'app' | 'dashboards' | 'modules' | 'syste
 interface Crumb { label: string; link?: string; }
 /** Pages of the app that belong to «Sistema» next to the system modules' own pages. */
 const SYSTEM_PAGES = [
-  { id: 'app.sistema', label: tr('Overview'), icon: 'grid', link: '/sistema' },
-  { id: 'app.aggiornamenti', label: tr('Updates'), icon: 'refresh', link: '/aggiornamenti' },
-  { id: 'app.macchine', label: tr('Machines'), icon: 'host', link: '/macchine' },
+  { id: 'app.system', label: tr('Overview'), icon: 'grid', link: '/sistema' },
+  { id: 'app.updates', label: tr('Updates'), icon: 'refresh', link: '/aggiornamenti' },
+  { id: 'app.machines', label: tr('Machines'), icon: 'host', link: '/macchine' },
   { id: 'app.download', label: tr('alt::Download'), icon: 'download', link: '/download' },
 ];
 /** Sections whose pages show «Sezione › Pagina» above the page. */

@@ -2,7 +2,7 @@
 
 Bills, insurance, car tax, inspection, servicing, documents, subscriptions. A deadline has a due day, an optional
 amount, a recurrence (rolls on when marked paid/done), a lead time and an advice line (deterministic per category;
-the assistant may write a better one through Oracle use case ``kairos.consiglio``). Every open deadline is mirrored
+the assistant may write a better one through Oracle use case ``kairos.advice``). Every open deadline is mirrored
 in the calendar (agenda event ``kairos.<id>``). Mails arrive by push (Iris subscription ``kairos:mail``): a mail that
 clearly names a due date becomes a **proposal** the owner confirms in a Hermes card; nothing is added on its own.
 The daily agenda job sends one notice at the lead time and one on the day (``replaces``: never piling up).

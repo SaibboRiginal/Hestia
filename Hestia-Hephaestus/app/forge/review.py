@@ -1,12 +1,12 @@
 """Automatic review and team plan for Forge tasks (dossier docs/work/2026-10-24-whole-brainstorm-cindy W3).
 
 - **Reviewer** (Cindy 3): after Forge's own tests, a fresh model with no memory of the work and no tools (Oracle
-  ``/api/llm/generate``, use case ``forge.revisione``) gets only labelled evidence: the request, the acceptance
+  ``/api/llm/generate``, use case ``forge.review``) gets only labelled evidence: the request, the acceptance
   criteria of the dossier SPEC, the diff and the real test output. The engine's own story is marked «unverified
   self-declaration». It answers with prioritised issues; blocking ones (alta/media) go back to the engine for one
   automatic round of fixes. The owner still approves: the review only means less work for them.
-- **Team plan** (Cindy 31): a large task (≥ ``hephaestus.forge.squadra.min_servizi`` services) is split by the
-  model (use case ``forge.piano``) into up to 4 pieces run one after the other in the same worktree, each with the
+- **Team plan** (Cindy 31): a large task (≥ ``hephaestus.forge.team.min_services`` services) is split by the
+  model (use case ``forge.plan``) into up to 4 pieces run one after the other in the same worktree, each with the
   engine its difficulty asks for (semplice → the local chain, difficile → Claude), then the reviewer on the result.
 Never blocking: when the model is not reachable the step is skipped with a ``[🔄]`` log.
 """
@@ -23,8 +23,8 @@ from hestia_common.i18n import t as tr  # fixed texts in the owner's language
 
 logger = logging.getLogger("hestia_hephaestus.forge.review")
 
-REVIEW_USECASE = "forge.revisione"
-PLAN_USECASE = "forge.piano"
+REVIEW_USECASE = "forge.review"
+PLAN_USECASE = "forge.plan"
 BLOCKING = ("alta", "media")
 MAX_PIECES = 4
 _DIFF_CHARS = 40000

@@ -5,7 +5,7 @@
   ``before`` / ``after`` and, for a new fact, the owner's exact words it comes from (``quote``). «Annulla» restores
   ``before``, but only while the memory is still as the assistant left it: an edit of the owner wins (409).
 - **«Rivedi cosa sai di me»** (``memory_review``): exact duplicates are found without a model; then one model call
-  (use case ``athena.strategia``) looks for contradictions, near duplicates and stale facts. Nothing is changed:
+  (use case ``athena.strategy``) looks for contradictions, near duplicates and stale facts. Nothing is changed:
   each finding is a proposal (kind ``memory_proposal``) sent as a Hermes card «Applica» / «Lascia».
 """
 from __future__ import annotations
@@ -146,7 +146,7 @@ class Learning:
                   f"\"why\": \"one line, in {S.owner_language()}\"}}]}}\n\n"
                   + listing)
         status, payload = self._route("oracle", "POST", "api/llm/generate",
-                                      {"prompt": prompt, "use_case": "athena.strategia"}, timeout=180)
+                                      {"prompt": prompt, "use_case": "athena.strategy"}, timeout=180)
         text = str((payload or {}).get("response") or "") if isinstance(payload, dict) else str(payload or "")
         match = re.search(r"\{.*\}", text, re.S)
         try:

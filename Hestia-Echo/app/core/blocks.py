@@ -62,9 +62,9 @@ DEFAULT_CHAINS: dict[str, dict] = {
 
 # Echo's own uses (the plugin's test box); callers declare theirs.
 ECHO_USECASES = {
-    "echo.prova.ascolto": {"label": "Test · listening", "direction": "ascolto", "chain": "ascolto",
+    "echo.test.listening": {"label": "Test · listening", "direction": "ascolto", "chain": "ascolto",
                            "help": "The microphone of the Voice page."},
-    "echo.prova.voce": {"label": "Test · voice", "direction": "voce", "chain": "voce",
+    "echo.test.voice": {"label": "Test · voice", "direction": "voce", "chain": "voce",
                         "help": "The «speak» button of the Voice page."},
 }
 

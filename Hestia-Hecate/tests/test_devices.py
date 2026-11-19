@@ -146,8 +146,8 @@ def test_phone_webhook(api, monkeypatch):
     monkeypatch.setenv("HECATE_PHONE_TOKEN", "tok")
     assert client.post("/api/gateway/phone/push", json={}, headers={"X-Hestia-Phone-Token": "no"}).status_code == 401
     monkeypatch.setattr(devices_api.hecate_settings, "get",
-                        lambda k, d=None: {"hecate.telefono.wifi_casa": ["CasaNet"],
-                                           "hecate.telefono.app": ["Banca"]}.get(k, d))
+                        lambda k, d=None: {"hecate.phone.home_wifi": ["CasaNet"],
+                                           "hecate.phone.app": ["Banca"]}.get(k, d))
     h = {"X-Hestia-Phone-Token": "tok"}
     out = client.post("/api/gateway/phone/push", json={"type": "state", "wifi": "casanet", "charging": True},
                       headers=h).json()

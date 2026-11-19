@@ -12,7 +12,7 @@ to send.
     if settings.get("hercules.reminder.enabled"):
         hub.call("hermes", "POST", "api/events/ingest", body=reminder_event(
             module="hercules", domain="fitness", key="hercules.reminder", title="Allenamento",
-            text=text, actions=actions, page="training", voice=settings.get("hercules.notifiche.voce")))
+            text=text, actions=actions, page="training", voice=settings.get("hercules.notifications.voice")))
 """
 from __future__ import annotations
 

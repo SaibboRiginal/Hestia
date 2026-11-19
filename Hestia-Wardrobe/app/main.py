@@ -443,7 +443,7 @@ def quick_undo(id: str, date: str = ""):
 # ── notifications through Hermes (agenda jobs; both off by default) ──────────
 def _notify(key: str, title: str, text: str, actions: list[dict], *, replaces: bool, page: str = "") -> None:
     body = reminder_event(module="wardrobe", domain="wardrobe", key=key, title=title, text=text, actions=actions,
-                          page=page, voice=bool(settings.get("wardrobe.notifiche.voce", True)))
+                          page=page, voice=bool(settings.get("wardrobe.notifications.voice", True)))
     if not replaces:                                   # a one-off question (delete), not a reminder thread
         body["payload"].pop("replaces", None)
     hub.ok("hermes", "POST", "api/events/ingest", body=body, timeout=8)
@@ -865,7 +865,7 @@ except NameError:
 
 # ── Hub registration ─────────────────────────────────────────────────────────
 # LLM use cases: the chain (it must see images) is chosen in Oracle → Cervello → Modelli.
-LLM_USECASES = [llm_usecase("wardrobe.foto", "Wardrobe · item photos", chain="visione",
+LLM_USECASES = [llm_usecase("wardrobe.photo", "Wardrobe · item photos", chain="vision",
                             help="Describes the photo of a new item (name, category, colours, style).")]
 
 

@@ -714,7 +714,7 @@ services:
       - PYTHONUNBUFFERED=1
       - LARES_HA_URL=${LARES_HA_URL:-}                      # Home Assistant address (e.g. http://homeassistant.local:8123); empty = house not connected
       - LARES_HA_TOKEN=${LARES_HA_TOKEN:-}                  # Home Assistant long-lived access token (secret, only in .env)
-      # Which person entity is the owner: Themis setting lares.persona (WebUI → Sistema).
+      # Which person entity is the owner: Themis setting lares.person (WebUI → Sistema).
     volumes:
       - ./Hestia-Lares/app:/code/app
       - ./Hestia-Shared/hestia_common:/code/hestia_common

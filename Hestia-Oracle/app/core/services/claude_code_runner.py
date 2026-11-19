@@ -48,7 +48,7 @@ def _workdir_root() -> Path:
 
 
 def _model() -> str:
-    """Claude Code model for Forge: the ``claude`` (subscription) step of the «forge.codice» chain, "" = CLI
+    """Claude Code model for Forge: the ``claude`` (subscription) step of the «forge.code» chain, "" = CLI
     default."""
     from core.services import llm_chains
     return llm_chains.claude_code_model()

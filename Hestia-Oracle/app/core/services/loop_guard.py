@@ -3,13 +3,13 @@
 Local models often call the same tool again and again and burn every turn. Before the turn cap, a deterministic
 detector looks at the fingerprints (tool name + arguments) of the calls of this answer:
 
-- **ripetizione**: the same call N times in a row (``oracle.agent.giri.ripetizioni``, default 4);
-- **ping-pong**: A-B-A-B… inside the last ``oracle.agent.giri.finestra`` calls (at least 3 rounds);
+- **ripetizione**: the same call N times in a row (``oracle.agent.loops.repeats``, default 4);
+- **ping-pong**: A-B-A-B… inside the last ``oracle.agent.loops.window`` calls (at least 3 rounds);
 - **giro**: the same sequence of 3-4 calls repeated 3 times inside the window.
 
-Real waits do not count: a repeated call made at least ``oracle.agent.giri.attesa_secondi`` after the previous
+Real waits do not count: a repeated call made at least ``oracle.agent.loops.wait_seconds`` after the previous
 one («controllo di nuovo tra poco») resets the run. On a suspicion an optional light check (use case
-``oracle.controllo_giri``) decides «sta aspettando» or «gira a vuoto», at most ``oracle.agent.giri.verifiche``
+``oracle.loop_check``) decides «sta aspettando» or «gira a vuoto», at most ``oracle.agent.loops.checks``
 times per answer; no checker, a failure or the limit = stop. Always on: the tunables only shape it.
 """
 from __future__ import annotations
@@ -22,11 +22,11 @@ from typing import Callable
 
 logger = logging.getLogger("hestia_oracle.loop_guard")
 
-GUARD_REPEAT = "oracle.agent.giri.ripetizioni"
-GUARD_WINDOW = "oracle.agent.giri.finestra"
-GUARD_WAIT = "oracle.agent.giri.attesa_secondi"
-GUARD_CHECKS = "oracle.agent.giri.verifiche"
-CHECK_USECASE = "oracle.controllo_giri"
+GUARD_REPEAT = "oracle.agent.loops.repeats"
+GUARD_WINDOW = "oracle.agent.loops.window"
+GUARD_WAIT = "oracle.agent.loops.wait_seconds"
+GUARD_CHECKS = "oracle.agent.loops.checks"
+CHECK_USECASE = "oracle.loop_check"
 
 STOP_MESSAGE = ("[SYSTEM]: you are repeating the same calls with no progress. Call no more tools: "
                 "answer now with what you have, and say what you could not get.")

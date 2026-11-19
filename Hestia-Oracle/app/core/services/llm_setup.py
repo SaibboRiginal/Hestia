@@ -42,7 +42,7 @@ CATALOG: list[dict[str, Any]] = [
 ]
 EMBEDDING_MODEL = {"model": "qwen3-embedding:0.6b", "size_gb": 0.6, "good": "Memory needs it to find things again."}
 RECIPES = ("locale", "cloud", "entrambi", "claude")
-CHAT_CHAINS = ("veloce", "potente", "codice", "visione")
+CHAT_CHAINS = ("fast", "strong", "code", "vision")
 
 
 def recommend(vram_gb: float = 0, ram_gb: float = 0) -> dict[str, Any]:
@@ -410,7 +410,7 @@ def plan_chains(recipe: str, local_model: str, cloud: list[str], current: dict[s
                 order: list[dict] | None = None) -> dict[str, dict]:
     """New ``oracle.chains`` for a recipe. ``order``: the setup's «Scelti» list (``{provider, model}``, model empty =
     every model of that service) to put the chosen steps in the user's order, the local one included; a step it does
-    not name keeps its place after the named ones. ``modes``: per chat chain (``potente``, ``codice``, ``visione``) a model
+    not name keeps its place after the named ones. ``modes``: per chat chain (``strong``, ``code``, ``vision``) a model
     chosen for that mode only (``{provider, model}``): it answers first there, the general choice follows as fallback. Pure function (tests): local steps use ``local_provider``/``local_model``;
     each chosen cloud service uses the models picked for it in order (``cloud_models``, one or more: the next one takes
     over when the first fails), or its default models; the embedding
@@ -512,7 +512,7 @@ def _as_lists(cloud_models: dict | None) -> dict[str, list[str]]:
 def summary(chains: dict[str, dict]) -> str:
     """One sentence: who answers first, and who if not («Ti risponde X sul tuo computer; se non c'è, Y.»)."""
     from core.services import llm_providers
-    steps = (chains.get("veloce") or {}).get("steps") or []
+    steps = (chains.get("fast") or {}).get("steps") or []
     if not steps:
         return tr("No model chosen.")
 

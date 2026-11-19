@@ -18,11 +18,11 @@ is archived for audit and client display.
 1. Read active signals (`hestia_common.signals_client.SignalReader`) and weekly series (26 weeks).
 2. **Link** series of different areas: Pearson at lag 0 (same week) and lag 1 (the week after), closed weeks only,
    ≥ `athena.reflection.min_weeks` paired weeks and |r| ≥ `athena.reflection.min_correlation`. Numbers, not the model.
-3. **Topics**: `alta` signals, then links (strongest), then `attenzione` signals; at most `max_topics`; anything told
+3. **Topics**: `alta` signals, then links (strongest), then `warning` signals; at most `max_topics`; anything told
    within `repeat_days` is skipped (dedup on `topic_key`).
 4. **Details**: `GET route/<module>/api/module/context?topic=<key>&budget=<detail_budget>` per signal topic; the
    normal context line of both modules for a link.
-5. **Think**: one Oracle call, use case `athena.riflessione` (chain `potente`), caveman prompt, same `AZIONE/TIPO/…`
+5. **Think**: one Oracle call, use case `athena.reflection_run` (chain `strong`), caveman prompt, same `AZIONE/TIPO/…`
    format plus `TEMA: T<n>`; kinds `observation` | `setting`.
 6. **Gate** (same score and threshold). Accepted observations → Archive `signals-store` (`kind=observation`,
    `ref_id=athena`, `day`, `title`, `text`, `domains`, `topic_key`, `link`, `page`, `score`), outcome `observed`,
@@ -197,7 +197,7 @@ Third output, next to the system briefs and the life observations (those stay in
    her last message − 0.25 for each of her last messages left unanswered, all damped in the first days (× 0.5 on
    day 0, × 1 after 7 days of observation). Weighed again every 30 min (`event=talk_quiet drive= bar=`). Checked
    at every loop tick **before** the thinking gate, so she can write while he is awake.
-2. **Why**: mood of today (Psyche `/api/mood/today`), signals `alta`/`attenzione`, a long silence (≥ 20 h); plus
+2. **Why**: mood of today (Psyche `/api/mood/today`), signals `alta`/`warning`, a long silence (≥ 20 h); plus
    the **last days** (`past`): how he felt each of the last 3 days (Psyche `/api/mood/history`), what she wrote
    and whether he answered (he wrote after it = yes; 12 h without a word = no, kept on the stored row), and «do
    not insist» after unanswered messages. These lines are hidden text for Oracle, in English.
@@ -332,9 +332,9 @@ Only infrastructure and model routing stay in env (tunables are central settings
 | `LOG_LEVEL` | `INFO` | Boot log level only (live: `athena.log.level`) |
 | `ATHENA_UI_DIST` | `/ui/dist` | WebUI bundle folder (set in the Dockerfile, infrastructure) |
 
-Models are not Athena settings: Athena calls Oracle `/api/llm/generate` with `use_case` `athena.strategia`
-(strategist + memory consolidation), `athena.riflessione` (life reflection) or `athena.revisione` (answer audit), both declared in its Hub registration
-(`capabilities.llm_usecases`); their chain and mode are chosen in Oracle → Cervello → Modelli (suggested `potente`).
+Models are not Athena settings: Athena calls Oracle `/api/llm/generate` with `use_case` `athena.strategy`
+(strategist + memory consolidation), `athena.reflection_run` (life reflection) or `athena.review` (answer audit), both declared in its Hub registration
+(`capabilities.llm_usecases`); their chain and mode are chosen in Oracle → Cervello → Modelli (suggested `strong`).
 
 ## Resource-conscious design
 - Single Oracle LLM call per cycle (no multi-step chain-of-thought)
@@ -408,7 +408,7 @@ Tool titles are plain Italian without emoji; each tool says where it goes on Tel
 - **Learning log + undo** (Cindy 18, `app/core/learning.py`): every change to memory (add, retire, reinforce, decay,
   merge) is a row of Archive `/api/athena-store` (kind `learning`, `before`/`after`, `quote`). «Annulla» restores
   `before` only while the memory is still as the assistant left it (an owner edit wins → 409 `changed_since`).
-- **«Rivedi cosa sai di me»**: exact duplicates without a model, then one call (`athena.strategia`) for
+- **«Rivedi cosa sai di me»**: exact duplicates without a model, then one call (`athena.strategy`) for
   contradictions, near duplicates, stale facts → proposals (kind `memory_proposal`) as Hermes cards «Memoria ·
   Doppione/Contraddizione/Forse vecchia» with «Applica» / «Lascia». Nothing changes without the owner.
 - **Docs follow code** (Cindy 29, `app/core/docs_check.py`): monthly agenda job `athena.docs_check` (day 1, 04:30)

@@ -32,7 +32,7 @@ WEEK_START_KEY = "themis.personal.week_start"   # personal settings shared by ev
 CURRENCY_KEY = "themis.personal.currency"
 DIARY_AREA = "day"                  # B9 spoken evening diary: one free entry about the day
 DIARY_TOOL = "selfcare_journal_voice"
-DIARY_VOICE_USE = "hygieia.diario"
+DIARY_VOICE_USE = "hygieia.diary"
 
 
 class Conflict(RuntimeError):

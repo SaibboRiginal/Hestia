@@ -735,9 +735,9 @@ class Plutus:
                     "days_total": s["days_total"]}
             if spent >= budget:
                 sigs.append(signal(f"budget_pace:{cid}", tr("{0} exceeded: {1:.0f}/{2:.0f}{3}.", name, spent, budget, sym),
-                                   kind="goal", severity="alta", metrics=nums, period=s["month"], page="budget"))
+                                   kind="goal", severity="high", metrics=nums, period=s["month"], page="budget"))
             elif s["days_gone"] >= self.PACE_MIN_DAYS and pace > budget:
-                sigs.append(signal(f"budget_pace:{cid}", tr("{0} at a high pace: {1:.0f}/{2:.0f}{3}, end of month ~{4:.0f}{5}.", name, spent, budget, sym, pace, sym), kind="goal", severity="attenzione", metrics=nums,
+                sigs.append(signal(f"budget_pace:{cid}", tr("{0} at a high pace: {1:.0f}/{2:.0f}{3}, end of month ~{4:.0f}{5}.", name, spent, budget, sym, pace, sym), kind="goal", severity="warning", metrics=nums,
                                    period=s["month"], page="budget"))
         # unusual week vs median of the previous 8
         weeks = self.weekly_spending(12)
@@ -747,7 +747,7 @@ class Plutus:
         mid = median(prev) if prev else 0
         now = weeks[this_week]["total"]
         if mid > 0 and now > self.UNUSUAL_RATIO * mid:
-            sigs.append(signal("unusual_week", tr("High spending week: {0:.0f}{1} against {2:.0f}{3} usually.", now, sym, mid, sym), kind="anomaly", severity="attenzione",
+            sigs.append(signal("unusual_week", tr("High spending week: {0:.0f}{1} against {2:.0f}{3} usually.", now, sym, mid, sym), kind="anomaly", severity="warning",
                                metrics={"spent": round(now, 2), "median_8w": round(mid, 2)}, period=this_week,
                                page="statistics"))
         # recurring payments found in the last days

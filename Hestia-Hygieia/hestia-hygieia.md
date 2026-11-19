@@ -121,7 +121,7 @@ there and used only when wanted. Week start and currency are the personal settin
 - **Diario a voce** (B9): the evening recap piece carries the button «Racconta la giornata» (`recap.piece(...,
   actions=)`, a `command` action that opens the tool `selfcare_journal_voice`) until today has a «giornata» entry.
   Telegram asks for a voice note; `POST /api/selfcare/journal/voice {audio:{data_b64, mime}|audio_b64, date?}` →
-  Echo transcribes it (use `hygieia.diario`, declared in the Hub registration, recording kept) → journal entry
+  Echo transcribes it (use `hygieia.diary`, declared in the Hub registration, recording kept) → journal entry
   area `giornata`, note = transcript, tag `voce`, source `voce`, `audio_id`. Reflection reads it (signal `diario`).
 - **Sleep from the watch** (B10): Hecate pushes feed `wearable.daily` (`hestia_common.feeds`) to
   `POST /api/selfcare/wearable`; the night becomes one diary entry area `sonno` per date (id `device-sleep-<date>`,

@@ -86,13 +86,13 @@ def evaluate(h: "Hygieia", today: date | None = None) -> tuple[list[dict], list[
         mean = round(sum(before) / len(before))
         if mean - now >= DROP_POINTS:
             out.append(signal("adherence_drop", tr("Routines kept {0}% this week, before {1}%", now, mean),
-                              kind="trend", severity="attenzione", metrics={"percent": now, "previous": mean},
+                              kind="trend", severity="warning", metrics={"percent": now, "previous": mean},
                               period=weeks[-1], page="statistics"))
     for p in h.plan(today.isoformat())["routines"]:
         g = p["goal"]
         if g.get("mode") == "target" and g.get("behind") and p["state"] == "due":
             out.append(signal(f"goal:{p['routine_id']}", (tr("{0} behind: {1}, 1 day to the end", p['name'], g['hint']) if g['days_left'] == 1 else tr("{0} behind: {1}, {2} days to the end", p['name'], g['hint'], g['days_left'])),
-                              kind="goal", severity="attenzione",
+                              kind="goal", severity="warning",
                               metrics={"done": g["done"], "times": g["times"], "days_left": g["days_left"]},
                               page=f"routine/{p['routine_id']}"))
     for r in h.items("routine"):

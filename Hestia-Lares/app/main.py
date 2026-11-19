@@ -36,7 +36,7 @@ kit = ModuleKit("lares", port=19024, api=API, domain="home", title="Home", store
                 manual="The home (home_status): lights on, temperatures, open doors. home_command turns on/off/opens a device by name; home_scene runs a scene; home_devices lists by type; home_favorite saves a quick action.")
 app = kit.app
 kit.settings.declare([
-    setting("lares.persona", "You in Home Assistant", "enum", "", group="Home", order=0,
+    setting("lares.person", "You in Home Assistant", "enum", "", group="Home", order=0,
             options_source=f"{API}/persons/options",
             help="The Home Assistant person that is you: when you leave or come back, the assistant knows if you are home."),
 ])

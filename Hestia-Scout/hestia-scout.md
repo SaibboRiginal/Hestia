@@ -57,8 +57,8 @@ Scout is also an event producer for proactive workflows: when entities are creat
 ## LLM Extractor (via Oracle)
 
 Extraction calls Oracle `POST /api/llm/generate` through Hub (`evaluators/oracle_evaluator.py`) with
-`{"prompt", "use_case": "scout.annunci"}`: Oracle owns provider keys **and the model choice**. Scout declares the use
-case in its Hub registration (`capabilities.llm_usecases`, `hestia_common.oracle_usecases`, suggested chain `veloce`);
+`{"prompt", "use_case": "scout.listings"}`: Oracle owns provider keys **and the model choice**. Scout declares the use
+case in its Hub registration (`capabilities.llm_usecases`, `hestia_common.oracle_usecases`, suggested chain `fast`);
 Marko picks its chain in Oracle → Cervello → Modelli. A model out of quota (429) is skipped and the next step of the
 chain answers (the old `SCOUT_LLM_MODELS` hop). No Scout env var for the model.
 
@@ -233,7 +233,7 @@ Declared in `app/core/scout_settings.py` (owner `scout`), all `apply=live` (read
 | `scout.llm.timeout` | int (s) | `120` | Per-call timeout of the Oracle extraction call |
 | `scout.reconcile.every_cycles` | int | `1` | Reconcile stored entities every N cycles (0 = never) |
 | `scout.enrichment.enabled` | bool | `true` | Listing-page enrichment + retry of pending enrichments |
-| `scout.notifiche.voce` | bool | `false` | New-listing notifications also as voice (event `_voice`, Hermes adds the audio from Echo) |
+| `scout.notifications.voice` | bool | `false` | New-listing notifications also as voice (event `_voice`, Hermes adds the audio from Echo) |
 | `scout.log.level` | enum | boot `LOG_LEVEL` | Log verbosity (live) |
 
 ## Export and import (`/api/transfer/*`, dossier `docs/work/2026-10-20-import-export`)

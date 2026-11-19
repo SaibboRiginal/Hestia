@@ -107,7 +107,7 @@ Env holds only infrastructure; every tunable is a central setting (below).
 | `HUB_API_URL` | `http://hestia_hub:19001/api` | Hub base URL |
 | `ARGUS_SERVICE_BASE_URL` | `http://hestia_argus:19008` | This service's externally reachable URL |
 | `ARGUS_PORT` | `19008` | Listening port |
-| `ORACLE_ROUTE_PATH` | `api/llm/generate` | Hub-routed Oracle path for alert narration/analysis (plain generation; no classifier/tools; use case `argus.analisi`, declared in the Hub registration, chain chosen in Oracle → Modelli) |
+| `ORACLE_ROUTE_PATH` | `api/llm/generate` | Hub-routed Oracle path for alert narration/analysis (plain generation; no classifier/tools; use case `argus.analysis`, declared in the Hub registration, chain chosen in Oracle → Modelli) |
 | `HESTIA_DOCS_PATH` | `/hestia_root` | Repo mount used to load project docs as Oracle context |
 | `STARTUP_WAIT_TIMEOUT_SECONDS` | `0` | Wait for Hub readiness at startup (0 = indefinitely) |
 | `LOG_LEVEL` | `INFO` | Boot log level only (live: `argus.log.level`) |
@@ -216,7 +216,7 @@ Recurring errors become fix *proposals* for Hephaestus Forge (`app/core/forge_pr
   (a recovery path, usually WARNING) that keeps coming means the main path stopped working, mostly because something
   outside changed (a provider's answer, an API, a model). Same threshold/window/cooldown; the request asks to find why
   the main path broke. Nothing is declared in advance («si rompe? si aggiusta»).
-- The proposal carries a `title` for the owner (one short model call `argus.analisi` with `voice: true` from the
+- The proposal carries a `title` for the owner (one short model call `argus.analysis` with `voice: true` from the
   redacted log line, in his language, no module names; a plain sentence when the model does not answer) and an
   `origin` (kind, service, area, count, window, first/last seen, redacted line + sample) shown by the Development
   page as «Where it comes from». The proposal runs off the monitor loop (thread).

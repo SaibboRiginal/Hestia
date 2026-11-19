@@ -26,7 +26,7 @@ from hestia_common.i18n import t as tr  # fixed texts in the owner's language
 logger = logging.getLogger("hestia_athena.strategist")
 
 # Enabled / timeout / max candidates: central settings athena.strategist.* (read at use time).
-# Model choice belongs to Oracle: use case ``athena.strategia`` (declared in main.LLM_USECASES).
+# Model choice belongs to Oracle: use case ``athena.strategy`` (declared in main.LLM_USECASES).
 
 
 def _build_observation_prompt(snapshot: ObservationSnapshot) -> str:
@@ -252,7 +252,7 @@ class Strategist:
         timeout = get_float(S.STRATEGIST_TIMEOUT)
         body = {
             "prompt": prompt,
-            "use_case": "athena.strategia",   # chain chosen in Oracle → Modelli
+            "use_case": "athena.strategy",   # chain chosen in Oracle → Modelli
         }
         envelope = {
             "method": "POST",

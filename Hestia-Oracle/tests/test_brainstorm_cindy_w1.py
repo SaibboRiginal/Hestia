@@ -200,7 +200,7 @@ def test_llamacpp_slots_lru_save_restore(monkeypatch):
 
 
 def test_llamacpp_is_first_in_default_chain():
-    assert llm_chains.DEFAULT_CHAINS["veloce"]["steps"][0]["provider"] == "llamacpp"
+    assert llm_chains.DEFAULT_CHAINS["fast"]["steps"][0]["provider"] == "llamacpp"
 
 
 # ── Cindy 16: vision bridge ──────────────────────────────────────────────────

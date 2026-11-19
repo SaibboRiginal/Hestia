@@ -941,7 +941,7 @@
  },
  "settings_search": {
   "params": {
-   "query": "parole da cercare (es. modello codice)",
+   "query": "parole da cercare (es. modello code)",
    "module": "modulo opzionale (oracle, argus…)"
   },
   "summary": "Cerca impostazioni di Hestia per parole: cosa fanno, valore attuale."

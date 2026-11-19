@@ -48,7 +48,7 @@ def test_meals_diet_and_estimate(nf):
     food.add_meal("Yogurt", slot="spuntino", kcal=120, protein=10)
     assert food.day_summary()["unknown"] == 1
     est = food.estimate(a["id"])
-    assert est["kcal"] == 640 and est["estimated"] is True and ("oracle", "POST", "demeter.stima") in hub.calls
+    assert est["kcal"] == 640 and est["estimated"] is True and ("oracle", "POST", "demeter.estimate") in hub.calls
     assert food.update_meal(a["id"], {"kcal": 700})["estimated"] is False
     t = food.day_summary()
     assert t["kcal"] == 820 and t["kcal_target"] == 2200 and t["unknown"] == 0

@@ -483,9 +483,9 @@ def test_signals_budget_week_subscription_review(pl):
         pl.add_tx({"amount": -3, "merchant": f"Boh {i}", "date": today.isoformat(), "status": "to_review"})
     sigs, mets = pl.signals()
     by = {s["key"]: s for s in sigs}
-    assert by["budget_pace:ristoranti"]["severity"] == "alta" and by["budget_pace:ristoranti"]["page"] == "budget"
-    assert by["budget_pace:spesa"]["severity"] == "attenzione"
-    assert by["unusual_week"]["severity"] == "attenzione" and by["unusual_week"]["metrics"]["median_8w"] == 50
+    assert by["budget_pace:ristoranti"]["severity"] == "high" and by["budget_pace:ristoranti"]["page"] == "budget"
+    assert by["budget_pace:spesa"]["severity"] == "warning"
+    assert by["unusual_week"]["severity"] == "warning" and by["unusual_week"]["metrics"]["median_8w"] == 50
     assert any(k.startswith("new_subscription:rec_") for k in by)
     assert by["to_review"]["metrics"]["count"] == 5
     assert all("Plutus" not in s["text"] for s in sigs)
@@ -495,7 +495,7 @@ def test_signals_budget_week_subscription_review(pl):
     names = {m["name"] for m in mets}
     assert "finance.spent.ristoranti" in names and len(names) <= 5
     assert next(m for m in mets if m["name"] == "finance.spent.ristoranti")["label"] == "Ristoranti e bar"
-    assert all(m["name"] != "finance.spent.entrate" for m in mets)          # expenses only
+    assert all(m["name"] != "finance.spent.income" for m in mets)          # expenses only
 
 
 def test_signals_quiet_when_nothing_to_say(pl):
@@ -562,7 +562,7 @@ def test_coach_budget_targets_and_review_block(pl):
     pl.set_budget("spesa", 100)
     pl.add_tx({"amount": 40, "merchant": "Lidl"})
     needs = coach.needs(start, start + timedelta(days=7))["needs"]
-    t = next(n for n in needs if n["id"] == "finance.budget.spesa")
+    t = next(n for n in needs if n["id"] == "finance.budget.spend")
     assert t["kind"] == "target" and t["progress"] == 0.4 and 0 < t["value"] <= 60 and validate_need(t)
     SETTINGS["plutus.coach.review_threshold"] = 2
     for i in range(2):

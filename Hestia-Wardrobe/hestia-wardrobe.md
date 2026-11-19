@@ -25,7 +25,7 @@
   (≤ 1 accent colour), pattern clash, recently worn (`suggest.exclude_recent_days`), rotation of forgotten pieces,
   favourites and rating. Every result carries its reasons. The assistant adds taste on top.
 - Photos: orientation fixed, metadata (GPS) dropped by re-encoding, three sizes (original JPEG/WebP, medium 768,
-  thumb 256 WebP). «Riconosci con AI» sends the medium photo to Oracle `/api/llm/chat` (use case `wardrobe.foto`, declared in the Hub registration; its chain, which must see images, is chosen in Oracle → Cervello → Modelli)
+  thumb 256 WebP). «Riconosci con AI» sends the medium photo to Oracle `/api/llm/chat` (use case `wardrobe.photo`, declared in the Hub registration; its chain, which must see images, is chosen in Oracle → Cervello → Modelli)
   and only **proposes** fields; the user saves.
 - Does not call models directly, has no database: rows in Archive `wardrobe-store`, bytes in Archive `blobs`.
 

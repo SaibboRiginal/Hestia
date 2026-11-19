@@ -7,7 +7,7 @@ Up to four short background lines, read at turn time through Hub (each source ow
 - the last things he opened or started (Metis ``GET /api/metis/usage/recent``).
 Sources are read in parallel with a short timeout and cached ``CACHE_SECONDS``; a source that does not answer is
 left out (``[🔄]`` log): the turn never waits on it or fails because of it. How many items: setting
-``oracle.chat.consapevolezza_righe`` (0 = no lines).
+``oracle.chat.awareness_lines`` (0 = no lines).
 """
 from __future__ import annotations
 

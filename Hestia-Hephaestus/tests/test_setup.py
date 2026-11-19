@@ -250,12 +250,12 @@ def test_apply_brain_mode_lists_and_order_pass_through_and_are_kept(tmp_path):
     service = SetupService(_repo(tmp_path), tmp_path / "data", hub_call=hub_call)
     steps = [{"provider": "gemini", "model": "gemini-2.5-pro"}, {"provider": "ollama", "model": "qwen2.5-coder:14b"}]
     order = [{"provider": "gemini", "model": "gemini-2.5-flash"}, {"provider": "ollama", "model": "qwen3:8b"}]
-    service.apply_brain("entrambi", "qwen3:8b", ["gemini"], {}, modes={"codice": {"steps": steps}}, order=order)
+    service.apply_brain("entrambi", "qwen3:8b", ["gemini"], {}, modes={"code": {"steps": steps}}, order=order)
     apply = next(b for p, b in calls if p == "/api/llm/setup/apply")
-    assert apply["modes"]["codice"]["steps"] == steps and apply["order"] == order
+    assert apply["modes"]["code"]["steps"] == steps and apply["order"] == order
     assert {"model": "qwen2.5-coder:14b"} in [b for p, b in calls if p == "/api/llm/setup/pull"]
     brain = service._load()["brain"]
-    assert brain["modes"]["codice"]["steps"] == steps and brain["order"] == order
+    assert brain["modes"]["code"]["steps"] == steps and brain["order"] == order
 
 
 def test_brain_hello_is_written_by_the_chosen_models(tmp_path):

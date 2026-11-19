@@ -317,16 +317,16 @@ class Psyche:
         last7 = [d["mood"] for d in recent if d["date"] > (self.today() - timedelta(days=7)).isoformat()]
         prev21 = [d["mood"] for d in recent if d["date"] <= (self.today() - timedelta(days=7)).isoformat()]
         if len(last7) >= 3 and len(prev21) >= 5 and mean(prev21) - mean(last7) >= 1:
-            sigs.append(signal("mood_drop", tr("Mood going down: average {0:.1f} in the last 7 days against {1:.1f} before.", mean(last7), mean(prev21)), kind="trend", severity="attenzione",
+            sigs.append(signal("mood_drop", tr("Mood going down: average {0:.1f} in the last 7 days against {1:.1f} before.", mean(last7), mean(prev21)), kind="trend", severity="warning",
                                metrics={"last7": round(mean(last7), 2), "before": round(mean(prev21), 2)},
                                page="mood"))
         low = self.streak(lambda d: d["mood"] <= 2, recent)
         if low >= 3:
             sigs.append(signal("low_streak", tr("{0} days in a row with low mood.", low), kind="streak",
-                               severity="attenzione", metrics={"days": low}, page="mood", ttl_days=2))
+                               severity="warning", metrics={"days": low}, page="mood", ttl_days=2))
         tired = self.streak(lambda d: bool(d.get("energy")) and d["energy"] <= 2, recent)
         if tired >= 3:
-            sigs.append(signal("energy_low", tr("{0} days in a row with little energy: a lighter week might help.", tired), kind="streak", severity="attenzione",
+            sigs.append(signal("energy_low", tr("{0} days in a row with little energy: a lighter week might help.", tired), kind="streak", severity="warning",
                                metrics={"days": tired}, page="mood", ttl_days=2))
         good = self.streak(lambda d: d["mood"] >= 4, recent)
         if good >= 5:

@@ -244,8 +244,8 @@ they are not env vars. All apply **live** (read at use time).
 | `hecate.mail.watch_interval` | int (s) | `900` | Default recurrence of agenda job `hecate.mail_watch` (min 60) |
 | `hecate.mail.safety_interval` | int (s, advanced) | `21600` | Recurrence of `hecate.mail_watch` when Gmail Pub/Sub push is configured (safety net) |
 | `hecate.weather.cache_minutes` | int (min, advanced) | `30` | Forecast cache per place; a stale copy answers when Open-Meteo is down |
-| `hecate.telefono.wifi_casa` | list | `[]` | Home Wi-Fi names: the phone on one of them = «a casa» (empty = the phone sends `home`) |
-| `hecate.telefono.app` | list | `[]` | Apps whose phone notifications are passed on (feed `phone.notification`); empty = every app the phone sends |
+| `hecate.phone.home_wifi` | list | `[]` | Home Wi-Fi names: the phone on one of them = «a casa» (empty = the phone sends `home`) |
+| `hecate.phone.app` | list | `[]` | Apps whose phone notifications are passed on (feed `phone.notification`); empty = every app the phone sends |
 | `hecate.log.level` | enum | boot `LOG_LEVEL` | Log verbosity |
 
 Hecate also follows the personal setting `themis.personal.places` (Casa, Lavoro, Palestra…: name, address, kind,
@@ -348,7 +348,7 @@ reads the Hub registry (an empty cache is never taken as fresh, regression test 
   "charging":true,"battery":80}` → presence signals `phone.home`, `phone.charging` (overlay state «Fuori casa», no
   effect; it is on when `phone.home` **or** the house signal `home.present` from Lares is explicitly false — a source
   that never sent anything does not count, fixed in W5) + feed `phone.state`. On a notification of a chosen app: `{"type":"notification","app":"%an","title":"%ntitle",
-  "text":"%ntext"}` → feed `phone.notification` when the app is in `hecate.telefono.app`.
+  "text":"%ntext"}` → feed `phone.notification` when the app is in `hecate.phone.app`.
 - Tools (Telegram + WebUI, section «Dispositivi»): `garmin_status`, `garmin_link`, `garmin_sync`,
   `garmin_day`, `garmin_unlink`, `phone_status`. Tests: `tests/test_devices.py`.
 - WebUI plugin **Dispositivi** (W7; `kind="core"`, `api_prefix` `/api/gateway/`, page `dispositivi` →

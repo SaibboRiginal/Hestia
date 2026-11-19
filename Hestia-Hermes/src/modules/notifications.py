@@ -22,9 +22,9 @@ SPEC: docs/work/2026-10-10-hermes-global-notifications/SPEC.md
   method?, body?}`` asks like the chat card (confirm, single/multiple choice, free text, «Altro…»). Clients see only
   the question; ``POST /api/notifications/{id}/reply {client, answer}`` claims it (first answer wins) and forwards
   ``{...body, answer, answers, client, notification_id}`` to the module through the Hub.
-- «Da decidere» (Cindy 5): notifications still waiting for an answer after ``hermes.attesa.richiamo_ore`` get ONE
+- «Da decidere» (Cindy 5): notifications still waiting for an answer after ``hermes.waiting.recall_hours`` get ONE
   grouped reminder (agenda job ``hermes.notifications.remind_pending``), once per notification.
-- Active client (Cindy 20): if the owner used a client in the last ``hermes.consegna.client_attivo_minuti``,
+- Active client (Cindy 20): if the owner used a client in the last ``hermes.delivery.active_client_minutes``,
   only that client rings; the others get the notification ``silent``.
 - Web Push (C15): the WebUI's browsers subscribed through ``/api/push/*`` get a push too (``webpush.py``).
 - Hermes keeps no domain logic: it delivers, claims answers, forwards them and
@@ -57,7 +57,7 @@ from hestia_common.i18n import month_name, t as tr  # fixed texts in the owner's
 logger = logging.getLogger("hestia_hermes.notifications")
 
 CHANNEL = "notification"
-VOICE_USECASE = "hermes.notifica"
+VOICE_USECASE = "hermes.notification"
 VOICE_USECASES = [voice_usecase(VOICE_USECASE, "Voice notifications", direction="voce",
                                 help="Notifications a module also wants spoken (module setting).")]
 UNREAD_STATES = ["created", "queued", "delivered", "failed"]
@@ -492,7 +492,7 @@ class NotificationCenter:
                     voice.get("duration_s"))
 
     def active_client(self) -> str:
-        """The client the owner used in the last ``hermes.consegna.client_attivo_minuti`` (Cindy 20), or ''."""
+        """The client the owner used in the last ``hermes.delivery.active_client_minutes`` (Cindy 20), or ''."""
         try:
             minutes = int(settings.get(ACTIVE_CLIENT_MINUTES) or 0)
         except (TypeError, ValueError):
@@ -734,7 +734,7 @@ class NotificationCenter:
         return 502, {"status": "error", "detail": _outcome_text(payload, tr("error {0}", code))}
 
     def remind_pending(self, now: datetime | None = None) -> dict[str, int]:
-        """Cindy 5: one grouped reminder for what still waits for an answer after ``hermes.attesa.richiamo_ore``;
+        """Cindy 5: one grouped reminder for what still waits for an answer after ``hermes.waiting.recall_hours``;
         each notification is recalled once (``reminded_at``). The reminder replaces the previous one."""
         now = now or datetime.now(timezone.utc)
         after = timedelta(hours=float(settings.get(PENDING_REMIND_HOURS) or 4))

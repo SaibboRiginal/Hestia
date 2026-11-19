@@ -1,7 +1,7 @@
 """Hestia-Demeter — nutrition («Alimentazione», port 19026, dossier docs/work/2026-10-24-whole-brainstorm-cindy W5 A5).
 
 Data in Archive (``/api/food-store``): diet, meals, supplements and intakes. A coach of the weekly plan (Hub tag
-``coach``, ``/api/coach/*``), kcal estimates from Oracle (use case ``demeter.stima``, async, never blocking the log),
+``coach``, ``/api/coach/*``), kcal estimates from Oracle (use case ``demeter.estimate``, async, never blocking the log),
 a piece of the daily recap, tools for the assistant and Telegram over MCP.
 """
 from __future__ import annotations
@@ -235,7 +235,7 @@ transfer = Transfer("demeter", kit.hub, sections=[
 ])
 app.include_router(transfer.router())
 kit.caps.update({**recap.capabilities(), **llm_capabilities([
-    usecase(ESTIMATE_USE, "Nutrition · kcal estimate", chain="veloce",
+    usecase(ESTIMATE_USE, "Nutrition · kcal estimate", chain="fast",
             help="Estimates kcal and protein of a meal described in words.")])})
 kit.capabilities(transfer.capabilities)
 kit.webui(icon="leaf", color="green", description="Diet, meals with estimated calories, supplements in the week plan.",

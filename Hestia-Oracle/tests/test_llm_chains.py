@@ -125,8 +125,8 @@ class TestQuota:
 
 @pytest.mark.unit
 class TestChainAgent:
-    def _chain(self, monkeypatch, steps, uc="oracle.generale", chain="veloce"):
-        _set(monkeypatch, oracle_settings.CHAINS_KEY, {chain: {"steps": steps}, "veloce": {"steps": steps}})
+    def _chain(self, monkeypatch, steps, uc="oracle.general", chain="fast"):
+        _set(monkeypatch, oracle_settings.CHAINS_KEY, {chain: {"steps": steps}, "fast": {"steps": steps}})
         _set(monkeypatch, oracle_settings.USECASES_KEY, {uc: {"chain": chain}})
         return llm_chains.ChainAgent(uc)
 
@@ -168,29 +168,29 @@ class TestChainAgent:
         assert fake_agents.asked == ["e1", "e2"]
 
     def test_unknown_chain_falls_back_to_general(self, monkeypatch, fake_agents):
-        _set(monkeypatch, oracle_settings.USECASES_KEY, {"scout.annunci": {"chain": "nope"}})
-        assert llm_chains.usecase_config("scout.annunci")["chain"] == "veloce"
+        _set(monkeypatch, oracle_settings.USECASES_KEY, {"scout.listings": {"chain": "nope"}})
+        assert llm_chains.usecase_config("scout.listings")["chain"] == "fast"
 
 
 @pytest.mark.unit
 class TestUseCases:
     def test_module_declaration_from_registry(self, monkeypatch):
-        rows = [{"id": "hercules.pianifica", "module": "hercules", "label": "Pianifica", "chain": "potente",
+        rows = [{"id": "hercules.plan", "module": "hercules", "label": "Pianifica", "chain": "strong",
                  "thinking": "auto", "mode": "segui", "help": ""}]
         monkeypatch.setattr(llm_chains, "_registry_usecases", lambda: rows)
-        assert llm_chains.usecase_config("hercules.pianifica")["chain"] == "potente"
-        _set(monkeypatch, oracle_settings.USECASES_KEY, {"hercules.pianifica": {"chain": "veloce", "mode": "esterna"}})
-        cfg = llm_chains.usecase_config("hercules.pianifica")
-        assert (cfg["chain"], cfg["mode"], cfg["declared"]) == ("veloce", "esterna", True)
+        assert llm_chains.usecase_config("hercules.plan")["chain"] == "strong"
+        _set(monkeypatch, oracle_settings.USECASES_KEY, {"hercules.plan": {"chain": "fast", "mode": "esterna"}})
+        cfg = llm_chains.usecase_config("hercules.plan")
+        assert (cfg["chain"], cfg["mode"], cfg["declared"]) == ("fast", "esterna", True)
 
     def test_registry_parsing(self, monkeypatch):
         services = [{"service_name": "scout", "capabilities": {"llm_usecases": [
-            {"id": "Scout.Annunci", "label": "Scout · annunci", "chain": "veloce"}]}}, {"name": "x"}]
+            {"id": "Scout.Annunci", "label": "Scout · annunci", "chain": "fast"}]}}, {"name": "x"}]
         monkeypatch.setattr(llm_chains, "_registry_services", lambda: services)
         assert llm_chains._registry_usecases() == [
-            {"id": "scout.annunci", "module": "scout", "label": "Scout · annunci", "chain": "veloce",
+            {"id": "scout.listings", "module": "scout", "label": "Scout · annunci", "chain": "fast",
              "thinking": "auto", "mode": "segui", "help": ""}]
-        assert llm_chains.declared_usecases()["scout.annunci"]["module"] == "scout"
+        assert llm_chains.declared_usecases()["scout.listings"]["module"] == "scout"
 
 
 @pytest.mark.unit
@@ -206,9 +206,9 @@ class TestMigration:
         assert chains["generale-personale"]["steps"] == [
             {"provider": "claude-api", "model": "claude-sonnet-5-5"},
             {"provider": "gemini", "model": "gemini-2.0-flash-lite"}]
-        assert usecases["oracle.generale"] == {"chain": "generale-personale"}
+        assert usecases["oracle.general"] == {"chain": "generale-personale"}
         assert chains["annunci-personale"]["steps"][0] == {"provider": "gemini", "model": "gemini-2.5-pro"}
-        assert usecases["oracle.ragionamento"] == {"thinking": "false"}
+        assert usecases["oracle.reasoning"] == {"thinking": "false"}
 
     def test_run_once_only(self):
         puts = []
@@ -222,7 +222,7 @@ class TestMigration:
 
 @pytest.mark.unit
 class TestUsageRows:
-    def _chain(self, monkeypatch, steps, uc="scout.annunci"):
+    def _chain(self, monkeypatch, steps, uc="scout.listings"):
         _set(monkeypatch, oracle_settings.CHAINS_KEY, {"c": {"steps": steps}})
         _set(monkeypatch, oracle_settings.USECASES_KEY, {uc: {"chain": "c"}})
         return llm_chains.ChainAgent(uc)
@@ -241,7 +241,7 @@ class TestUsageRows:
         quota, ok = llm_usage.captured
         assert (quota["outcome"], quota["step"], quota["provider"]) == ("quota", 0, "gemini")
         assert (ok["outcome"], ok["step"], ok["module"], ok["use_case"], ok["chain"]) == ("ok", 1, "scout",
-                                                                                          "scout.annunci", "c")
+                                                                                          "scout.listings", "c")
         assert (ok["input_tokens"], ok["cached_tokens"], ok["output_tokens"]) == (100, 60, 7)
         assert ok["cost_kind"] == "locale" and ok["cost_usd"] == 0
 
@@ -257,7 +257,7 @@ class TestUsageRows:
         from core.services import llm_stats, llm_usage
         llm_stats.record("code", "claude_cli", "sonnet", prompt_tokens=10, cost_usd=0.02)
         (row,) = llm_usage.captured
-        assert row["use_case"] == "oracle.codice" and row["module"] == "oracle"
+        assert row["use_case"] == "oracle.code" and row["module"] == "oracle"
 
     def test_price_from_table_and_subscription(self, monkeypatch):
         from core.services import llm_usage

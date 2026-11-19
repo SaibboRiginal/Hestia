@@ -27,7 +27,7 @@ def test_build_keeps_what_the_model_saw_and_did():
     log = [{"tool": "memory_save", "params": {"fact": "x"}, "ok": True, "writes": True, "turn": 0,
             "result_preview": "short", "result_text": "full result"}]
     t = turn_trace.build(trace_id="abc", session_id="s1", client="telegram", route="agent", mode="auto",
-                         use_case="oracle.generale", model="m", provider="ollama", origin={"kind": "", "level": "utente"},
+                         use_case="oracle.general", model="m", provider="ollama", origin={"kind": "", "level": "utente"},
                          user_message="ciao", answer="fatto", history_text="H", system="SYS",
                          tools=[{"name": "memory_save", "description": "d", "parameters": {}}, {"bad": 1}],
                          tool_log=log, domains=["memory"], total_ms=12)

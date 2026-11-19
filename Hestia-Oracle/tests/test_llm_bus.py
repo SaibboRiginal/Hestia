@@ -181,7 +181,7 @@ def test_chain_agent_takes_a_slot_for_local_steps_but_not_for_embeddings(monkeyp
     from core.services import llm_usage
     monkeypatch.setattr(llm_bus, "slot", _Slot)
     monkeypatch.setattr(llm_usage, "finish", lambda *a, **k: {})
-    agent = llm_chains.ChainAgent("oracle.generale")
+    agent = llm_chains.ChainAgent("oracle.general")
     monkeypatch.setattr(agent, "steps", lambda: [(0, {"provider": "loc", "model": "m"}, _Agent())])
     monkeypatch.setattr(agent, "_answered", lambda *a: None)
     monkeypatch.setattr(agent, "_usage", lambda *a: _Slot("usage"))

@@ -12,7 +12,7 @@
 - Archive `food-store`: `diet` (one row `current`: kcal and protein per day, rules in plain words, notes), `meal`
   (date, slot colazione/pranzo/cena/spuntino, text, kcal, protein, `estimated`), `supplement` (dose, part of the
   day, weekdays, only on training days, with food, active/paused), `intake` (one per supplement per day).
-- A meal logged without numbers is estimated in the background by the assistant (Oracle use case `demeter.stima`,
+- A meal logged without numbers is estimated in the background by the assistant (Oracle use case `demeter.estimate`,
   answer JSON `{kcal, protein}`, marked `estimated`); the owner's numbers always win (`PUT` clears `estimated`).
   Oracle offline → the meal stays without numbers and the day says how many are missing.
 - **Coach** (Hub tag `coach`, `/api/coach/*`): every active supplement is a `slot` need per day in its part of the day;

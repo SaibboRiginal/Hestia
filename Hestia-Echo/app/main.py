@@ -85,9 +85,9 @@ settings.declare([
     setting(FALLBACK_KEY, "If the external engine does not answer", "enum", "interna", group="Voice", order=6,
             options=FALLBACKS, depends_on={"key": MODE_KEY, "equals": "esterna"}),
     setting("echo.language", "Language", "enum", "auto", group="Voice", order=7, options=LANGUAGES),
-    setting("echo.voce.max_chars", "Longest reading", "int", 1200, group="Voice", order=8, min=200, max=10000,
+    setting("echo.voice.max_chars", "Longest reading", "int", 1200, group="Voice", order=8, min=200, max=10000,
             unit="characters", help="Beyond it, the voice reads the start and says the rest is in the text."),
-    setting("echo.ascolto.max_seconds", "Longest audio accepted", "int", 600, group="Voice", order=9, min=30,
+    setting("echo.listening.max_seconds", "Longest audio accepted", "int", 600, group="Voice", order=9, min=30,
             max=7200, unit="s", advanced=True),
     setting("echo.live.silence_ms", "Pause that ends the live turn", "int", 1250, group="Voice", order=10,
             min=300, max=5000, unit="ms", help="In live mode: how much silence means «I'm done talking»."),
@@ -100,13 +100,13 @@ settings.declare([
             order=21, min=1, max=3650, unit="days",
             help="After the last listen. Listening again regenerates them from the text."),
     # ── La tua voce (Cindy 10 + 17, dossier docs/work/2026-10-24-whole-brainstorm-cindy W4) ──
-    setting("echo.impronta.soglia", "How much it must resemble your voice", "float", 0.45, group="Your voice",
+    setting("echo.voiceprint.threshold", "How much it must resemble your voice", "float", 0.45, group="Your voice",
             order=40, min=0.1, max=0.9,
             help="With your voiceprint recorded, voices below this similarity (TV, other people) become silence before listening. Higher = stricter."),
-    setting("echo.impronta.usi", "Where I recognise only your voice", "list", ["webui.live.ascolto"],
+    setting("echo.voiceprint.uses", "Where I recognise only your voice", "list", ["webui.live.listening"],
             group="Your voice", order=41,
-            help="Voice uses where I filter other voices (e.g. webui.live.ascolto, telegram.vocale). Without a recorded voiceprint I filter nothing."),
-    setting("echo.dizionario.conferme", "Corrections to learn a word", "int", 2, group="Your voice",
+            help="Voice uses where I filter other voices (e.g. webui.live.listening, telegram.vocale). Without a recorded voiceprint I filter nothing."),
+    setting("echo.dictionary.confirmations", "Corrections to learn a word", "int", 2, group="Your voice",
             order=42, min=1, max=10, unit="times",
             help="After how many of your corrections a word enters the dictionary I pass to recognition."),
     setting("echo.pricing", "Prices", "object", {}, group="Voice", order=30, advanced=True,
@@ -311,7 +311,7 @@ def usage(days: int = 30):
 def live_config():
     """What a client needs for live mode («Parla», /live): the pause that closes a turn."""
     return {"silence_ms": int(settings.get("echo.live.silence_ms", 1250) or 1250), "language": echo.language(),
-            "voiceprint": voiceprint.applies("webui.live.ascolto")}
+            "voiceprint": voiceprint.applies("webui.live.listening")}
 
 
 @app.get(f"{API}/recent")
@@ -423,7 +423,7 @@ def voiceprint_enroll(body: dict = Body(...)):
     blob = None
     try:
         blob = keep.save("recording", audio.keep_encode(raw), audio.KEEP_MIME,
-                         {"use_case": "echo.impronta", "text": tr("voice print")})
+                         {"use_case": "echo.voiceprint", "text": tr("voice print")})
     except Exception as exc:  # noqa: BLE001
         logger.warning("[🔄] event=voiceprint_recording_not_kept error=%s", exc)
     try:

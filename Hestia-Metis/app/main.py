@@ -107,13 +107,13 @@ _JOBS_FILE = _DATA_DIR / "lora_jobs.json"
 _jobs_lock = threading.Lock()
 
 
-# Model of Oracle's default «veloce» chain: used only when Oracle does not answer.
+# Model of Oracle's default «fast» chain: used only when Oracle does not answer.
 _ORACLE_GENERIC_DEFAULT = "gemma4:e4b"
 
 
 def _oracle_generic_model() -> str:
     """Model choice belongs to Oracle: ask it (via Hub) which generic model is in use."""
-    model = hub.oracle_model("oracle.generale")
+    model = hub.oracle_model("oracle.general")
     if model:
         return model
     logger.warning("[🔄] event=metis_oracle_model_unknown fallback=%s", _ORACLE_GENERIC_DEFAULT)
@@ -127,7 +127,7 @@ def _agenda_rules() -> list[dict]:
     return [daily_window(
         WINDOW_TRAINING, "Window to train the models", 1, 6,
         description="Planned LoRA trainings (not requested by you) start here. Move/skip the window to postpone them.")] + [
-        job_rule(f"metis.adesso.{at.replace(':', '')}", "Ideas for «Now»", service="metis",
+        job_rule(f"metis.now.{at.replace(':', '')}", "Ideas for «Now»", service="metis",
                  path="/api/metis/adesso/refresh", recurrence="FREQ=DAILY", start_at=f"2026-01-01T{at}:00", tz=tz,
                  description="The assistant thinks of three useful things for the next hours (and cleans old taps).")
         for at in IDEAS_AT] + [
@@ -245,7 +245,7 @@ def metis_now(client: str = "telegram", limit: int = 6):
 
 @app.post("/api/metis/adesso/refresh")
 def metis_now_refresh(body: dict | None = None):
-    """Agenda job ``metis.adesso.*``: fresh ideas for each client + prune of old taps."""
+    """Agenda job ``metis.now.*``: fresh ideas for each client + prune of old taps."""
     clients = [str((body or {}).get("client"))] if (body or {}).get("client") else ["telegram", "webui"]
     out = {c: usage.refresh_ideas(c) for c in clients if c in CLIENTS}
     out["pruned"] = usage.prune()
@@ -925,7 +925,7 @@ _HUB_REGISTRATION_PAYLOAD = {
         "lora_jobs": "/api/metis/lora/jobs",
         "agenda_windows": [WINDOW_TRAINING],
         **ui.capabilities(SERVICE_BASE_URL),   # WebUI plugin manifest (Sistema)
-        **llm_capabilities([usecase(IDEAS_USE, "Now · ideas", chain="veloce",
+        **llm_capabilities([usecase(IDEAS_USE, "Now · ideas", chain="fast",
                                     help="Three useful actions for the next hours, different from the habits."),
                             usecase(REVIEW_USE, "Dataset review", chain="cloud", thinking="true",
                                     help="At night it rereads the answers and fixes the wrong ones. Choose a model stronger than the local one: your personal data is hidden.")]),

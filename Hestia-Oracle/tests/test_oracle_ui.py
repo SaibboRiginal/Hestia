@@ -163,13 +163,13 @@ class TestModelsTab:
         out = client.get("/api/ui/models").json()
         assert "sk-secret" not in str(out)
         assert {"providers", "types", "chains", "usecases", "modes"} <= set(out)
-        assert any(u["id"] == "oracle.generale" for u in out["usecases"])
+        assert any(u["id"] == "oracle.general" for u in out["usecases"])
 
     def test_write_goes_through_themis_and_validates(self, client, monkeypatch):
         from core.services import oracle_settings
         puts = []
         monkeypatch.setattr(oracle_settings.settings, "put", lambda k, v, **kw: puts.append((k, v, kw)) or True)
-        ok = client.put("/api/ui/models/chains", json={"value": {"veloce": {"steps": [{"provider": "ollama", "model": "m"}]}}})
+        ok = client.put("/api/ui/models/chains", json={"value": {"fast": {"steps": [{"provider": "ollama", "model": "m"}]}}})
         assert ok.status_code == 200 and puts[0][0] == oracle_settings.CHAINS_KEY and puts[0][2]["actor"] == "user"
         assert client.put("/api/ui/models/providers", json={"value": {"x": {"type": "nope"}}}).status_code == 400
         assert client.put("/api/ui/models/chains", json={"value": {"c": {}}}).status_code == 400

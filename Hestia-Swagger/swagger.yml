@@ -4366,7 +4366,7 @@ paths:
                   type: string
                 use_case:
                   type: string
-                  description: "Use case <module>.<task> declared in the module's Hub registration (capabilities.llm_usecases), e.g. scout.annunci, athena.strategia; default oracle.generale; undeclared → runs like oracle.generale and is listed. In brain mode esterna the external agent answers (one shot, no tools)."
+                  description: "Use case <module>.<task> declared in the module's Hub registration (capabilities.llm_usecases), e.g. scout.listings, athena.strategy; default oracle.general; undeclared → runs like oracle.general and is listed. In brain mode esterna the external agent answers (one shot, no tools)."
                 voice:
                   type: boolean
                   default: false
@@ -4411,11 +4411,11 @@ paths:
   /api/llm/usecases/{use_case}:
     get:
       tags: [Oracle]
-      summary: What a chat on this use case would use now (Forge engine oracle, use case forge.codice)
+      summary: What a chat on this use case would use now (Forge engine oracle, use case forge.code)
       servers:
         - url: http://localhost:19004
       parameters:
-        - {name: use_case, in: path, required: true, schema: {type: string, example: forge.codice}}
+        - {name: use_case, in: path, required: true, schema: {type: string, example: forge.code}}
       responses:
         "200": {description: "{status, use_case, chain, available, detail, provider, model, context_window, billed, steps[{provider, model}]}"}
 
@@ -5119,7 +5119,7 @@ paths:
               type: object
               required: [messages]
               properties:
-                use_case: {type: string, default: forge.codice, description: "Declared use case (Forge: forge.codice, Wardrobe: wardrobe.foto)"}
+                use_case: {type: string, default: forge.code, description: "Declared use case (Forge: forge.code, Wardrobe: wardrobe.photo)"}
                 messages: {type: array, items: {type: object}}
                 tools: {type: array, items: {type: object}}
                 temperature: {type: number}
@@ -9141,7 +9141,7 @@ paths:
   /api/metis/adesso/refresh:
     post:
       tags: [Metis]
-      summary: "Agenda jobs metis.adesso.0700/1230/1800: new ideas (Oracle use case metis.adesso) + prune taps older than 180 days"
+      summary: "Agenda jobs metis.now.0700/1230/1800: new ideas (Oracle use case metis.now) + prune taps older than 180 days"
       servers:
         - url: http://localhost:19014
       requestBody:
@@ -11835,7 +11835,7 @@ paths:
   /api/selfcare/journal/voice:
     post:
       tags: [Hygieia]
-      summary: "Spoken diary {audio{data_b64, mime} | audio_b64, date?} → Echo transcribes (use hygieia.diario, recording kept) → {item} area giornata, tag voce"
+      summary: "Spoken diary {audio{data_b64, mime} | audio_b64, date?} → Echo transcribes (use hygieia.diary, recording kept) → {item} area giornata, tag voce"
       servers:
         - url: http://localhost:19018
       responses:
@@ -13563,7 +13563,7 @@ paths:
   /api/voice/dictionary/learn:
     post:
       tags: [Echo]
-      summary: "A correction {heard, corrected} → {confirmed, candidates} (confirmed after echo.dizionario.conferme)"
+      summary: "A correction {heard, corrected} → {confirmed, candidates} (confirmed after echo.dictionary.confirmations)"
       servers:
         - url: http://localhost:19021
       responses:
@@ -13908,7 +13908,7 @@ paths:
   /api/webui/voice/speak:
     post:
       tags: [WebUI]
-      summary: "«Ascolta» under a reply → Echo (use webui.ascolta, kept with the reply)"
+      summary: "«Ascolta» under a reply → Echo (use webui.listen, kept with the reply)"
       servers:
         - url: http://localhost:19015
       requestBody:
@@ -13921,7 +13921,7 @@ paths:
   /api/webui/voice/listen:
     post:
       tags: [WebUI]
-      summary: "Live «Parla»: open the mic stream (use webui.live.ascolto)"
+      summary: "Live «Parla»: open the mic stream (use webui.live.listening)"
       servers:
         - url: http://localhost:19015
       requestBody:
@@ -13934,7 +13934,7 @@ paths:
   /api/webui/voice/say:
     post:
       tags: [WebUI]
-      summary: "Live «Parla»: open the voice stream (use webui.live.voce)"
+      summary: "Live «Parla»: open the voice stream (use webui.live.voice)"
       servers:
         - url: http://localhost:19015
       requestBody:

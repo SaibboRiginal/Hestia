@@ -23,7 +23,7 @@ from hestia_common.i18n import t as tr  # fixed texts in the owner's language
 logger = logging.getLogger("hestia_telegram.voice")
 
 USE_LISTEN = "telegram.vocale"
-USE_SPEAK = "telegram.risposta"
+USE_SPEAK = "telegram.answer"
 VOICE_USECASES = [
     voice_usecase(USE_LISTEN, "Telegram · voice messages", direction="ascolto", help="The voice messages you send to the bot."),
     voice_usecase(USE_SPEAK, "Telegram · spoken answers", direction="voce",

@@ -8,7 +8,7 @@ Dossier docs/work/2026-10-24-whole-brainstorm-cindy W4. Hecate owns the devices 
 - **Phone**: a Tasker-like app POSTs to ``/api/gateway/phone/push`` with header ``X-Hestia-Phone-Token`` =
   ``HECATE_PHONE_TOKEN`` (env, secret; empty = the webhook answers 503). ``{type: state, wifi, charging, battery}``
   → presence signals ``phone.home`` / ``phone.charging`` + feed ``phone.state``; ``{type: notification, app, title,
-  text}`` → feed ``phone.notification`` when the app is in ``hecate.telefono.app`` (empty list = every app).
+  text}`` → feed ``phone.notification`` when the app is in ``hecate.phone.app`` (empty list = every app).
 """
 from __future__ import annotations
 

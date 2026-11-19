@@ -272,14 +272,14 @@ flowchart LR
    «Lascia così». Registered jobs: `chronos.special.daily`, `chronos.smart_calendar`, `hermes.notifications.remind_pending`.
 
 ### Notification delivery details (same dossier, W2)
-- Hermes rings only the client the owner used in the last `hermes.consegna.client_attivo_minuti` (Chronos presence);
+- Hermes rings only the client the owner used in the last `hermes.delivery.active_client_minutes` (Chronos presence);
   the others get the notification silent. When the WebUI rings, subscribed browsers also get a Web Push (`hermes-store`).
 - Secret form: module event `_secret` → client form → Hermes `/api/notifications/{id}/secret` → Hub → the module.
   Hermes never stores or logs the values.
 
 ### Forge review, team and limit flow (same dossier, W3)
-- Task run → tests → `reviewing`: Oracle `/api/llm/generate` (`forge.revisione`, evidence only) → blocking issues
-  back to the engine once → `awaiting_review` with the review card. ≥ N services: `forge.piano` pieces first.
+- Task run → tests → `reviewing`: Oracle `/api/llm/generate` (`forge.review`, evidence only) → blocking issues
+  back to the engine once → `awaiting_review` with the review card. ≥ N services: `forge.plan` pieces first.
 - Claude limit → partial commit `refs/forge/resume/<id>` → `waiting_limit` → agenda one-off `forge.resume.<id>` at the
   reset → Chronos → Hub → `POST /api/hephaestus/forge/tasks/{id}/resume`.
 
@@ -293,8 +293,8 @@ flowchart LR
 ### LLM access rule
 Only Oracle talks to LLM providers. Athena/Scout/Argus/Chronos use `/api/llm/generate` (`voice: true` for a text to
 the owner: Oracle adds who speaks and the personal «Lingua»), Forge and Wardrobe use
-`/api/llm/chat` — always via Hub. Callers name a `use_case` `<module>.<task>` (e.g. `scout.annunci`, `athena.strategia`,
-`forge.codice`) and declare it in their Hub registration (`capabilities.llm_usecases`, `hestia_common.oracle_usecases`);
+`/api/llm/chat` — always via Hub. Callers name a `use_case` `<module>.<task>` (e.g. `scout.listings`, `athena.strategy`,
+`forge.code`) and declare it in their Hub registration (`capabilities.llm_usecases`, `hestia_common.oracle_usecases`);
 Oracle maps each use case to a named chain of provider/model steps (quota skip) and a brain mode (interna / esterna =
 Claude Code or Codex with Hestia's tools over MCP), all chosen in Oracle → Cervello → Modelli, never env in the caller.
 Every call becomes a usage row in Archive (`llm-usage`, panel Cervello → Uso).
@@ -327,7 +327,7 @@ SPEC `docs/work/2026-10-19-oracle-offline` (v3).
    the daily agenda job `<module>.signals` → `hestia_common.signals_client` → Archive `/api/signals-store` (signals +
    weekly metrics, via Hub).
 2. Window `athena.reflection` (daily 18–20): Athena reads the store, links weekly series of different areas (Pearson),
-   asks the modules for details (`GET /api/module/context?topic=` via Hub), one Oracle call (`athena.riflessione`),
+   asks the modules for details (`GET /api/module/context?topic=` via Hub), one Oracle call (`athena.reflection_run`),
    relevance gate.
 3. Accepted observations are stored (signals-store, `ref_id=athena`) and served as Athena's recap piece
    (`GET /api/module/recap`, «Da tenere d'occhio»); no Hermes notice. Setting ideas → Themis proposal.
@@ -421,12 +421,12 @@ SPEC `docs/work/2026-10-20-layered-reflection`.
 3. Live («Parla», Telegram `/voce`): mic chunks → Echo `listen` stream (partial text, silence ends the turn) → Oracle
    chat as usual → answer text → Echo `say` stream → sentences played in order. No external live service.
 4. Notification in voice: module setting `<module>.notifiche.voce` → event `_voice` → Hermes publishes the text, then
-   Echo `speak` (use `hermes.notifica`, kept with the notification) → `update` with `voice` to the clients.
-5. Audio inside a document → Oracle → Echo (use `oracle.documenti`); Oracle has no speech engine.
-6. Before any engine (W4): Echo voiceprint filter (uses in `echo.impronta.usi`: other voices → silence, also before
+   Echo `speak` (use `hermes.notification`, kept with the notification) → `update` with `voice` to the clients.
+5. Audio inside a document → Oracle → Echo (use `oracle.documents`); Oracle has no speech engine.
+6. Before any engine (W4): Echo voiceprint filter (uses in `echo.voiceprint.uses`: other voices → silence, also before
    the live end-of-turn check) + personal dictionary hint; a correction (`/dictionary/learn`) teaches new words.
 7. Spoken diary (W4 B9): evening recap → button «Racconta la giornata» (Hygieia piece action, `command`) → Telegram
-   asks a voice note → Hygieia `/api/selfcare/journal/voice` → Echo transcribe (use `hygieia.diario`) → diary
+   asks a voice note → Hygieia `/api/selfcare/journal/voice` → Echo transcribe (use `hygieia.diary`) → diary
    «giornata» → reflection signal `diario`.
 
 ### Device feed flow (same dossier, W4)
@@ -465,7 +465,7 @@ SPEC `docs/work/2026-10-20-layered-reflection`.
 5. Documents: tool `document_create` → Calliope renders, reopens and checks → Archive blob → `display.files` →
    Telegram document.
 6. Nutrition: Demeter `/api/coach/needs` (supplements as slots, «with workout») → Chronos weekly plan; intake →
-   `coach.done`; meal without numbers → Oracle `demeter.stima` in the background.
+   `coach.done`; meal without numbers → Oracle `demeter.estimate` in the background.
 
 ### Texts for people and look (dossier `docs/work/2026-10-29-frontend-review-and-tests` v2)
 1. Tool `summary` (MCPTool) → module `tools/list` → Hub catalog (`summary`, `telegram_group`) → Hestia-MCP

@@ -25,8 +25,8 @@ MAIL_WATCH_INTERVAL = "hecate.mail.watch_interval"
 MAIL_SAFETY_INTERVAL = "hecate.mail.safety_interval"
 WEATHER_CACHE_MINUTES = "hecate.weather.cache_minutes"
 PERSONAL_PLACES = "themis.personal.places"
-PHONE_HOME_WIFI = "hecate.telefono.wifi_casa"
-PHONE_APPS = "hecate.telefono.app"
+PHONE_HOME_WIFI = "hecate.phone.home_wifi"
+PHONE_APPS = "hecate.phone.app"
 
 settings = SettingsClient("hecate")
 settings.declare([

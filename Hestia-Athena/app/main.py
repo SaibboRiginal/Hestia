@@ -24,13 +24,13 @@ llm_capabilities = import_shared_symbol("hestia_common.oracle_usecases", "capabi
 
 # What Athena asks Oracle for (chains chosen by Marko in Oracle → Cervello → Modelli).
 LLM_USECASES = [
-    llm_usecase("athena.strategia", "Athena · strategy and memory", chain="potente",
+    llm_usecase("athena.strategy", "Athena · strategy and memory", chain="strong",
                 help="Athena's reasoning (proposals, memory consolidation)."),
-    llm_usecase("athena.revisione", "Athena · answer review", chain="veloce",
+    llm_usecase("athena.review", "Athena · answer review", chain="fast",
                 help="Rates the quality of the assistant's answers."),
-    llm_usecase("athena.recap", "Athena · daily recap", chain="veloce",
+    llm_usecase("athena.recap", "Athena · daily recap", chain="fast",
                 help="Writes the evening or morning recap from the facts of the areas (training, expenses, agenda…)."),
-    llm_usecase("athena.riflessione", "Athena · reflection on your life", chain="potente",
+    llm_usecase("athena.reflection_run", "Athena · reflection on your life", chain="strong",
                 help="Reads the signals of the areas and the links across weeks and writes the observations of the evening recap."),
 ]
 plugin_page = import_shared_symbol("hestia_common.plugin_client", "page")

@@ -18,7 +18,7 @@ who is at home
   (`[🔄] event=lares_ws_lost`).
 - Commands = HA services (`turn_on/off/toggle`, `open/close_cover`, `lock/unlock`, `set_temperature`, brightness in %).
   Devices are found by entity id or by name (exact, then partial; ambiguous → the list of matches).
-- **Presence**: the person entity chosen in Themis `lares.persona` (options read live from HA) → presence signal
+- **Presence**: the person entity chosen in Themis `lares.person` (options read live from HA) → presence signal
   `home.present` (true when `home`). Hecate's state «Fuori casa» reads it next to `phone.home`.
 - Quick actions (favourites: device, label, room, command) in Archive `home-store`; export/import section `preferiti`.
 

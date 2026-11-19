@@ -151,7 +151,7 @@ reads only those (links between areas, then details through `/api/module/context
 from hestia_common.signals_client import Signals, signal, metric, signals_rule, iso_week, last_weeks
 
 signals = Signals("hercules", "fitness", evaluate=svc.signals)   # svc.signals() -> (signals, metrics)
-signal("stall:panca", "Allenamento: panca ferma da 3 sedute", kind="trend", severity="attenzione", page="progress")
+signal("stall:panca", "Allenamento: panca ferma da 3 sedute", kind="trend", severity="warning", page="progress")
 metric("fitness.sessions", iso_week(day), 3, label="Allenamenti")
 signals.changed()     # after a write: debounced re-evaluation in background (push, never poll)
 signals.run()         # agenda job POST <api>/signals/run → evaluate + sync
@@ -190,17 +190,17 @@ Add a kind: one line in `NOTICE_KINDS` (+ `_SIGNAL_TO_NOTICE` if it mirrors a si
 ## Oracle use cases (`hestia_common.oracle_usecases`)
 
 A module that asks Oracle for text declares each kind of task as a **use case** `<module>.<task>` with a suggested
-chain (`veloce`, `potente`, `codice`, `visione`); Marko picks chain, mode (interna/esterna) and thinking for all of them
+chain (`fast`, `strong`, `code`, `vision`); Marko picks chain, mode (interna/esterna) and thinking for all of them
 in Oracle → Cervello → Modelli. The module never names a provider or a model (dossier
 `docs/work/2026-10-19-oracle-blocks`).
 
 ```python
 from hestia_common.oracle_usecases import usecase, capabilities as llm_capabilities
 
-LLM_USECASES = [usecase("scout.annunci", "Scout · lettura annunci", chain="veloce",
+LLM_USECASES = [usecase("scout.listings", "Scout · lettura annunci", chain="fast",
                         help="Estrae i dati degli annunci dalle mail.")]
 payload["capabilities"].update(llm_capabilities(LLM_USECASES))   # Hub registration (re-sent by the keepalive)
-# call: POST {HUB}/route/oracle/api/llm/generate  body {"prompt": ..., "use_case": "scout.annunci"}
+# call: POST {HUB}/route/oracle/api/llm/generate  body {"prompt": ..., "use_case": "scout.listings"}
 ```
 
 ## Voice (`hestia_common.voice_client`, `hestia_common.voice_usecases`)
@@ -218,7 +218,7 @@ payload["capabilities"].update(voice_capabilities(VOICE_USECASES))   # Hub regis
 voice = VoiceClient(HUB_API_URL)
 heard = voice.transcribe(audio, "audio/ogg", use_case="telegram.vocale",
                          keep={"kind": "recording", "message_id": "tg:1:2"})      # {text, ...} | None
-spoken = voice.speak("Ciao", use_case="telegram.risposta", fmt="ogg_opus")      # {audio: bytes, ...} | None
+spoken = voice.speak("Ciao", use_case="telegram.answer", fmt="ogg_opus")      # {audio: bytes, ...} | None
 voice.forget(notification_id="…")                                              # drop regenerable audio
 ```
 

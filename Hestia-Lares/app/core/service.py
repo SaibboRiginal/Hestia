@@ -3,7 +3,7 @@
 A live mirror of the entities Marko cares about (lights, switches, covers, climate, sensors, scenes, the person),
 fed by the Home Assistant websocket (push; a full read only on connect). Commands go to HA services. Favourites
 (quick actions with a label and a room) live in Archive (``home-store``). The person entity chosen in the settings
-(``lares.persona``) becomes the presence signal ``home.present``: Chronos shows «Fuori casa» from it.
+(``lares.person``) becomes the presence signal ``home.present``: Chronos shows «Fuori casa» from it.
 """
 from __future__ import annotations
 
@@ -54,7 +54,7 @@ class Home:
         with self._lock:
             self.entities = {e["id"]: e for e in rows}
         self.connected = True
-        self._presence(self.entities.get(self.get("lares.persona", "") or ""))
+        self._presence(self.entities.get(self.get("lares.person", "") or ""))
         logger.info("event=lares_loaded entities=%d", len(rows))
         return len(rows)
 
@@ -64,7 +64,7 @@ class Home:
             return
         with self._lock:
             self.entities[e["id"]] = e
-        if e["id"] == (self.get("lares.persona", "") or ""):
+        if e["id"] == (self.get("lares.person", "") or ""):
             self._presence(e)
 
     def _presence(self, person: dict | None) -> None:
@@ -115,7 +115,7 @@ class Home:
                  if e["domain"] == "sensor" and e["device_class"] == "temperature"][:6]
         open_ = [e["name"] for e in ents if e["domain"] == "binary_sensor" and e["device_class"] in
                  ("door", "window", "opening") and e["state"] == "on"]
-        person = self.entities.get(self.get("lares.persona", "") or "")
+        person = self.entities.get(self.get("lares.person", "") or "")
         return {"configured": True, "connected": self.connected, "entities": len(ents), "lights_on": lights_on,
                 "temperatures": temps, "open": open_, "person": person["state"] if person else None,
                 "favorites": self.favorites()}

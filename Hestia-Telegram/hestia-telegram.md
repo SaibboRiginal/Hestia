@@ -115,7 +115,7 @@ subscription compile), `pausa_voto`.
 - A voice note is transcribed by Echo (use `telegram.vocale`) and shown as «*testo*», then handled like the same
   sentence typed (or as the answer of an open guided action). Echo down → «Non riesco ad ascoltare il vocale adesso,
   puoi scrivermelo?» (`[🔄]`).
-- «Ascolta» (`voice:play`): Echo reads the reply (use `telegram.risposta`), kept so a second tap does not regenerate.
+- «Ascolta» (`voice:play`): Echo reads the reply (use `telegram.answer`), kept so a second tap does not regenerate.
 - `/voce` toggles spoken answers to voice notes (session setting `voice_live`); the written reply always stays.
   With spoken answers on, the voice note's turn goes to Oracle with `spoken: true` (short, speakable answer).
 - **She wrote first** (dossier `docs/work/2026-11-12-identity-and-proactivity`): a notification whose payload has

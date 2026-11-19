@@ -1092,9 +1092,9 @@ export class SetupPageComponent {
   // ── Modalità: Ragionamento, Codice, Immagini use Generale's list unless one gets its own (the same step) ──
   readonly modeList = [
     { id: 'generale', label: tr('General'), help: '' },
-    { id: 'potente', label: tr('Reasoning'), help: tr('For the hard questions.') },
-    { id: 'codice', label: tr('Code'), help: tr('When it writes or fixes code.') },
-    { id: 'visione', label: tr('Images'), help: tr('Photos and documents to look at.') },
+    { id: 'strong', label: tr('Reasoning'), help: tr('For the hard questions.') },
+    { id: 'code', label: tr('Code'), help: tr('When it writes or fixes code.') },
+    { id: 'vision', label: tr('Images'), help: tr('Photos and documents to look at.') },
   ];
   modeTab = signal('generale');
   /** Per mode with its own list: the same choices as Generale (local, services in order, models, «Scelti» order). */

@@ -42,7 +42,7 @@ def test_oracle_down_keeps_the_card_text():
 
 def test_style_setting_is_declared_with_card_default():
     from modules import hermes_settings
-    assert hermes_settings.NOTIFICATION_STYLE == "hermes.notifiche.stile"
+    assert hermes_settings.NOTIFICATION_STYLE == "hermes.notifications.style"
     assert [v for v, _ in hermes_settings.STYLES] == ["scheda", "frase"]
 
 

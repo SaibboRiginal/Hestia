@@ -146,13 +146,13 @@ user/Argus ──► POST /forge/tasks ──► proposed ─approve─► queue
 
 | Engine | What | Where configured |
 |---|---|---|
-| `oracle` | Built-in agent; each turn goes to Oracle `/api/llm/chat` with use case **`forge.codice`** (declared by Hephaestus in its Hub registration), which walks its chain (default `codice`: local Ollama first, then cloud steps; quota skip) | **Oracle → Cervello → Modelli**: chain of `forge.codice` |
+| `oracle` | Built-in agent; each turn goes to Oracle `/api/llm/chat` with use case **`forge.code`** (declared by Hephaestus in its Hub registration), which walks its chain (default `code`: local Ollama first, then cloud steps; quota skip) | **Oracle → Cervello → Modelli**: chain of `forge.code` |
 | `claude` | Claude Code (Pro/Max subscription) run **by Oracle** in the shared task worktree (`POST /api/llm/code`) | **Oracle**: build `--build-arg INSTALL_CLAUDE_CODE=1`, `CLAUDE_CODE_OAUTH_TOKEN` from `claude setup-token` in Oracle's `.env` (plan limits) |
 
 Old names `local`, `cloud`, `builtin`, `ollama` (tasks, settings, agenda rules) are read as `oracle`.
 
 **Microservice boundary:** Forge never holds LLM URLs or keys. The built-in agent sends each turn
-(messages + tools) to Oracle `POST /api/llm/chat {use_case: "forge.codice"}` via Hub; Oracle owns providers and chains.
+(messages + tools) to Oracle `POST /api/llm/chat {use_case: "forge.code"}` via Hub; Oracle owns providers and chains.
 Claude Code also lives in Oracle (the LLM core holds every credential, including the Pro token). Task worktrees
 are mounted at the same absolute path `/forge/worktrees` in Hephaestus and Oracle, and the repo at `/repo` in both,
 so git worktree links resolve. Hephaestus keeps orchestration: branch, independent tests, merge, deploy, rollback.
@@ -178,9 +178,9 @@ Themis). Safety switches: the assistant may read them but never propose them (`o
 | `auto` | start on their own branch | start | waits for you |
 | `full_auto` | start | start | automatic if engine ok + tests green (health check, auto rollback) |
 
-Groups: `local` = engine `oracle` while every usable step of `forge.codice` is unbilled (local models; default `auto`);
+Groups: `local` = engine `oracle` while every usable step of `forge.code` is unbilled (local models; default `auto`);
 `cloud` = engine `oracle` with a billed step (cloud key, subscription) or `claude` (default `ask`: no tokens spent without
-your ok). Oracle's `/api/llm/usecases/forge.codice` says `billed`.
+your ok). Oracle's `/api/llm/usecases/forge.code` says `billed`.
 
 ### Who decides, duplicates, engine per task
 
@@ -355,7 +355,7 @@ engine/modes also applied by `Forge._apply_settings`). Endpoints `GET /api/setti
 |---|---|---|
 | `hephaestus.forge.paused` | bool · `false` (read) | manual pause: no task starts on its own (see *Manual pause*) |
 | `hephaestus.forge.dedup_days` | int giorni · 7 (0–90) | module proposals similar to a task of these days are not created again |
-| `hephaestus.forge.engine` | enum · `oracle` | default coding engine (`oracle` = Oracle chain of `forge.codice`, `claude`) |
+| `hephaestus.forge.engine` | enum · `oracle` | default coding engine (`oracle` = Oracle chain of `forge.code`, `claude`) |
 | `hephaestus.forge.mode.local` / `.cloud` | enum · `auto` / `ask` (read) | permission mode per group |
 | `hephaestus.forge.fallback` | list · `[oracle, claude]` | engines tried when the default is unavailable |
 | `hephaestus.forge.max_turns` | int · 40 (5–300) | agent turn limit (built-in loop and Claude Code) |
@@ -386,7 +386,7 @@ Forge reports its work to Chronos presence: each task runs as activity `forge.ta
 
 ### Engine `oracle` and the context window
 
-The built-in engine reads the model window from Oracle's `/api/llm/usecases/forge.codice`
+The built-in engine reads the model window from Oracle's `/api/llm/usecases/forge.code`
 (`context_window` of the first usable step, read from the provider of its model: the local program, or the cloud service when it declares it) and keeps the
 prompt within ~70% of it (≈3 chars/token): old tool outputs become `[old output trimmed]`, the latest
 one is clipped with a hint to read a smaller range. A stop is reported precisely: `model context full`
@@ -406,15 +406,15 @@ The context of a Forge task prompt passes through `hestia_common.redact.redact` 
 
 ## Automatic review, team plan, resume after the Claude limit (dossier `docs/work/2026-10-24-whole-brainstorm-cindy`, wave 3)
 - **Reviewer** (Cindy 3, `app/forge/review.py`): after the tests the task goes to state `reviewing`. A fresh model
-  with no tools and no memory of the work (Oracle `/api/llm/generate`, use case `forge.revisione`, chain potente)
+  with no tools and no memory of the work (Oracle `/api/llm/generate`, use case `forge.review`, chain strong)
   gets only labelled evidence: request, acceptance criteria of the task SPEC (`docs/work/<WORKDOC>/SPEC.md`), the
   diff, the real test output, and the engine's summary marked «autodichiarazione non verificata». Answer =
   `{verdict ok|problemi|non_disponibile, issues[{priority alta|media|bassa, file, problem, evidence}], blocking}`.
   Blocking issues (alta/media) go back to the same engine for **one** fix round (`fix_prompt`), then tests and review
   again. Saved as `review.json` in the task artifacts and `task.review`; the approval card shows «Revisione
   automatica: …». Auto-merge (permission mode) only when nothing blocking is left. Model down → step skipped `[🔄]`.
-- **Team plan** (Cindy 31): a task touching ≥ `hephaestus.forge.squadra.min_servizi` services (Themis, default 3),
-  not external, is split by the model (use case `forge.piano`) into 2–4 pieces run **one after the other in the same
+- **Team plan** (Cindy 31): a task touching ≥ `hephaestus.forge.team.min_services` services (Themis, default 3),
+  not external, is split by the model (use case `forge.plan`) into 2–4 pieces run **one after the other in the same
   worktree**; `semplice` → engine `oracle` (local chain), `difficile` → `claude` (falls back to the task engine).
   `task.team` lists the pieces and their outcome; the reviewer runs on the whole result.
 - **Resume after the Claude limit** (Cindy 15): when Claude stops on the usage limit Forge commits the partial work to
@@ -487,7 +487,7 @@ telegram/token|code|claim, backup) are called by the WebUI through the Hub (`/ap
   channel, available with notes, job, history, previous, blocked) · `POST update/check` · `POST update/apply {ref?}` ·
   `POST update/back` · `POST update/answer {answer}` (the Hermes question «Installo?») · `POST update/daily` (agenda
   job `hephaestus.update_check`, daily 11:00, asks once per version). Notes = root `CHANGELOG.md` lines added between
-  the versions, rewritten in the owner's «Lingua» by Oracle use case `hephaestus.aggiornamenti` (`voice: true`) (English when the brain is off).
+  the versions, rewritten in the owner's «Lingua» by Oracle use case `hephaestus.updates` (`voice: true`) (English when the brain is off).
   Apply (thread, state `data/update.json`): refused with a reason when tracked files are modified or HEAD has commits
   not on GitHub; `git checkout <tag>` / `merge --ff-only origin/main`; `forge.deployer.plan` on the diff; only running
   containers: image change → pull `ghcr.io/saibboriginal/hestia:<svc>-<ver>` when the container runs a ready-made

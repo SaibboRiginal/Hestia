@@ -132,10 +132,10 @@ Conversational reasoning layer with unified agentic tool calling.
 - Injects timezone-aware current datetime context in each turn.
 - Accepts file attachments (images, PDFs) via `POST /api/chat/document` with multimodal reasoning.
 - **LLM gateway:** sole owner of LLM provider access. Other services use `/api/llm/generate` (prompt) or `/api/llm/chat` (OpenAI-compatible + tools) via Hub with a `use_case` `<module>.<task>` they declare in their Hub registration (`capabilities.llm_usecases`, `hestia_common.oracle_usecases`) — never provider URLs/keys/model names of their own.
-- **No speech engines in Oracle** (2026-10-20): audio inside documents is transcribed by Echo (use `oracle.documenti`); WhisperX is gone.
+- **No speech engines in Oracle** (2026-10-20): audio inside documents is transcribed by Echo (use `oracle.documents`); WhisperX is gone.
 - **Local model window** (2026-11-12): what the local program already knows is read from it, never asked again in Hestia. The context window of a local model is the one set in Ollama / LM Studio / llama-server (`core/services/local_window.py` reads it). Cloud models too: the window is read from the service when it declares it (`core/services/cloud_window.py`), else the usual value of its type. No window setting exists (2026-11-18): every loop (chat, module agents, Forge) uses `agents.providers.model_window`. Same rule as the model list of the guided setup.
 - **Shaped outputs** (2026-11-17): every output that goes back into a model (tool results, test runs, searches, agent results) passes through one function, `hestia_common.compact_output.shape` (tables for same-shaped lists, «showing N of M», error items kept, logs head + errors + tail). Its room is 4 % of the window of the answering model, no setting; the rest is read on request (`result_more`), never re-called. The fixed start of every loop prompt is watched between turns (`core/services/prefix_watch.py`, `event=prompt_prefix_changed`): a volatile line there makes the model re-read the whole prompt. No outside tool is installed for this: ideas from other repos are rebuilt in Hestia.
-- **Oracle a blocchi** (2026-10-19): named providers (`oracle.providers`, keys only in env `ORACLE_KEY_<NAME>`) → reusable chains of provider/model steps (`oracle.chains`; a quota error skips that model until its reset and teaches the request limit it names, so next time the step is skipped before the request — `llm_limits`, kept in Archive —; any error moves to the next step; pickers list only the models that fit the use); the memory chain (`embedding`) can have fallback models too: every stored vector keeps its `embedding_model` and a search embeds the query with every model, Archive compares each row with the query of its own model → use cases (`oracle.usecases`: chain, mode, thinking), all edited in Oracle → Cervello → Modelli. Default chain `veloce` = local Ollama first, then Gemini. Brain mode interna (chains) or esterna (Claude Code / Codex run the loop with Hestia's tools over a stdio MCP bridge; Archive stays the session truth). Every LLM call is a usage row in Archive (`llm-usage`).
+- **Oracle a blocchi** (2026-10-19): named providers (`oracle.providers`, keys only in env `ORACLE_KEY_<NAME>`) → reusable chains of provider/model steps (`oracle.chains`; a quota error skips that model until its reset and teaches the request limit it names, so next time the step is skipped before the request — `llm_limits`, kept in Archive —; any error moves to the next step; pickers list only the models that fit the use); the memory chain (`embedding`) can have fallback models too: every stored vector keeps its `embedding_model` and a search embeds the query with every model, Archive compares each row with the query of its own model → use cases (`oracle.usecases`: chain, mode, thinking), all edited in Oracle → Cervello → Modelli. Default chain `fast` = local Ollama first, then Gemini. Brain mode interna (chains) or esterna (Claude Code / Codex run the loop with Hestia's tools over a stdio MCP bridge; Archive stays the session truth). Every LLM call is a usage row in Archive (`llm-usage`).
 
 ### Hestia-Echo 🎙️
 Voice core (port 19021): the only module that listens (speech → text) and speaks (text → speech), for files and for
@@ -283,7 +283,7 @@ Guarded remediation and coding executor.
 - Uses source-control safety primitives: branch-based work, checkpoints, rollback path.
 - May execute local build/deploy workflows according to policy tiers.
 - Claude Pro budget windows are agenda windows (`forge.claude_nights`, `forge.claude_final`): skip a night to block autonomous Claude work.
-- **Forge (self-development):** "aggiungi/correggi X" on Telegram → isolated git branch → coding engine (`oracle` = Oracle's chain of use case `forge.codice`, or Claude Code with a Pro/Max token) → tests → approval → merge/deploy/rollback. Permission modes `ask | auto | full_auto` per group (local/cloud), set from Telegram. Athena (idle retrospective) and Argus (recurring errors) feed it via Hub. See `Hestia-Hephaestus/hestia-hephaestus.md` → *Forge*.
+- **Forge (self-development):** "aggiungi/correggi X" on Telegram → isolated git branch → coding engine (`oracle` = Oracle's chain of use case `forge.code`, or Claude Code with a Pro/Max token) → tests → approval → merge/deploy/rollback. Permission modes `ask | auto | full_auto` per group (local/cloud), set from Telegram. Athena (idle retrospective) and Argus (recurring errors) feed it via Hub. See `Hestia-Hephaestus/hestia-hephaestus.md` → *Forge*.
 
 ### Hestia-Athena 🧭
 Proactive cognition and advisory strategy engine.
@@ -305,7 +305,7 @@ Continuous improvement organ — dataset curation, benchmark evaluation, LoRA tr
 - Exposes five MCP tools: `metis_dataset_build`, `metis_dataset_export`, `metis_dataset_status`, `metis_benchmark_run`, `metis_loRA_train`.
 - In-memory dataset store with configurable deduplication and quality filtering. Exports ChatML, Alpaca, and ShareGPT formats.
 - **Owns the usage log** (wave 6): clients push taps (`POST /api/metis/usage`, Archive `metis-store`); «Adesso»
-  (`GET /api/metis/adesso`: agenda + habits + recents + ideas of use case `metis.adesso` written by agenda jobs, never
+  (`GET /api/metis/adesso`: agenda + habits + recents + ideas of use case `metis.now` written by agenda jobs, never
   at each open) and «Scopri» (`GET /api/metis/scopri`: catalog tools never or rarely used). Telegram and WebUI read
   the same lists; tools `metis_now`, `metis_discover`.
 - **Owns the training dataset** (dossier `docs/work/2026-10-30-training-dataset`): Oracle pushes one trace per
@@ -405,7 +405,7 @@ and «senti …» notices (agenda `hera.daily` + Hermes). Rows in Archive `peopl
 
 ### Hestia-Kairos ⏳
 Deadlines module «Scadenze» (port 19028, `deadlines_*` tools): bills, insurance, car tax, inspection, documents,
-subscriptions with recurrence, lead time and advice (Oracle `kairos.consiglio`), mirrored as agenda events; mails by
+subscriptions with recurrence, lead time and advice (Oracle `kairos.advice`), mirrored as agenda events; mails by
 push (Iris `kairos:mail`) only **propose** a deadline (Hermes card); «Fra N giorni» pauses the notice and then reminds
 again. Rows in Archive `deadlines-store`. Details:
 `Hestia-Kairos/hestia-kairos.md`.
@@ -421,7 +421,7 @@ insights are deterministic; reflection signals and weekly metrics feed Athena, w
 
 ### Hestia-Demeter 🥗
 Nutrition module «Alimentazione» (port 19026, `food_*` tools): diet, meals (kcal estimate through Oracle
-`demeter.stima`, owner's numbers win), supplements and intakes; a coach of the weekly plan (supplements as slots,
+`demeter.estimate`, owner's numbers win), supplements and intakes; a coach of the weekly plan (supplements as slots,
 next to the workout when asked). Rows in Archive `food-store`. Details: `Hestia-Demeter/hestia-demeter.md`.
 
 ### Hestia-Lares 💡

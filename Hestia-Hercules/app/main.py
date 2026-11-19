@@ -653,7 +653,7 @@ def reminder_check():
     try:
         hub.call("hermes", "POST", "api/events/ingest", body=reminder_event(
             module="hercules", domain="fitness", key="hercules.reminder", title=tr("Training"), text=text,
-            actions=actions, page="training", voice=bool(settings.get("hercules.notifiche.voce", True))),
+            actions=actions, page="training", voice=bool(settings.get("hercules.notifications.voice", True))),
             timeout=8)
         hercules.mark_reminder_sent()
         logger.info("event=hercules_reminder_sent template=%s hint=%s", tpl.get("id"), goal["hint"])

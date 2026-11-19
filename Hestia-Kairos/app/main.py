@@ -2,7 +2,7 @@
 
 Data in Archive (``/api/deadlines-store``), each open deadline in the calendar (agenda events), mails by push from
 Iris (subscription ``kairos:mail``: only proposals the owner confirms), notices through Hermes, the daily check in
-the agenda, a better advice from Oracle (use case ``kairos.consiglio``), tools for the assistant and Telegram.
+the agenda, a better advice from Oracle (use case ``kairos.advice``), tools for the assistant and Telegram.
 """
 from __future__ import annotations
 
@@ -34,7 +34,7 @@ from .core.service import CATEGORIES, RECURRENCES, Deadlines
 API = "/api/deadlines"
 DOMAIN = "deadlines"
 MAIL_KEY = "mail"
-ADVICE_USE = "kairos.consiglio"
+ADVICE_USE = "kairos.advice"
 DEFAULT_MAIL_WORDS = ["scadenza", "scade", "bolletta", "fattura", "rinnovo", "bollo", "revisione", "polizza",
                       "pagamento"]
 
@@ -275,7 +275,7 @@ transfer = Transfer("kairos", kit.hub, sections=[
 ])
 app.include_router(transfer.router())
 kit.caps.update({**recap.capabilities(), **llm_capabilities([
-    usecase(ADVICE_USE, "Deadlines · tips", chain="veloce", help="A short practical tip about a deadline.")])})
+    usecase(ADVICE_USE, "Deadlines · tips", chain="fast", help="A short practical tip about a deadline.")])})
 kit.capabilities(transfer.capabilities)
 kit.agenda_rules(lambda: [job_rule("kairos.daily", tr("Deadlines: notices"), service="kairos", path=f"{API}/daily",
                                    recurrence="FREQ=DAILY", start_at="2026-01-01T08:30:00", tz=kit.tz,

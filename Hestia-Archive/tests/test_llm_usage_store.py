@@ -57,8 +57,8 @@ BASE = "/api/llm-usage-store"
 
 
 def _row(**kw) -> dict:
-    row = {"at": datetime.now(timezone.utc).isoformat(), "module": "oracle", "use_case": "oracle.generale",
-           "chain": "veloce", "step": 0, "provider": "ollama", "model": "gemma4:e4b", "session_id": "s1",
+    row = {"at": datetime.now(timezone.utc).isoformat(), "module": "oracle", "use_case": "oracle.general",
+           "chain": "fast", "step": 0, "provider": "ollama", "model": "gemma4:e4b", "session_id": "s1",
            "client": "telegram", "input_tokens": 100, "cached_tokens": 40, "output_tokens": 20, "duration_ms": 500,
            "outcome": "ok"}
     row.update(kw)
@@ -69,7 +69,7 @@ def _row(**kw) -> dict:
 class TestUsageStore:
     def test_write_and_group_by_module(self, client):
         rows = [_row(), _row(step=1, provider="gemini", model="flash", cost_usd=0.01, duration_ms=1500),
-                _row(module="scout", use_case="scout.annunci", session_id=None, outcome="quota")]
+                _row(module="scout", use_case="scout.listings", session_id=None, outcome="quota")]
         assert client.post(f"{BASE}/rows", json={"rows": rows}).json()["written"] == 3
         out = {r["module"]: r for r in client.get(f"{BASE}/summary", params={"group": "module"}).json()["rows"]}
         assert out["oracle"]["calls"] == 2 and out["oracle"]["fallbacks"] == 1

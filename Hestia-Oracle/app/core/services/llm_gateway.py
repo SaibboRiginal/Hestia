@@ -1,7 +1,7 @@
 """LLM gateway — Oracle is the single owner of LLM provider access.
 
 Other services (Hephaestus Forge, ...) never hold provider URLs or API keys: they send an
-OpenAI-compatible chat body (messages + tools) with their ``use_case`` (default ``forge.codice``) and
+OpenAI-compatible chat body (messages + tools) with their ``use_case`` (default ``forge.code``) and
 Oracle walks that use case's chain (``llm_chains``): each step is forwarded to its provider in the
 OpenAI chat-completions shape (Ollama through its native ``/api/chat`` so ``num_ctx`` is honoured;
 Gemini and Anthropic through their OpenAI-compatible endpoints). A step out of quota is skipped until its
@@ -19,7 +19,7 @@ from core.services import llm_chains, llm_providers, llm_stats, llm_usage
 
 logger = logging.getLogger("hestia_oracle.llm_gateway")
 
-DEFAULT_USECASE = "forge.codice"
+DEFAULT_USECASE = "forge.code"
 _CLOUD_TYPES = {"gemini", "anthropic", "claude_cli"}
 
 

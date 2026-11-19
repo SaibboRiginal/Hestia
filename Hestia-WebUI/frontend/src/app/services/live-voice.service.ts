@@ -155,7 +155,7 @@ export class LiveVoiceService {
     this.heardAt = performance.now();
     const rec = new MediaRecorder(this.stream, recorderMime() ? { mimeType: recorderMime() } : undefined);
     this.rec = rec;
-    const opened = this.voice.post<any>('listen', { mime_type: this.mime, use_case: 'webui.live.ascolto' })
+    const opened = this.voice.post<any>('listen', { mime_type: this.mime, use_case: 'webui.live.listening' })
       .then(r => { this.listenId = r.stream_id; }).catch(() => { this.listenId = ''; });
     this.sending = opened;
     rec.ondataavailable = e => {
@@ -187,7 +187,7 @@ export class LiveVoiceService {
     try {
       const out = this.listenId
         ? await this.voice.post<any>(`listen/${this.listenId}/end`, { keep: { kind: 'recording', message_id: id } })
-        : await this.voice.transcribe(blob, this.mime, id, 'webui.live.ascolto');
+        : await this.voice.transcribe(blob, this.mime, id, 'webui.live.listening');
       text = String(out?.text || '').trim();
     } catch { text = ''; }
     this.partial.set('');
@@ -207,7 +207,7 @@ export class LiveVoiceService {
     this.queue = [];
     this.answerDone = false;
     this.sayDone = false;
-    this.sayChain = this.voice.post<any>('say', { format: PLAY_FORMAT, use_case: 'webui.live.voce' })
+    this.sayChain = this.voice.post<any>('say', { format: PLAY_FORMAT, use_case: 'webui.live.voice' })
       .then(r => { this.sayId = r.stream_id; }).catch(() => { this.sayId = ''; });
     const poll = window.setInterval(() => {
       if (!this.on || this.state() === 'hearing' || this.state() === 'listening' && !this.answerId) { window.clearInterval(poll); return; }

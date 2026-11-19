@@ -55,16 +55,14 @@ def _settings():
     from core.services import oracle_settings  # lazy: settings import the provider registry
     return oracle_settings
 
+from hestia_common import i18n as _i18n  # noqa: E402
 
 
 # Cached chars-per-token ratio per model name.  Populated lazily via
 # Ollama /api/tokenize on first use; falls back to 3.0 if unreachable.
 _token_ratio_cache: dict[str, float] = {}
-_BENCHMARK_TEXT = (
-    "The quick brown fox jumps over the lazy dog. "
-    "La volpe marrone veloce salta sopra il cane pigro. "
-    "1234567890 " * 10
-)
+# One sample sentence per language (locales/<lang>/words.json «token_sample»): the ratio fits every language spoken.
+_BENCHMARK_TEXT = " ".join(_i18n.words("token_sample")) + " " + "1234567890 " * 10
 
 
 class TokenCounter:

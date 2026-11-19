@@ -64,5 +64,8 @@
  ],
  "area.other": [
   "other"
+ ],
+ "token_sample": [
+  "The quick brown fox jumps over the lazy dog."
  ]
 }

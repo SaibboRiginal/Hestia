@@ -105,7 +105,7 @@ export const STATE_META: Record<string, { label: string; tone: string }> = {
 export const meta = (state?: string) => STATE_META[state ?? 'new'] ?? { label: state ?? '', tone: 'neutral' };
 
 export const ENGINES = ['', 'oracle', 'claude'];
-// oracle = Oracle's chain of use case forge.codice (Cervello → Modelli); local/cloud = old names of old tasks.
+// oracle = Oracle's chain of use case forge.code (Cervello → Modelli); local/cloud = old names of old tasks.
 export const ENGINE_LABEL: Record<string, string> = {
   '': tr('Default'), auto: tr('Default'), oracle: tr('Oracle chain'), local: tr('Oracle chain'), cloud: tr('Oracle chain'),
   claude: tr('Claude Code'),

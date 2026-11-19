@@ -39,7 +39,7 @@ Scope (Marko 2026-10-30): build the dataset only; training happens elsewhere (e.
 - **Privacy**: everything stays in Archive. A conversation with `training_off` (WebUI history «Non usare per
   l'allenamento», tool `chat_tag`) is never stored and its rows are dropped; deleting a conversation drops them too
   (`DELETE /api/metis/traces?session_id=`, tombstones with empty data). Archive meta unknown → the trace is skipped.
-- Retention: setting `metis.traces.keep_days` (365), pruned by the agenda jobs `metis.adesso.*` with the taps.
+- Retention: setting `metis.traces.keep_days` (365), pruned by the agenda jobs `metis.now.*` with the taps.
 - `GET /api/metis/traces/status` (counts), `GET /api/metis/traces/recent` (short list, no prompts).
 - Phase **D2 «Correggi»** (`core/review.py`): agenda job `metis.dataset.review` (seed 02:30, move it in the agenda)
   → `POST /api/metis/review/run` re-reads the next `metis.review.batch` turns older than 30 min (where the last run
@@ -86,8 +86,8 @@ Scope (Marko 2026-10-30): build the dataset only; training happens elsewhere (e.
   («Di solito il lunedì a quest'ora», «In agenda alle 18:00: …», «Usata di recente», the idea's own words). Only
   tools of the Hub catalog (`GET {HUB}/discovery/catalog?type=tool`, cached 10 min, last one kept if Hub is away)
   that the client can run; delete/cancel tools never appear.
-- **Ideas**: agenda jobs `metis.adesso.0700`, `.1230`, `.1800` (seeds: move them in the agenda) call
-  `POST /api/metis/adesso/refresh`: Oracle use case `metis.adesso` (chain veloce) picks 3 tools different from the
+- **Ideas**: agenda jobs `metis.now.0700`, `.1230`, `.1800` (seeds: move them in the agenda) call
+  `POST /api/metis/adesso/refresh`: Oracle use case `metis.now` (chain veloce) picks 3 tools different from the
   habits, better if little used; the answer is validated against the catalog, kept 8 hours per client. Model away →
   `[🔄]` habits only. The same job prunes old taps.
 - **Scopri** (`GET /api/metis/scopri?client=`, tool `metis_discover`): catalog tools used at most twice in 90 days,
@@ -142,9 +142,9 @@ Feedback filters (`limit`, `quality_label`, `since`) are now forwarded to Archiv
 (they were appended to the URL and dropped).
 
 `metis_benchmark_run` returns `status: not_implemented` (honest placeholder, no LLM call).
-Default `baseline_model` (benchmark) and `base_model` (LoRA) = the model Oracle uses now for the `oracle.generale` use case
-(first usable step of its chain), read via Hub from Oracle `GET /api/llm/usecases/oracle.generale`; Oracle unreachable →
-`[🔄]` fallback to the first step of Oracle's default «veloce» chain, `gemma4:e4b`. Metis never picks models itself (Oracle owns them).
+Default `baseline_model` (benchmark) and `base_model` (LoRA) = the model Oracle uses now for the `oracle.general` use case
+(first usable step of its chain), read via Hub from Oracle `GET /api/llm/usecases/oracle.general`; Oracle unreachable →
+`[🔄]` fallback to the first step of Oracle's default «fast» chain, `gemma4:e4b`. Metis never picks models itself (Oracle owns them).
 `metis_loRA_train` really launches `METIS_TRAINING_SCRIPT --dataset <jsonl> --base_model <m> --adapter_name <a>`
 (dataset + log in `METIS_DATA_DIR`, default `/code/data` = `Hestia-Metis/data` volume); it used to report "triggered" without starting anything.
 

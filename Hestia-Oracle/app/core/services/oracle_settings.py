@@ -112,7 +112,7 @@ STUB_AFTER_TURNS = "oracle.context.tool_result_stub_after_turns"
 OPENAI_CACHE_PROMPT = "oracle.provider.openai.cache_prompt"
 _KEEP_ALIVE = [("5m", "5 minutes"), ("30m", "30 minutes"), ("2h", "2 hours"), ("always", "Always")]
 
-AWARENESS_ITEMS = "oracle.chat.consapevolezza_righe"
+AWARENESS_ITEMS = "oracle.chat.awareness_lines"
 
 _CONTEXT = [
     setting(AWARENESS_ITEMS, "Awareness · recent things per line", "int", 3, group="Context", order=21,
@@ -226,22 +226,22 @@ _AGENT = [
     setting(MAX_PARALLEL_TOOLS, "Parallel tools", "int", 8, group="Agent", min=1, max=32, order=4,
             advanced=True, help="How many tools can run together in the same step."),
     # Loop guard (core/services/loop_guard.py, Cindy 1): always on, these only shape it.
-    setting("oracle.agent.giri.ripetizioni", "Loops · same call in a row", "int", 4, group="Agent",
+    setting("oracle.agent.loops.repeats", "Loops · same call in a row", "int", 4, group="Agent",
             min=2, max=20, order=5, advanced=True,
             help="If the assistant makes the same identical call many times in a row, it stops and answers you with what it has."),
-    setting("oracle.agent.giri.finestra", "Loops · calls watched", "int", 12, group="Agent", min=6,
+    setting("oracle.agent.loops.window", "Loops · calls watched", "int", 12, group="Agent", min=6,
             max=50, order=6, advanced=True,
             help="Last calls in which I look for a ping-pong (A-B-A-B) or a repeating loop."),
-    setting("oracle.agent.giri.attesa_secondi", "Loops · a real wait lasts at least", "int", 30,
+    setting("oracle.agent.loops.wait_seconds", "Loops · a real wait lasts at least", "int", 30,
             group="Agent", min=0, max=3600, unit="s", order=7, advanced=True,
             help="A call repeated after this time is a check («checking again shortly»), not a loop."),
-    setting("oracle.agent.giri.verifiche", "Loops · checks with the light model", "int", 3,
+    setting("oracle.agent.loops.checks", "Loops · checks with the light model", "int", 3,
             group="Agent", min=0, max=10, order=8, advanced=True,
             help="When in doubt a light model looks at the calls and says whether it is waiting or looping. 0 = I stop at once."),
     # Conversation goal (core/services/conversation_goal.py, Cindy 23).
-    setting("oracle.obiettivo.giri", "Goal · rounds in total", "int", 8, group="Agent", min=1, max=50,
+    setting("oracle.goal.loops", "Goal · rounds in total", "int", 8, group="Agent", min=1, max=50,
             order=9, help="How many work rounds in total the assistant does on a conversation goal."),
-    setting("oracle.obiettivo.giri_per_risposta", "Goal · rounds after each answer", "int", 3, group="Agent",
+    setting("oracle.goal.loops_per_answer", "Goal · rounds after each answer", "int", 3, group="Agent",
             min=1, max=10, order=9, advanced=True,
             help="After answering one of your messages, how many rounds it does on the goal before updating you."),
     setting(HISTORY_LIMIT, "Previous messages in the context", "int", 6, group="Context", min=1, max=100,
@@ -269,7 +269,7 @@ _TIMEOUTS = [
 ] + [
     setting(GATEWAY_CHAT_TIMEOUT, "Longest time · Forge requests to the model", "int", 600, group="Timings",
             min=30, max=3600, unit="s", order=20, advanced=True,
-            help="A Forge request to the model (use forge.codice) that exceeds this time fails."),
+            help="A Forge request to the model (use forge.code) that exceeds this time fails."),
     setting(OLLAMA_TIMEOUT, "Longest time · Ollama answer", "int", 120, group="Timings", min=10, max=1800,
             unit="s", order=21, help="How long I wait for an answer from the local model."),
     setting(OLLAMA_EMBED_TIMEOUT, "Longest time · Ollama embedding", "int", 60, group="Timings", min=5,

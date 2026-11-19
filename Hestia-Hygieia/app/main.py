@@ -492,7 +492,7 @@ def quick_product_undo(id: str, date: str = ""):
 def _emit(key: str, title: str, text: str, actions: list[dict], level: str = "info", page: str = "oggi") -> None:
     hub.ok("hermes", "POST", "api/events/ingest", body=reminder_event(
         module="hygieia", domain="selfcare", key=key, kind=key.rsplit(".", 1)[0], title=title, text=text,
-        voice=bool(settings.get("hygieia.notifiche.voce", True)),
+        voice=bool(settings.get("hygieia.notifications.voice", True)),
         actions=actions, page=page, level=level), timeout=8)
 
 

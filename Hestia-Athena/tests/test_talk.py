@@ -24,7 +24,7 @@ def _talk(monkeypatch, *, idle=30 * 3600, per_day=2, gap=4, sent=None, routes=No
     talk.reader = MagicMock()
     talk.reader.rows.return_value = [{"data": r, "at": r["at"]} for r in (sent or [])]
     talk.reader.signals.return_value = [
-        {"severity": "alta", "domain": "fitness", "text": "Nessun allenamento da 9 giorni"},
+        {"severity": "high", "domain": "fitness", "text": "Nessun allenamento da 9 giorni"},
         {"severity": "info", "domain": "finance", "text": "Spese nella norma"}]
     calls = []
 

@@ -22,7 +22,7 @@ def _bool(name: str, default: bool) -> bool:
 
 
 # ``local``/``cloud`` were two Oracle profiles before 2026-10-19: now one engine ``oracle`` on the chain of the
-# use case ``forge.codice`` (dossier docs/work/2026-10-19-oracle-blocks).
+# use case ``forge.code`` (dossier docs/work/2026-10-19-oracle-blocks).
 ENGINE_ALIASES = {"builtin": "oracle", "ollama": "oracle", "local": "oracle", "cloud": "oracle",
                   "claude_code": "claude"}
 

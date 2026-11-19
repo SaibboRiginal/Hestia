@@ -27,7 +27,7 @@ BATCH_COOLDOWN = "scout.batch.cooldown"
 LLM_TIMEOUT = "scout.llm.timeout"
 RECONCILE_EVERY_CYCLES = "scout.reconcile.every_cycles"
 ENRICHMENT_ENABLED = "scout.enrichment.enabled"
-NOTIFY_VOICE = "scout.notifiche.voce"
+NOTIFY_VOICE = "scout.notifications.voice"
 
 DEFAULT_SENDERS = ["nonrispondere@idealista.it", "noreply@notifiche.immobiliare.it"]
 

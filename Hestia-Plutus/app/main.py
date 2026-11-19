@@ -93,8 +93,8 @@ store = Store(hub)
 
 
 # What Spese asks Oracle for (the chain is chosen by Marko in Oracle → Cervello → Modelli).
-LLM_USECASE = "plutus.lettura"
-LLM_USECASES = [llm_usecase(LLM_USECASE, "Expenses · emails and statements", chain="veloce",
+LLM_USECASE = "plutus.reading"
+LLM_USECASES = [llm_usecase(LLM_USECASE, "Expenses · emails and statements", chain="fast",
                             help="Reads the emails or statements the automatic reader doesn't understand and proposes the categories.")]
 
 
@@ -529,7 +529,7 @@ def quick_expense_undo(id: str, date: str = ""):
 def _emit(key: str, title: str, text: str, actions: list[dict], level: str = "info", page_: str = "panoramica") -> None:
     hub.ok("hermes", "POST", "api/events/ingest", body=reminder_event(
         module="plutus", domain=DOMAIN, key=key, kind=key.rsplit(".", 1)[0], title=title, text=text,
-        voice=bool(settings.get("plutus.notifiche.voce", False)),
+        voice=bool(settings.get("plutus.notifications.voice", False)),
         actions=actions, page=page_, level=level), timeout=8)
 
 

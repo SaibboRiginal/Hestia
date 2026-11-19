@@ -62,8 +62,8 @@ class TestCorrelate:
 @pytest.mark.unit
 class TestTopics:
     def test_order_and_dedup(self):
-        sig = [{"module": "plutus", "key": "budget", "severity": "alta", "text": "x"},
-               {"module": "hercules", "key": "stall:panca", "severity": "attenzione", "text": "y"},
+        sig = [{"module": "plutus", "key": "budget", "severity": "high", "text": "x"},
+               {"module": "hercules", "key": "stall:panca", "severity": "warning", "text": "y"},
                {"module": "hercules", "key": "pr:panca", "severity": "info", "text": "z"}]
         links = [{"key": "link:a|b|0", "r": 0.8}]
         t = choose_topics(sig, links, set(), 5)
@@ -103,7 +103,7 @@ def life(monkeypatch):
     _set(monkeypatch, S.GATE_THRESHOLD, 0.3)
     rt = AthenaRuntime()
     _, series = _series()
-    rt.reflection.reader = _Reader([{"module": "plutus", "domain": "finance", "key": "budget", "severity": "alta",
+    rt.reflection.reader = _Reader([{"module": "plutus", "domain": "finance", "key": "budget", "severity": "high",
                                      "text": "Budget del mese già al 95%", "page": "budget"}], series)
     monkeypatch.setattr(rt.reflection, "detail", lambda module, topic="": f"dettaglio {module} {topic}".strip())
     monkeypatch.setattr(rt.observer, "observe_settings", lambda limit=40: [])
@@ -173,7 +173,7 @@ class TestRecapPiece:
 @pytest.mark.unit
 class TestSignalsClient:
     def test_signal_and_metric_shapes(self):
-        s = signal("stall:panca", "Panca ferma da 3 sedute", kind="trend", severity="attenzione", page="plans")
+        s = signal("stall:panca", "Panca ferma da 3 sedute", kind="trend", severity="warning", page="plans")
         assert s["topic"] == "stall:panca" and s["ttl_days"] == 7
         with pytest.raises(ValueError):
             signal("x", "y", severity="rossa")
@@ -185,7 +185,7 @@ class TestSignalsClient:
         week = iso_week(date.today() - timedelta(weeks=1))
         existing = [
             {"kind": "signal", "id": "hercules:stall:panca", "data": {
-                **signal("stall:panca", "Panca ferma", severity="attenzione"),
+                **signal("stall:panca", "Panca ferma", severity="warning"),
                 "expires_at": "2999-01-01T00:00:00+00:00"}},
             {"kind": "signal", "id": "hercules:old", "data": {"key": "old"}},
             {"kind": "metric", "id": f"hercules:fitness.sessions:{week}", "data": {"value": 3.0}},
@@ -197,7 +197,7 @@ class TestSignalsClient:
             return {"rows": existing} if method == "GET" else {"applied": []}
 
         with patch.object(pub, "_call", side_effect=fake_call):
-            out = pub.sync([signal("stall:panca", "Panca ferma", severity="attenzione"),
+            out = pub.sync([signal("stall:panca", "Panca ferma", severity="warning"),
                             signal("pr:squat", "Nuovo record squat", kind="milestone")],
                            [metric("fitness.sessions", week, 3), metric("fitness.sessions", iso_week(), 1)])
         rows = calls[-1][1]["rows"]
@@ -224,7 +224,7 @@ class TestApi:
             rp.assert_called_with("2026-10-20")
         caps = main.service.build_capabilities()
         assert caps["recap_endpoint"] == "/api/module/recap"
-        assert any(u.get("id") == "athena.riflessione" or u.get("key") == "athena.riflessione"
+        assert any(u.get("id") == "athena.reflection_run" or u.get("key") == "athena.reflection_run"
                    for u in caps.get("llm_usecases") or [])
 
     def test_think_vita_and_bad_track(self, client):
@@ -237,7 +237,7 @@ class TestApi:
     def test_signals_endpoint(self, client):
         c, main = client
         _, series = _series()
-        r = _Reader([{"module": "plutus", "domain": "finance", "key": "b", "severity": "alta", "text": "x"}], series)
+        r = _Reader([{"module": "plutus", "domain": "finance", "key": "b", "severity": "high", "text": "x"}], series)
         with patch.object(main.runtime.reflection, "reader", r):
             body = c.get("/api/athena/signals").json()
         assert body["signals"][0]["key"] == "b" and "fitness.sessions" in body["series"] and body["links"]

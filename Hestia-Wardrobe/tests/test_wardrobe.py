@@ -390,7 +390,7 @@ def test_signals_forgotten_laundry_repair_and_worn_metric(wd):
     by = {s["key"]: s for s in sigs}
     assert set(by) == {"forgotten", "laundry_backlog", "to_repair"}
     assert by["forgotten"]["metrics"]["count"] >= 1 and by["forgotten"]["page"] == "statistics"
-    assert by["laundry_backlog"]["severity"] == "attenzione" and by["laundry_backlog"]["metrics"]["count"] == 3
+    assert by["laundry_backlog"]["severity"] == "warning" and by["laundry_backlog"]["metrics"]["count"] == 3
     assert by["to_repair"]["metrics"]["count"] == 1
     assert all(s["text"].startswith("Guardaroba") and "Wardrobe" not in s["text"] for s in sigs)
     assert len(mets) == 12 and {m["name"] for m in mets} == {"wardrobe.worn"} and mets[-1]["label"] == "Capi indossati"

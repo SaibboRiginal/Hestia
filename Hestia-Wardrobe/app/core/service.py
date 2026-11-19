@@ -629,7 +629,7 @@ class Wardrobe:
                                page="statistics"))
         if len(f["laundry"]) >= self.LAUNDRY_MIN:
             n = len(f["laundry"])
-            sigs.append(signal("laundry_backlog", tr("Wardrobe: {0} items in the laundry for more than {1} days.", n, self.LAUNDRY_DAYS), kind="anomaly", severity="attenzione",
+            sigs.append(signal("laundry_backlog", tr("Wardrobe: {0} items in the laundry for more than {1} days.", n, self.LAUNDRY_DAYS), kind="anomaly", severity="warning",
                                metrics={"count": n, "days": self.LAUNDRY_DAYS}, page="items"))
         if f["repair"]:
             n = len(f["repair"])
@@ -826,7 +826,7 @@ class Wardrobe:
                   "\"pattern\", \"materials\": [names], \"styles\": [keys], \"seasons\": [spring|summer|autumn|winter], "
                   "\"warmth\": 1-5, \"formality\": 1-5, \"fit\", \"brand\": if readable or \"\"}. Allowed values: "
                   + json.dumps(catalog, ensure_ascii=False))
-        body = {"use_case": "wardrobe.foto", "temperature": 0.1, "max_tokens": 500,
+        body = {"use_case": "wardrobe.photo", "temperature": 0.1, "max_tokens": 500,
                 "messages": [{"role": "user", "content": [
                     {"type": "text", "text": prompt},
                     {"type": "image_url", "image_url": {"url": f"data:{mime};base64,{base64.b64encode(raw).decode()}"}}]}]}

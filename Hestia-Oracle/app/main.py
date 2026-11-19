@@ -359,7 +359,7 @@ class SetupApply(BaseModel):
     cloud_models: dict[str, list[str] | str] = Field(default_factory=dict)
     embedding: dict[str, Any] = Field(default_factory=dict)   # {steps: [{provider, model, url?…}]} memory models in order
     local_runtime: dict[str, str] = Field(default_factory=dict)   # {url, type, label}: a program on another computer
-    modes: dict[str, dict[str, Any]] = Field(default_factory=dict)   # per mode (potente, codice, visione): {steps: [...]} its own list, or one model
+    modes: dict[str, dict[str, Any]] = Field(default_factory=dict)   # per mode (strong, code, vision): {steps: [...]} its own list, or one model
     order: list[dict[str, str]] = Field(default_factory=list)   # «Scelti» in the user's order: [{provider, model}]
 
 
@@ -1561,7 +1561,7 @@ def documents_search_endpoint(query: str):
 @app.post("/api/llm/chat")
 def llm_chat_endpoint(req: dict):
     """OpenAI-compatible chat (messages + tools) along a use case's chain (Forge engine ``oracle``).
-    Body: {use_case?: forge.codice, messages, tools?, temperature?, max_tokens?}"""
+    Body: {use_case?: forge.code, messages, tools?, temperature?, max_tokens?}"""
     from core.services.llm_gateway import LLMGatewayError, chat
     try:
         return chat(req or {})
@@ -1598,7 +1598,7 @@ def llm_code_endpoint(req: CodeTaskRequest):
 @app.post("/api/llm/generate")
 def llm_generate_endpoint(req: dict, request: Request):
     """
-    Plain generation for services: {"prompt": "...", "use_case": "scout.annunci", "voice": false}.
+    Plain generation for services: {"prompt": "...", "use_case": "scout.listings", "voice": false}.
     ``voice: true`` = the text is for the owner: Oracle speaks as the assistant (same identity, style and language
     rule as the chat), the module sends only the data and what to say. Default false: a plain tool call.
     ``use_case`` (declared by the module in its Hub registration) picks the chain (setting oracle.usecases,

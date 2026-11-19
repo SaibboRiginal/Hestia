@@ -217,7 +217,7 @@ class MemoryConsolidator:
         try:
             resp = requests.post(
                 f"{self._oracle_route}/api/llm/generate",
-                json={"prompt": prompt, "use_case": "athena.strategia"},  # chain chosen in Oracle → Modelli
+                json={"prompt": prompt, "use_case": "athena.strategy"},  # chain chosen in Oracle → Modelli
                 timeout=get_int(S.MEMORY_ORACLE_TIMEOUT),
             )
             if resp.status_code == 200:

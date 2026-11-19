@@ -58,7 +58,7 @@ type RuntimeRef = { url?: string; type?: string; label?: string };
 export interface BrainChoice { local_provider: string; cloud_models: Record<string, string[]>;
   /** Memory models in order (the first is used, the next ones when it is not available); null = unchanged. */
   embedding: { steps: ({ provider: string; model: string } & RuntimeRef)[] } | null; local_runtime: RuntimeRef;
-  /** «Per modalità»: potente / codice / visione with their own model (first there, the general choice after). */
+  /** «Per mode»: strong / code / vision with their own model (first there, the general choice after). */
   modes: Record<string, { steps: ({ provider: string; model: string } & RuntimeRef)[] }>;
   /** «Scelti» in the user's order, local and cloud mixed. */
   order?: { provider: string; model: string }[]; }

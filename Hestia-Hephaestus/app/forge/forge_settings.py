@@ -27,7 +27,7 @@ AUTO_ROLLBACK = "hephaestus.forge.auto_rollback"
 PUSH_BRANCH = "hephaestus.forge.push_branch"
 VERIFY_DELAY = "hephaestus.forge.verify_delay"
 SCHEDULER_INTERVAL = "hephaestus.forge.scheduler_interval"
-TEAM_MIN_SERVICES = "hephaestus.forge.squadra.min_servizi"
+TEAM_MIN_SERVICES = "hephaestus.forge.team.min_services"
 
 REMEDIATE_TIMEOUT = "hephaestus.remediate.timeout"
 REMEDIATE_REQUIRE_APPROVAL = "hephaestus.remediate.require_approval"
