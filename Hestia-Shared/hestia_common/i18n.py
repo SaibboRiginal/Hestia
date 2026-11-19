@@ -10,6 +10,10 @@ A source text may carry a context tag, ``"f::Active"``, when one English text ne
 number, two meanings): the tag picks the catalog entry and is never shown.
 
 Catalog ``tools``: ``{tool_name: {"summary": "...", "params": {param: "help"}}}``.
+
+Catalog ``words``: the words a parser looks for in what the owner writes (``{name: [word, ...]}``), one file per
+language (``locales/<lang>/words.json``). ``words(name)`` joins every language, so the owner may write in any of them
+and a new language is only a new file: the code never holds those words.
 """
 from __future__ import annotations
 
@@ -34,6 +38,36 @@ def catalog(name: str, lang: str = FALLBACK) -> dict:
     except (OSError, ValueError):
         return {}
     return data if isinstance(data, dict) else {}
+
+
+def languages() -> tuple[str, ...]:
+    """Every language with a folder under ``locales`` (English first: the source)."""
+    try:
+        found = sorted(p.name for p in LOCALES.iterdir() if p.is_dir() and not p.name.startswith(("_", ".")))
+    except OSError:
+        found = []
+    return tuple(dict.fromkeys([SOURCE, *found]))
+
+
+@lru_cache(maxsize=256)
+def words(name: str, lang: str | None = None) -> tuple[str, ...]:
+    """The words of list *name* (``locales/<lang>/words.json``): of one language, or of all of them (no *lang*)."""
+    out: list[str] = []
+    for code in ((str(lang)[:2],) if lang else languages()):
+        value = catalog("words", code).get(str(name or ""))
+        if isinstance(value, str):
+            value = [value]
+        out.extend(str(w) for w in (value or []) if str(w))
+    return tuple(dict.fromkeys(out))
+
+
+def words_pattern(name: str, lang: str | None = None, *, whole: bool = True) -> str:
+    """A regex alternation of the words of *name* (longest first, escaped; each word may itself be a regex when the
+    list name ends in ``_re``)."""
+    items = sorted(words(name, lang), key=len, reverse=True)
+    parts = items if name.endswith("_re") else [re.escape(w) for w in items]
+    body = "|".join(parts) or r"(?!x)x"
+    return rf"\b(?:{body})\b" if whole else f"(?:{body})"
 
 
 def language(get: Callable[[str], Any] | None = None) -> str:

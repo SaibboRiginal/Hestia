@@ -1,0 +1,3 @@
+{
+ "_about": "Words a parser looks for in what the owner writes, by list name (hestia_common.i18n.words). One file per language; the code never holds them."
+}

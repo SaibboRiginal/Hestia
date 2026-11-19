@@ -372,7 +372,8 @@ module («scout» → «Immobili»), for texts such as agenda titles («Ricontro
 What the model reads is English in the code (tool and field descriptions, `response_prompt`, prompts, module
 `manual`). What a person reads about a tool comes from `hestia_common/locales/<lang>/tools.json`
 (`{tool: {summary, params: {field: help}}}`, Italian and English; other languages fall back to English, then Italian).
-`i18n.language(settings.get)` = the owner's language code from `themis.personal.language` (after
+`i18n.words(name)` / `i18n.words_pattern(name)` = the words a parser looks for in the owner's messages, from
+`locales/<lang>/words.json` of every language (never in the code). `i18n.language(settings.get)` = the owner's language code from `themis.personal.language` (after
 `settings.follow_personal()`), `i18n.tool_summary(name, lang)`, `i18n.param_help(name, field, lang)`,
 `i18n.catalog(name, lang)` for other catalogs. `areas.for_people(tool, lang=…)` reads the tool's own `summary`,
 then the catalog, then the first sentence of the description. A new tool adds its people texts to the catalog;

@@ -80,14 +80,21 @@ When one English text needs two Italian texts, prefix a context tag: `tr("pl::Tr
 `tr("Transport")` → «Trasporto». Tags in use: `alt::` `f::` (feminine) `m::` (masculine) `pl::` `abbr::` `dev::`
 `v::` (verb) `run::` `mood::` `lang::`. `i18n.bare()` strips the tag, so English shows the plain word.
 
-## Italian that stays in the code (on purpose)
+## No Italian in the code, ever (owner 2026-11-19)
 
-- **Stored values and ids**: route/page ids, query keys, states (`in_corso`, `fatto`), track ids
-  (`vita`/`sistema`/`parla`), setting keys, Plutus category ids, mood values (`giù`), use-case ids. Changing them
-  would break the owner's data; only their labels are translated.
-- **Parsers of the owner's words**: keyword detectors, regexes on bank or PayPal mails, Italian date words in
-  Telegram inputs. They read what people write; keep both languages there.
-- **Tool names** like `cibo_*`, `casa_*`, `scadenze_*`: renaming them is a separate decision of the owner.
+What a person never sees is English: identifiers, tool names, page ids and routes, query keys, setting keys, stored
+values and states, use-case ids, log lines, comments, prompts, scripts in `tools/`. Hestia is not in production, so
+"the stored data would break" is never a reason to keep an Italian value. What a person sees is an English source in
+`tr` with its translation in the catalog, never fixed in one language.
+
+- **Words of the owner's messages** that a parser looks for (keywords, date words, «yes/no», mood words…) live in
+  `locales/<lang>/words.json`, one file per language: `i18n.words("name")` joins every language,
+  `i18n.words_pattern("name")` gives the regex. A new language is only a new file.
+- **Words of an outside source** written in one language (an Italian bank mail, a real-estate site) live with the
+  source's profile as data, not as code.
+- Gate: `python tools/governance/check_english.py` (precheck and CI). While the sweep runs, a baseline
+  (`tools/governance/english_baseline.json`) holds the count of each file and a file may only go down; `--show F`
+  lists the lines, `--update` locks the progress. At zero the baseline is empty and any Italian word fails.
 
 ## Check before pushing
 
@@ -116,6 +123,7 @@ installer, the transfer/backup file format, technical module names). Italian agr
 - Don't write Italian in the code for a person: it would never be English. Write English and add the Italian.
 - Don't call `tr` at import or registration time, and don't wrap technical strings or hidden prompts in `tr`.
 - Don't change a stored value or a key when a label changes: only the text is translated.
+- Don't write an Italian word in the code, not even in an id, a value or a comment: `check_english.py` fails.
 - Don't hardcode `'it-IT'` or «€» after the number: use `locale()` and `display.money`.
 
 ## A new language (only when the owner asks for it)

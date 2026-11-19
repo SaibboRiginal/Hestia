@@ -41,6 +41,7 @@ def main() -> int:
         ("Command contracts", ["check_command_contracts.py", "--base", base, "--head", "HEAD"]),
         ("Icons, not emoji", ["check_icons.py"]),
         ("Every text has its Italian", ["check_i18n.py"]),
+        ("No Italian in the code", ["check_english.py"]),
         ("Hub tags", ["check_hub_tags.py"]),
         ("Expected test files", ["check_test_sync.py"]),
         ("Every function on Telegram", ["check_telegram.py"]),
