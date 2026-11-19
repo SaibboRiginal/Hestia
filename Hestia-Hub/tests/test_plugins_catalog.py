@@ -17,7 +17,7 @@ def ui(tmp_path):
     client = PluginClient("scout", title="Scout", icon="home", dist=tmp_path)
     client.webui(
         entry="scout.js",
-        pages=[page("houses", "Case", element="scout-listings"), page("houses/:id", "Annuncio", element="scout-listing")],
+        pages=[page("houses", "Houses", element="scout-listings"), page("houses/:id", "Listing", element="scout-listing")],
         widgets=[widget("new", "New houses", element="scout-new", sizes=["m", "l"], auto=True,
                         params={"city": {"type": "string"}})],
         quick_actions=[quick_action("fetch", "Controlla email", "POST", "/api/ui/cycle",
@@ -92,7 +92,7 @@ class TestHubCatalog:
         reg.register({"name": "scout", "base_url": "http://s", "capabilities": ui.capabilities("http://s")})
         cat = disc.discover_catalog(reg, client="webui", types=["page", "widget", "quick_action"])
         webui = cat["contributions"]["webui"]
-        assert [p["id"] for p in webui["page"]] == ["scout.case", "scout.case/:id"]
+        assert [p["id"] for p in webui["page"]] == ["scout.houses", "scout.houses/:id"]
         assert webui["widget"][0]["module"] == "scout" and webui["bundle"][0]["entry"] == "/ui/webui/scout.js"
         assert cat["modules"][0]["online"] is True and cat["modules"][0]["kind"] == "domain"
 

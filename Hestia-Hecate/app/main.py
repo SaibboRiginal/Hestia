@@ -1400,7 +1400,7 @@ def gateway_auth_callback_google(code: str = "", state: str = "", error: str = "
 def _callback_html(**kw) -> str:
     """The Google sign-in result page, titled with the assistant's chosen name (docs/work/2026-11-17-client-names)."""
     from hestia_common.i18n import identity_now
-    return _OAUTH_CALLBACK_HTML.format(name=identity_now().get("assistant") or "Hestia", **kw)
+    return _OAUTH_CALLBACK_HTML.format(name=identity_now().get("assistant") or "Hestia", lang=current(), **kw)
 
 
 _OAUTH_CALLBACK_HTML = """\

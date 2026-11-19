@@ -29,7 +29,7 @@ class FakeGoogle:
 
     def complete(self, code):
         if code != "ok":
-            raise connections.ConnectError("Google non ha accettato il codice.")
+            raise connections.ConnectError("Google did not accept the code.")
         self.s.update(pending=False, linked=True)
 
     def cancel(self):
