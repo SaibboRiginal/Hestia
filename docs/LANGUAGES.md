@@ -131,7 +131,8 @@ Tags in use: `alt::` `f::` (feminine) `m::` (masculine) `pl::` `abbr::` `dev::` 
 
 External sites keep their own words: listing URLs and page markup Scout reads (`/annunci/`, `/immobile/`,
 `id='caratteristiche'`), senders like `noreply@notifiche.immobiliare.it`. Test inputs keep the owner's own phrases
-(«oggi sono stanco»), next to English ones: both must work.
+(«oggi sono stanco»), next to English ones: both must work. A line of code that holds such an external name
+carries the marker `external-name` in its comment, so the gate below leaves it out; nothing else may.
 
 ## Check before pushing
 
@@ -139,7 +140,14 @@ External sites keep their own words: listing URLs and page markup Scout reads (`
 python tools/governance/check_i18n.py                     # lists every text without its Italian (precheck and CI run it)
 python tools/governance/check_i18n.py --todo todo.json    # writes {"Text": ""} for what is missing
 python tools/governance/check_i18n.py --merge todo.json   # after filling it in: adds them to the Italian catalog
+python tools/governance/check_english.py                  # no Italian in the code (precheck and CI run it)
+python tools/governance/check_english.py --show all       # where an Italian word is
 ```
+
+`check_english.py` (owner 2026-11-19: «what the user never sees is English, everything else translatable, never
+fixed in one language») counts the Italian words of every source file outside `tr(…)`, tests, `tools/cloud_test`
+(test inputs) and locale files. The baseline `tools/governance/english_baseline.json` is empty: any Italian word
+fails. A word the list misses is added to the list in the same change that removes it.
 
 It scans modules, WebUI, plugins, `tools/*.py` and `tools/cloud_test/*.py`. Placeholders must match between
 source and translation (`Hestia-Telegram/tests/test_language.py` checks it).

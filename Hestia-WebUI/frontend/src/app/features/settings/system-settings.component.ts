@@ -20,7 +20,7 @@ interface Grid { rows: string[]; columns: string[]; cell: Map<string, SettingIte
 
 /**
  * Settings → System content: every module's settings (Themis). Overview = module status cards
- * ("mezza dashboard"); a module = its groups, presets, settings; a search shows every match.
+ * ("half a dashboard"); a module = its groups, presets, settings; a search shows every match.
  * The sidebar and the search box live in the page (shared with Personal).
  */
 @Component({

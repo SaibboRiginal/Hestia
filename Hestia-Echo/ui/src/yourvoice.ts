@@ -134,7 +134,7 @@ export class EchoYourVoice extends HestiaElement {
         <div class="small muted">${tr("Names and words the listening engines must expect. When you fix a transcription I learn the new words: after")} ${needed} ${tr("times they become safe.")}</div>
         <div style="margin-top:8px">${items.length ? items.map(d => html`<div class="w">
           <span class="grow">${d.word}</span>
-          ${d.status === 'confirmed' ? html`<hxk-badge tone="success">${tr("safe")}</hxk-badge>` : html`<hxk-badge tone="neutral">${d.count || 0} di ${needed}</hxk-badge>`}
+          ${d.status === 'confirmed' ? html`<hxk-badge tone="success">${tr("safe")}</hxk-badge>` : html`<hxk-badge tone="neutral">${tr('{0} of {1}', d.count || 0, needed)}</hxk-badge>`}
           <hxk-button size="sm" variant="ghost" icon="trash" title=${tr("Remove")} ?loading=${this.busy === `w:${d.word}`} @click=${() => this.dropWord(d.word)}></hxk-button>
         </div>`) : html`<span class="muted small">${tr("No word yet.")}</span>`}</div>
         <div class="add"><hxk-field label=${tr("New word")} .value=${this.word} @change=${(e: CustomEvent) => (this.word = String(e.detail ?? ''))}></hxk-field>

@@ -55,7 +55,7 @@ Three object settings (Themis, live; edited in WebUI → Oracle → **Cervello �
   queue; setting `oracle.bus.local_workers` (default 1, live) = local calls served together (match Ollama
   `OLLAMA_NUM_PARALLEL` / llama-server `--parallel`). One call waits, never a whole turn, so between two steps of a long
   job a chat call passes ahead. Priority `chat` (turn started by the owner: `/api/chat` and `/api/chat/document` with
-  origin level `utente`) before `background` (routines, autonomous turns, `/api/llm/generate`, `/api/llm/chat`, memory
+  origin level `user`) before `background` (routines, autonomous turns, `/api/llm/generate`, `/api/llm/chat`, memory
   threads); same priority = arrival order. A `/api/llm/generate` call made while an owner turn waits for its tools is
   promoted to `chat` (it is that tool's work). Cloud steps and embeddings never wait; a nested call on the thread that
   holds a worker never waits (no deadlock with 1 worker); a stream holds its worker until it ends. Log

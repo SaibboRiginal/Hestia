@@ -27,7 +27,7 @@ class ImmobiliareSiteHandler(BaseSiteHandler):
 
     def can_handle(self, url: str) -> bool:
         lowered = str(url or "").lower()
-        return "immobiliare.it" in lowered and "/annunci/" in lowered
+        return "immobiliare.it" in lowered and "/annunci/" in lowered  # external-name: the site's own address
 
     def normalize_url(self, url: str) -> str:
         try:
@@ -98,7 +98,7 @@ class ImmobiliareSiteHandler(BaseSiteHandler):
         if og_url and og_url.get("content"):
             normalized = self.normalize_url(str(og_url.get("content")).strip())
             enriched["url"] = normalized
-            match = re.search(r"/annunci/(\d+)", normalized)
+            match = re.search(r"/annunci/(\d+)", normalized)  # external-name: the site's own address
             if match:
                 enriched.setdefault("extras", {})
                 enriched["extras"]["listing_id"] = match.group(1)
@@ -336,7 +336,7 @@ class ImmobiliareSiteHandler(BaseSiteHandler):
     ) -> tuple[dict, dict]:
         characteristics: dict[str, str] = {}
 
-        anchor = soup.select_one("span[id='caratteristiche']")
+        anchor = soup.select_one("span[id='caratteristiche']")  # external-name: the site's own address
         if anchor:
             block = anchor.find_parent("div")
             if block:
@@ -381,15 +381,15 @@ class ImmobiliareSiteHandler(BaseSiteHandler):
                 value = dd.get_text(" ", strip=True)
                 if not key or not value:
                     continue
-                if key == "piano":
+                if key == "piano":  # external-name: the site's own text
                     details["floor"] = value
                 elif label_is("surface", key):
                     details["surface_m2"] = self._extract_number(value)
-                elif key == "coefficiente":
+                elif key == "coefficiente":  # external-name: the site's own text
                     details["coefficient_pct"] = self._extract_int(value)
                 elif label_is("surface_type", key):
                     details["surface_type"] = value
-                elif "sup. commerciale" in key:
+                elif "sup. commerciale" in key:  # external-name: the site's own text
                     details["commercial_surface_m2"] = self._extract_number(value)
 
             if details.get("name"):
@@ -454,7 +454,7 @@ class ImmobiliareSiteHandler(BaseSiteHandler):
         for selector in [
             "div[class*='ReadAll_readAll'] > div",
             "div[class*='ReadAll_readAll']",
-            "section[id='descrizione']",
+            "section[id='descrizione']",  # external-name: the site's own address
         ]:
             node = soup.select_one(selector)
             if not node:

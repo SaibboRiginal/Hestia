@@ -1,4 +1,4 @@
-"""Guided setup «Benvenuto» — the orchestration behind the WebUI screens (docs/work/2026-10-30-one-click-setup §4.2).
+"""Guided setup «Welcome» — the orchestration behind the WebUI screens (docs/work/2026-10-30-one-click-setup §4.2).
 
 Hephaestus owns it because it already holds the repo (``/repo``, where the ``.env`` files live) and the Docker socket
 (to re-create a container with a new secret). It never decides anything: every value comes from the person on the
@@ -210,7 +210,7 @@ class SetupService:
             if (step.get("provider") or "ollama") == "ollama" and step["model"] not in pulls:
                 pulls.append(step["model"])
         if not emb_steps and local_model and recipe != "cloud":
-            # The memory's model: the installer already pulls the default one, so this is usually «già presente».
+            # The memory's model: the installer already pulls the default one, so this is usually «already there».
             pulls.append(EMBEDDING_MODEL)
         for v in (modes or {}).values():
             for step in ([s for s in v.get("steps") or [] if isinstance(s, dict)] or [v]):

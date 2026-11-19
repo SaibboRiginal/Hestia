@@ -142,7 +142,7 @@ def test_stream_rebinds_priority_on_every_step():
 
 @pytest.mark.unit
 def test_origin_and_module_promotion():
-    assert llm_bus.for_origin({"level": "utente"}) == llm_bus.CHAT
+    assert llm_bus.for_origin({"level": "user"}) == llm_bus.CHAT
     assert llm_bus.for_origin({"level": "routine"}) == llm_bus.BACKGROUND
     assert llm_bus.module_priority({"level": "autonomo"}) == llm_bus.BACKGROUND
     with llm_bus.priority(llm_bus.CHAT):

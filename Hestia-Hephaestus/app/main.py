@@ -148,7 +148,7 @@ app.include_router(create_forge_router(forge))
 app.include_router(forge_settings.settings.router())
 app.include_router(create_repo_router(forge))
 app.include_router(webui_plugin.router())   # GET /api/ui/manifest · GET /ui/webui/<file>
-setup_router, setup_service = create_setup_router(   # guided setup «Benvenuto» (docs/work/2026-10-30-one-click-setup)
+setup_router, setup_service = create_setup_router(   # guided setup «Welcome» (docs/work/2026-10-30-one-click-setup)
     forge.cfg.repo_path, Path(os.getenv("HEPHAESTUS_DATA_DIR", "/code/data")), config.hub_api_url,
     channel=lambda: str(forge_settings.settings.get(forge_settings.UPDATE_CHANNEL) or "stable"),
     unhealthy=forge.unhealthy)

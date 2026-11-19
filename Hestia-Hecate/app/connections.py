@@ -264,9 +264,9 @@ class PhoneConnector(Connector):
         if p.get("configured"):
             bits = []
             if last.get("home") is not None:
-                bits.append("at home" if last["home"] else tr("away from home"))
+                bits.append(tr("at home") if last["home"] else tr("away from home"))
             if last.get("battery") is not None:
-                bits.append(f"batteria {last['battery']}%")
+                bits.append(tr("battery {0}%", last['battery']))
             when = str(last.get("at") or "")[:16].replace("T", " ")
             return {"state": "connected", "step": None, "actions": [],
                     "detail": (tr("Last signal {0}", when) + (f" · {', '.join(bits)}" if bits else "")) if when

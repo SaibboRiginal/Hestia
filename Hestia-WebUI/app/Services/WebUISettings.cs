@@ -54,9 +54,9 @@ public class WebUISettings
             ["default"] = 5,
             ["min"] = 1,
             ["max"] = 20,
-            ["group"] = "Esporta e importa",
-            ["help"] = "Prima di ogni importazione {assistant} salva una copia di ciò che verrà cambiato. Tiene le più " +
-                       "recenti, le altre vengono eliminate.",
+            ["group"] = "Export and import",
+            ["help"] = "Before every import {assistant} saves a copy of what will change. It keeps the most " +
+                       "recent ones and deletes the others.",
             ["apply"] = "live",
             ["scope"] = "system",
             ["oracle"] = "propose",

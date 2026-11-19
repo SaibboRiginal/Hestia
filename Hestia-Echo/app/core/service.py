@@ -288,7 +288,7 @@ class Echo:
             pcm = audio.to_pcm16k(data, mime)
             out, out_mime = audio.encode(data, fmt)
         except audio.AudioError as exc:
-            raise Invalid(f"conversione audio: {exc}")
+            raise Invalid(tr("audio conversion: {0}", exc))
         seconds = audio.wav_duration(pcm)
         if seconds <= 0.2 or audio.peak(pcm) < MUTE_PEAK:   # «Listen» that plays nothing: say why instead
             logger.warning("[🔄] event=voice_speak_mute provider=%s bytes=%s seconds=%s", info["provider"], len(data), seconds)

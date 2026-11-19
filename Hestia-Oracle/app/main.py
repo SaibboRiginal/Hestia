@@ -359,7 +359,7 @@ class SetupApply(BaseModel):
     cloud_models: dict[str, list[str] | str] = Field(default_factory=dict)
     embedding: dict[str, Any] = Field(default_factory=dict)   # {steps: [{provider, model, url?…}]} memory models in order
     local_runtime: dict[str, str] = Field(default_factory=dict)   # {url, type, label}: a program on another computer
-    modes: dict[str, dict[str, Any]] = Field(default_factory=dict)   # per mode (potente, codice, visione): {steps: [...]} its own list, or one model
+    modes: dict[str, dict[str, Any]] = Field(default_factory=dict)   # per mode (strong, code, vision): {steps: [...]} its own list, or one model
     order: list[dict[str, str]] = Field(default_factory=list)   # «Chosen» in the user's order: [{provider, model}]
 
 
@@ -606,7 +606,7 @@ def ui_documents_delete(document_id: str):
 
 @app.get("/api/llm/models")
 def llm_models_endpoint(provider: str = "ollama", use: str = ""):
-    """Model choices of a named provider (chain editor in Modelli); ``use`` = chat | embedding → only those that fit."""
+    """Model choices of a named provider (chain editor in Models); ``use`` = chat | embedding → only those that fit."""
     from core.services import llm_providers
     return {"provider": provider, "options": [{"value": m, "label": m} for m in llm_providers.list_models(provider, use)]}
 

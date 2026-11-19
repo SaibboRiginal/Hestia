@@ -292,7 +292,7 @@ it), not in the Telegram menu. Returns the compact cycles (default 10, max 50).
 | GET | `/api/athena/thinking` | Recent thinking records, full (observation payload included) |
 | GET | `/api/athena/thinking/summary?limit=&track=` | Compact cycles + `running`, `threshold`, `weights`, `loop_enabled`, `strategist_enabled` (page Pensieri, MCP `athena_thinking`) |
 | POST | `/api/athena/think?track=` | «Think now»: one full cycle now in background (`system` default, or `life`) → `{status: started, trace_id, track}` or `{status: busy}` |
-| GET | `/api/athena/signals?domain=&limit=&weeks=` | signals, weekly series, links, recent observations (page Segnali, MCP `athena_signals`) |
+| GET | `/api/athena/signals?domain=&limit=&weeks=` | signals, weekly series, links, recent observations (page Signals, MCP `athena_signals`) |
 | GET | `/api/module/recap?day=` | Athena's recap piece «To keep an eye on» (capability `recap_endpoint`) |
 | GET | `/api/athena/memory/proposals` | Clean-up proposals still waiting for the owner (page «What I learned») |
 | GET | `/api/ui/manifest` · `/ui/webui/athena.js` | WebUI plugin manifest and bundle |

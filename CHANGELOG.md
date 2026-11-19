@@ -5,6 +5,7 @@ One line per finished task (details in `docs/work/<task>/`).
 ## 2026-11-19
 
 - No Italian in the code, wave 1: gate `check_english.py` (ratchet to zero), tool names, areas, dossier folders, Aphrodite, Apollo, ChatHub in English; owner's words in `locales/<lang>/words.json` (`docs/work/2026-11-19-no-italian-in-code`) [ext-chat]
+- No Italian in the code, done: every module, stored value, route, key and comment in English, visible texts translated; the gate now fails on any Italian word [ext-chat]
 
 ## 2026-11-18
 - The mascot is back and alive: a little flame, a cat or an owl drawn by the site itself (no pictures needed) that thinks while the answer is prepared, talks while it is written or read aloud, listens in «Talk», sleeps at night and hops when tapped; drag it to the side you like. Choose it (or none) in Settings → Personal → Look → «Mascot», also found with Ctrl+K; your own pets with pictures still work [ext-chat]

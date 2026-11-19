@@ -3,7 +3,7 @@
 Dossier docs/work/2026-10-20-weather-hecate §3.8. «I feel like running twice this week» →
 ``propose`` picks the best slots of the week from the forecast at the place (Hecate) and the free time in the
 calendar; nothing reaches the calendar until ``confirm``. A confirmed slot becomes an event in Marko's Google
-calendar «Allenamenti» (owned by Hercules: activities and finished gym sessions = the training history) and a
+calendar «Workouts» (owned by Hercules: activities and finished gym sessions = the training history) and a
 one-off agenda task that asks afterwards «Did you do it?» (Done / Not done / Moved). A morning agenda job
 nudges «Great day for…» only while an intention is open. Partial data is fine.
 
@@ -23,15 +23,7 @@ from hestia_common.i18n import t as tr, weekday_name, word_set  # owner language
 
 logger = logging.getLogger("hestia_hercules.activities")
 
-KINDS = {"corsa": "Corsa", "bici": "Bici", "camminata": "Camminata", "nuoto": "Nuoto", "altro": "Activity"}
-# Morning coach line, one phrase per kind (each language puts its own article: «per la corsa», «per il nuoto»).
-GOOD_DAY = {"corsa": "Great day for a run: {0}–{1}", "bici": "Great day for a ride: {0}–{1}",
-            "camminata": "Great day for a walk: {0}–{1}", "nuoto": "Great day for a swim: {0}–{1}"}
-GOOD_DAY_ANY = "Great day to move: {0}–{1}"
-ALIASES = {"run": "corsa", "running": "corsa", "correre": "corsa", "jogging": "corsa", "bike": "bici",
-           "bicicletta": "bici", "ciclismo": "bici", "walk": "camminata", "camminare": "camminata",
-           "passeggiata": "camminata", "hike": "camminata", "escursione": "camminata", "swim": "nuoto",
-           "nuotare": "nuoto", "piscina": "nuoto"}
+KINDS = {"run": "Running", "bike": "Cycling", "walk": "Walking", "swim": "Swimming", "other": "Activity"}
 SLOT_STATUS = ("proposed", "planned", "done", "missed", "moved", "cancelled")
 CALENDAR_NAME = "Workouts"
 EARLIEST, LATEST = 6, 21          # hours a slot may start
@@ -47,6 +39,7 @@ def kind_of(text: Any) -> str:
 # Whole sentences per kind: a noun dropped into one sentence breaks the grammar of other languages.
 GREAT_DAY = {"run": "Great day for running: {0}–{1}", "bike": "Great day for cycling: {0}–{1}",
              "walk": "Great day for a walk: {0}–{1}", "swim": "Great day for swimming: {0}–{1}"}
+GREAT_DAY_ANY = "Great day to move: {0}–{1}"
 DID_YOU = {"run": "Did you go running at {0:%H:%M}?", "bike": "Did you go cycling at {0:%H:%M}?",
            "walk": "Did you go for a walk at {0:%H:%M}?", "swim": "Did you go swimming at {0:%H:%M}?",
            "other": "Did you do the activity at {0:%H:%M}?"}
@@ -353,7 +346,7 @@ class Activities:
         logger.info("event=hercules_activity_confirmed plan=%s slots=%s", plan_id, len(planned))
         return {"confirmed": True, "plan_id": plan_id, "kind": label(plan["kind"]), "times": plan["times"],
                 "planned": [slot_text(s) for s in planned],
-                "note": tr("Events in the «Allenamenti» calendar; after each outing I ask if you did it.")
+                "note": tr("Events in the «{0}» calendar; after each outing I ask if you did it.", tr(CALENDAR_NAME))
                         if planned else tr("Intention saved: in the morning I tell you when it's a good moment.")}
 
     def add_slot(self, plan_id: str, start: str = "") -> dict:
@@ -482,7 +475,7 @@ class Activities:
             self._delete_event(f"activity:{id}")
         return out
 
-    # ── calendar «Allenamenti» + agenda ─────────────────────────────────────
+    # ── calendar «Workouts» + agenda ─────────────────────────────────────
     def _calendar(self) -> str | None:
         r = self._hecate("POST", "api/gateway/calendar/calendars", body={"name": tr(CALENDAR_NAME), "provider": "google"})
         return r.get("calendar_id") if r.get("status") == "ok" else None
@@ -566,7 +559,7 @@ class Activities:
                            start.isoformat())
 
     def sync_sessions(self, days: int = 14) -> int:
-        """Finished gym sessions → events in «Allenamenti» (history). Idempotent through ``calendar_link``."""
+        """Finished gym sessions → events in «Workouts» (history). Idempotent through ``calendar_link``."""
         since = (self.h.today() - timedelta(days=days)).isoformat()
         n = 0
         for s in self.h.store.items("session"):
@@ -639,7 +632,7 @@ class Activities:
                 continue
             best = cands[0]
             w = best.get("weather") or {}
-            text = (tr(GOOD_DAY.get(plan['kind'], GOOD_DAY_ANY), best['start'][11:16], best['end'][11:16])
+            text = (tr(GREAT_DAY.get(plan['kind'], GREAT_DAY_ANY), best['start'][11:16], best['end'][11:16])
                     + (f", {w['temp_c']}°" if w.get("temp_c") is not None else "")
                     + (f", {w['condition']}" if w.get("condition") else "") + f" · {prog['hint']}")
             actions = [{"id": "plan", "label": tr("alt::Plan"), "style": "primary", "service": "hercules", "method": "POST",

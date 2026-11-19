@@ -168,9 +168,9 @@ ui = plugin_client("athena", title="Thoughts", icon="zap", color="amber", kind="
                    version=SERVICE_VERSION)
 ui.webui(
     entry="athena.js", api_prefix=f"{API}/",
-    pages=[plugin_page("pensieri", "Thoughts", element="athena-thoughts", icon="zap", order=130,
+    pages=[plugin_page("thoughts", "Thoughts", element="athena-thoughts", icon="zap", order=130,
                        help="Every Athena cycle, in two tracks: Life (signals of the areas, links across weeks, observations for the recap) and System ({assistant}'s health). What it observed, the score (5 factors) and what it did or discarded, with the reason. «Think now» for a cycle right away. In System also the evidence it is collecting before proposing; in «Writes to you» when and why she writes to you first."),
-           plugin_page("segnali", "Signals", element="athena-signals", icon="pulse", order=131,
+           plugin_page("signals", "Signals", element="athena-signals", icon="pulse", order=131,
                        help="The short signals each area publishes about its data and the weekly numbers the reflection compares. The observations they produce arrive in the evening recap."),
            plugin_page("recap", "Recap", element="athena-recaps", icon="note", order=132,
                        help="Daily recaps: the text you received and, below, the facts of each area it was written from. The time moves in the calendar."),

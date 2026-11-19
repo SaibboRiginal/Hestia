@@ -1921,5 +1921,9 @@
   "guardaroba",
   "armadio",
   "nuovo capo"
+ ],
+ "plutus.paypal.amount_for": [
+  "di",
+  "per"
  ]
 }

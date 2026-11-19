@@ -1843,5 +1843,9 @@
   "wardrobe",
   "closet",
   "new item"
+ ],
+ "plutus.paypal.amount_for": [
+  "for",
+  "of"
  ]
 }

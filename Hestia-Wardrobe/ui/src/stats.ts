@@ -60,7 +60,7 @@ export class WardrobeStats extends WardrobeElement {
           </div>
           <span class="small muted">${plural(u.never_marked, 'garment', 'garments')} ${tr("never recorded: normal if you don't record every day.")}</span>`}
       </div>
-      <div class="row small muted"><span>${t.wishlist ? `${t.wishlist} desiderati · ` : ''}${t.marks} ${tr("records in total")}</span><span class="grow"></span>
+      <div class="row small muted"><span>${t.wishlist ? `${tr('{0} wished', t.wishlist)} · ` : ''}${t.marks} ${tr("records in total")}</span><span class="grow"></span>
         <button class="link" @click=${async () => { const r = await this.host.api('GET', `${API}/export`); if (r.ok) { const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([r.data.text], { type: 'application/json' })); a.download = r.data.filename; a.click(); } }}>${tr("Export JSON")}</button></div>
     </div>`;
   }

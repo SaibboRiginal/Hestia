@@ -88,7 +88,7 @@ export class EchoBlocks extends HestiaElement {
     const setOpt = (k: string, v: any) => set('options', { ...p.options, [k]: v });
     const st = STATES[live.state] || { label: live.state || '–', tone: 'neutral' };
     const types: Opt[] = (this.live?.standards || []).map((s: any) => ({ value: s.id, label: s.label }));
-    return html`<hxk-card heading=${p.label || name} subtitle=${`${name} · ${(std.directions || []).join(' e ')}`}>
+    return html`<hxk-card heading=${p.label || name} subtitle=${`${name} · ${(std.directions || []).join(' · ')}`}>
       <hxk-button slot="actions" variant="ghost" icon="trash" @click=${() => this.removeProvider(name)}>${tr("alt::Remove")}</hxk-button>
       <div class="grid2">
         <hxk-field label=${tr("Visible name")} .value=${p.label} @change=${(e: CustomEvent) => set('label', e.detail)}></hxk-field>
@@ -134,7 +134,7 @@ export class EchoBlocks extends HestiaElement {
   /** The engines (and their models or voices) that fit this chain's direction, for the one chain editor. */
   private chainProps(chain: string) {
     const c = this.chains[chain];
-    const speaking = c.direction === 'voce';
+    const speaking = c.direction === 'voice';
     const providers = Object.entries<any>(this.providers)
       .filter(([, p]) => (this.std(p.type).directions || []).includes(c.direction))
       .map(([n, p]) => ({ value: n, label: p.label || n }));
@@ -161,7 +161,7 @@ export class EchoBlocks extends HestiaElement {
   private chainCard(name: string) {
     const c = this.chains[name];
     const cp = this.chainProps(name);
-    return html`<hxk-card heading=${c.label || name} subtitle=${`${name} · ${c.direction === 'voce' ? tr('voice') : tr('listening')}`}>
+    return html`<hxk-card heading=${c.label || name} subtitle=${`${name} · ${c.direction === 'voice' ? tr('voice') : tr('listening')}`}>
       <hxk-button slot="actions" variant="ghost" icon="trash" @click=${() => this.removeChain(name)}>${tr("Delete")}</hxk-button>
       <hxk-field label=${tr("Visible name")} .value=${c.label}
         @change=${(e: CustomEvent) => { this.chains = { ...this.chains, [name]: { ...c, label: e.detail } }; this.touch('chains'); }}></hxk-field>

@@ -288,7 +288,7 @@ def load_google_credentials():
     candidates = GoogleCalendarProvider._candidate_tokens()
     if not candidates:
         error = ("Google not authorized yet: no refresh token found. Run the OAuth flow "
-                 "(Telegram: Connetti Google, or POST /api/gateway/auth/initiate/google)")
+                 "(Telegram: Connect Google, or POST /api/gateway/auth/initiate/google)")
         logger.warning("event=google_missing_refresh_token %s", error)
         return None, error
 

@@ -66,9 +66,9 @@ def run(settings) -> bool:
     if not chains and not usecases:
         return False
     merged = {**llm_chains.DEFAULT_CHAINS, **chains}
-    ok = settings.put(oracle_settings.CHAINS_KEY, merged, actor="oracle", reason="migrazione oracle.models.*")
+    ok = settings.put(oracle_settings.CHAINS_KEY, merged, actor="oracle", reason="migration of oracle.models.*")
     ok = settings.put(oracle_settings.USECASES_KEY, usecases, actor="oracle",
-                      reason="migrazione oracle.models.*") and ok
+                      reason="migration of oracle.models.*") and ok
     logger.info("event=oracle_models_migrated chains=%s usecases=%s ok=%s", ",".join(chains) or "-",
                 ",".join(usecases) or "-", ok)
     return ok

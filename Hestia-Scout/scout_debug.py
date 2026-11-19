@@ -321,7 +321,7 @@ def debug_url(url: str):
 if __name__ == "__main__":
     if len(sys.argv) < 2:
         print("Usage: python scout_debug.py <URL>")
-        print("Example: python scout_debug.py https://www.idealista.it/immobile/35072211/")
+        print("Example: python scout_debug.py https://www.idealista.it/immobile/35072211/")  # external-name: the site's own address
         sys.exit(1)
 
     url = sys.argv[1]

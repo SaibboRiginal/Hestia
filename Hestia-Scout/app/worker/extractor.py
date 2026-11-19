@@ -42,7 +42,7 @@ def sanitize_email_for_ai(raw_html: str) -> str:
     for a_tag in soup.find_all("a", href=True):
         url = a_tag["href"]
         if "idealista.it" in url and any(
-            x in url for x in ("immobile", "prodotto", "rapprochement")
+            x in url for x in ("immobile", "prodotto", "rapprochement")  # external-name: the site's own address
         ):
             clean_text = a_tag.get_text(strip=True)
             a_tag.replace_with(f" {clean_text} [PROPERTY_LINK: {url}] ")

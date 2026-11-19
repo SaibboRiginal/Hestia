@@ -19,7 +19,7 @@ const words = (s: string) => s.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g
  * <hx-chat-commands [query]="text after /"> — «/» in the chat box (dossier 2026-11-18-real-test-problems B): the tools
  * the WebUI can run, filtered while typing (arrows / Tab / Enter pick one). A tool without arguments runs at once; one
  * with arguments shows its fields here. The result goes in the conversation (`done`). Same list and rules as the
- * Comandi page (Hestia-MCP), nothing duplicated.
+ * Commands page (Hestia-MCP), nothing duplicated.
  */
 @Component({
   selector: 'hx-chat-commands',
@@ -171,7 +171,7 @@ export class ChatCommandsComponent {
     this.done.emit({ title: c.title, html });
   }
 
-  /** The result in words (Oracle, like the Comandi page) when the tool answers in natural language; else as it is. */
+  /** The result in words (Oracle, like the Commands page) when the tool answers in natural language; else as it is. */
   private async readable(c: Cmd, result: unknown): Promise<string> {
     if (typeof result === 'string') return marked.parse(result, { gfm: true, async: false }) as string;
     if (c.response_mode === 'oracle_natural') {

@@ -166,7 +166,7 @@ def emit_needs_input(missing_fields: list[str], context: str = "") -> str:
 
 # kind → (level, icon name, emoji, default title). Clients may restyle by kind/level/icon.
 NOTICE_KINDS: dict[str, tuple[str, str, str, str]] = {
-    "memory.saved": ("success", "memory", "💾", "Ricordato"),
+    "memory.saved": ("success", "memory", "💾", "Remembered"),
     "memory.removed": ("info", "trash", "🗑️", "alt::Forgotten"),
     "memory.updated": ("info", "memory", "💾", "Memory updated"),
     "mood.saved": ("info", "smile", "🙂", "Mood noted"),

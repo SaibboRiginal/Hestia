@@ -179,7 +179,7 @@ def register_handlers() -> None:
 
 def setup_bot_profile() -> None:
     """`/` menu (8 entries, owner's chat only), name and description of the bot, menu button: at boot and when the
-    assistant's name, she/he or «Lingua» change."""
+    assistant's name, she/he or «Language» change."""
     from telebot.types import BotCommand, BotCommandScopeChat
     menu = model.current()
     commands = [BotCommand(name, tr(desc)) for name, desc in menu.commands]
@@ -194,7 +194,7 @@ def setup_bot_profile() -> None:
 
 
 def set_bot_identity() -> None:
-    """The bot is called with the name the owner gave the assistant, and describes itself in «Lingua»
+    """The bot is called with the name the owner gave the assistant, and describes itself in «Language»
     (docs/work/2026-11-17-client-names). The name is sent only when it differs (Telegram limits renames)."""
     from hestia_common.i18n import identity_now
     name = (identity_now().get("assistant") or "Hestia")[:64]
@@ -228,7 +228,7 @@ def run():
     register_handlers()
     threading.Thread(target=run_control_api, daemon=True).start()
     from telegram_settings import settings as telegram_settings
-    telegram_settings.on_change(on_personal_change)   # the bot follows the assistant's name and «Lingua»
+    telegram_settings.on_change(on_personal_change)   # the bot follows the assistant's name and «Language»
     telegram_settings.start()   # Themis: declare + load values (background, hourly re-assert)
 
     if catalog.register_with_hub():

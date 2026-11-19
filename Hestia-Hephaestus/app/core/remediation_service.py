@@ -88,7 +88,7 @@ class RemediationService:
                     if attempts < self._max_attempts:
                         when = datetime.now(timezone.utc) + timedelta(minutes=self._retry_minutes * attempts)
                         self.agenda.plan(
-                            key, f"🔁 Ritenta riparazione ({attempts + 1}/{self._max_attempts}) — {label}", when,
+                            key, f"🔁 Retry repair ({attempts + 1}/{self._max_attempts}) — {label}", when,
                             action={"service": "hephaestus",
                                     "path": f"/api/hephaestus/remediate/{snapshot['task_id']}/retry",
                                     "method": "POST", "body": {"requested_by": "agenda"},

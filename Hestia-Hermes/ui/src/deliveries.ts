@@ -1,5 +1,5 @@
 /**
- * <hermes-deliveries> — «Consegne»: what was sent to you, where it arrived and how it went
+ * <hermes-deliveries> — «Deliveries»: what was sent to you, where it arrived and how it went
  * (SPEC docs/work/2026-10-18-core-modules-and-external-mcp §A2; rebuilt in docs/work/2026-11-18-real-test-problems F).
  *
  * One pattern: grouped by day; each row = the area's icon (never a module name), the title without HTML, ONE sentence

@@ -144,7 +144,7 @@ class DriveFiles:
 
     def trash(self, file_id: str) -> None:
         self._check(self._session().patch(f"{API}/{file_id}", json={"trashed": True}, params={"fields": "id"}),
-                    "cestina file")
+                    "trash file")
         logger.info("event=drive_delete file=%s", file_id)
 
     def read(self, file_id: str, offset: int, length: int) -> tuple[bytes, int]:

@@ -113,7 +113,7 @@ class LoopGuard:
                 logger.warning("[🔄] event=agent_loop_guard_check_failed kind=%s error=%s fallback=stop", kind,
                                str(exc)[:160])
                 verdict = "loop"
-            if verdict.startswith("aspett") or verdict.startswith("wait"):
+            if verdict.startswith("wait"):
                 logger.info("event=agent_loop_guard_waiting kind=%s checks=%d", kind, self.checks)
                 # keep only the last call: a new run must build up again before the next suspicion
                 self.calls = self.calls[-1:]

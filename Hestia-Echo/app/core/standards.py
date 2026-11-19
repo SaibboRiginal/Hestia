@@ -161,7 +161,7 @@ class WhisperLocal(Standard):
     id, label, directions, wants_pcm = "whisper_local", "Local Whisper (faster-whisper)", ("listen",), True
     SIZES = ["tiny", "base", "small", "medium", "large-v3", "large-v3-turbo"]
     options = [
-        opt("beam_size", "Precisione (beam)", "int", 5, min=1, max=10, help="Higher = more accurate and slower."),
+        opt("beam_size", "Precision (beam)", "int", 5, min=1, max=10, help="Higher = more accurate and slower."),
         opt("vad", "Skip silences", "bool", True),
         opt("initial_prompt", "Words to recognise", "string", "",
             help="Your names and words (e.g. Hercules, Rome), comma separated: it writes them right. «{assistant}» and your name are already there."),
@@ -239,7 +239,7 @@ PIPER_MALE = {"riccardo", "ryan", "davefx", "tom", "thorsten", "faber"}
 class Piper(Standard):
     id, label, directions = "piper", "Piper (local, fast)", ("voice",)
     options = [
-        opt("length_scale", "Lentezza", "float", 1.0, min=0.5, max=2.0, help="1 = normal; higher = slower."),
+        opt("length_scale", "Slowness", "float", 1.0, min=0.5, max=2.0, help="1 = normal; higher = slower."),
         opt("noise_scale", "alt::Change", "float", 0.667, min=0.0, max=1.0),
         opt("sentence_silence", "Pause between sentences", "float", 0.2, min=0.0, max=2.0),
     ]
@@ -485,7 +485,7 @@ class OpenAICompatible(Standard):
         resp = requests.post(f"{self.url(provider)}/audio/speech", headers=self._headers(provider), json=body,
                              timeout=120)
         if resp.status_code >= 400:
-            raise _http_error(resp, "sintesi")
+            raise _http_error(resp, "speech")
         return resp.content, resp.headers.get("content-type", "audio/wav").split(";")[0]
 
 
@@ -496,14 +496,14 @@ class Google(Standard):
         opt("recognition_model", "Listening model", "enum", "latest_short", direction="listen",
             options=[{"value": "latest_short", "label": "Short sentences"}, {"value": "latest_long", "label": "Long audio"},
                      {"value": "default", "label": "Default"}]),
-        opt("punctuation", "Punteggiatura", "bool", True, direction="listen"),
+        opt("punctuation", "Punctuation", "bool", True, direction="listen"),
         opt("speaking_rate", "Speed", "float", 1.0, min=0.25, max=4.0, direction="voice"),
         opt("pitch", "Tone", "float", 0.0, min=-20.0, max=20.0, direction="voice"),
         opt("profile", "Audio profile", "enum", "headphone-class-device", direction="voice",
-            options=[{"value": "headphone-class-device", "label": "Cuffie"},
+            options=[{"value": "headphone-class-device", "label": "Headphones"},
                      {"value": "handset-class-device", "label": "Phone"},
                      {"value": "small-bluetooth-speaker-class-device", "label": "Small speaker"},
-                     {"value": "large-home-entertainment-class-device", "label": "Impianto"}]),
+                     {"value": "large-home-entertainment-class-device", "label": "Home speakers"}]),
     ]
 
     def voices(self, provider, language="it"):
@@ -544,7 +544,7 @@ class Google(Standard):
         resp = requests.post("https://texttospeech.googleapis.com/v1/text:synthesize",
                              params={"key": provider["key"]}, json=body, timeout=60)
         if resp.status_code >= 400:
-            raise _http_error(resp, "sintesi")
+            raise _http_error(resp, "speech")
         return base64.b64decode(resp.json()["audioContent"]), "audio/wav"
 
 
@@ -591,7 +591,7 @@ class ElevenLabs(Standard):
         resp = requests.post(f"{self.url(provider)}/text-to-speech/{voice}", headers={"xi-api-key": provider["key"]},
                              params={"output_format": "mp3_44100_128"}, json=body, timeout=120)
         if resp.status_code >= 400:
-            raise _http_error(resp, "sintesi")
+            raise _http_error(resp, "speech")
         return resp.content, "audio/mpeg"
 
 

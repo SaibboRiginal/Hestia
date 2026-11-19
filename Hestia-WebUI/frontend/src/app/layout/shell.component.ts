@@ -442,7 +442,7 @@ export class ShellComponent {
   });
 
   /** What the sidebar draws: a closed section or module opens by itself while the page on screen is inside it. */
-  /** «Fissati», drawn above the scroll area (it never scrolls away); null when nothing is pinned. */
+  /** «Pinned», drawn above the scroll area (it never scrolls away); null when nothing is pinned. */
   readonly pinnedSection = computed(() => this.view().find(sec => sec.key === 'pinned' && sec.items.length) ?? null);
 
   readonly view = computed(() => {
@@ -469,9 +469,9 @@ export class ShellComponent {
       const e = sec.items.find(x => x.id === active);
       if (!e || !CRUMB_SECTIONS.includes(sec.key)) continue;
       const parent = e.child ? sec.items.find(x => x.id === e.parent) : undefined;
-      // Every piece is a way back (dossier 2026-11-18-real-test-problems D): the section opens its overview (Sistema) or
+      // Every piece is a way back (dossier 2026-11-18-real-test-problems D): the section opens its overview (System) or
       // its first page, the parent its own page.
-      const sectionLink = sec.key === 'system' ? '/sistema' : sec.items.find(x => !x.child)?.link;
+      const sectionLink = sec.key === 'system' ? '/system' : sec.items.find(x => !x.child)?.link;
       return [{ label: sec.label, link: sectionLink }, ...(parent ? [{ label: parent.label, link: parent.link }] : []),
               { label: e.label }];
     }

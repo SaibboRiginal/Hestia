@@ -943,7 +943,7 @@ _owned_calendars: dict[tuple[str, str], str] = {}
 
 @app.post("/api/gateway/calendar/calendars")
 def gateway_calendar_ensure(body: dict):
-    """Id of a Hestia-owned calendar (e.g. «Allenamenti»), created on the provider when missing. Idempotent:
+    """Id of a Hestia-owned calendar (e.g. «Workouts»), created on the provider when missing. Idempotent:
     found again by name, cached. Marko's other calendars are never touched."""
     name = str((body or {}).get("name") or "").strip()
     if not name or len(name) > 100:
@@ -1387,7 +1387,7 @@ def gateway_auth_callback_google(code: str = "", state: str = "", error: str = "
                                         detail=f"{msg}<br><br>{hint}"),
             status_code=exc.status_code)
     if result["status"] == "authorized":
-        scopes = ", ".join(s.rsplit("/", 1)[-1] for s in result.get("granted_scopes", [])) or "nessuno"
+        scopes = ", ".join(s.rsplit("/", 1)[-1] for s in result.get("granted_scopes", [])) or tr("none")
         return HTMLResponse(_callback_html(
             icon="✅", title=tr("Authorization completed!"),
             detail=tr("Google is connected to {assistant} (scope: {0}). You can close this page and go back to Telegram.", _html.escape(scopes))))
@@ -1732,7 +1732,7 @@ def _apply_google_token(token_data: dict) -> dict:
         _notify_action_required(
             "google_reauth_complete",
             tr("✅ <b>Google</b> is connected to {assistant}.\n\n")
-            + ("Calendar e Gmail operativi." if gmail_ok
+            + (tr("Calendar and Gmail working.") if gmail_ok
                else tr("Calendar working. Gmail NOT authorized: sign in again granting email reading.")),
         )
     return {

@@ -220,7 +220,7 @@ export class HygieiaRoutine extends HestiaElement {
         <span class="num">${i + 1}</span>
         <div class="grow click" @click=${() => (this.edit = open ? '' : (s.id || `new${i}`))}>
           <div class="truncate">${name}${s.optional ? html`<span class="small muted">${tr(' · optional')}</span>` : nothing}</div>
-          <div class="small muted truncate">${[s.amount, s.wait_seconds ? `attendi ${s.wait_seconds}s` : '', s.cadence ? cadenceText(s.cadence) : '',
+          <div class="small muted truncate">${[s.amount, s.wait_seconds ? tr('wait {0}s', s.wait_seconds) : '', s.cadence ? cadenceText(s.cadence) : '',
             paused ? tr("paused until {0}", dayLabel(s.paused_until, false)) : ''].filter(Boolean).join(' · ') || tr('every time')}</div>
         </div>
         <hxk-button size="sm" variant="ghost" icon=${open ? 'chevron-left' : 'edit'} @click=${() => (this.edit = open ? '' : (s.id || `new${i}`))}></hxk-button>

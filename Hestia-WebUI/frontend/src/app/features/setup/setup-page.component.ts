@@ -47,7 +47,7 @@ function store(key: string, value: string): void {
 }
 
 /**
- * Guided setup «Benvenuto» (docs/work/2026-10-30-one-click-setup §4.2, layout of round 7): full screen, one column, one
+ * Guided setup «Welcome» (docs/work/2026-10-30-one-click-setup §4.2, layout of round 7): full screen, one column, one
  * question per screen with the buttons always at the bottom; on top the step («3/11 Memory») opens the list of the
  * steps and the downloads. The recommended answer is preselected, «Later» on the optional ones. Every answer is
  * saved at once (server side), and the screen is remembered, so closing the browser resumes where it was. Secrets go
@@ -155,7 +155,7 @@ function store(key: string, value: string): void {
               <div class="modetabs" role="tablist"  [attr.aria-label]="'alt::Mode' | tr">
                 @for (m of modeList; track m.id) {
                   <button type="button" role="tab" [attr.aria-selected]="modeTab() === m.id" [class.on]="modeTab() === m.id" (click)="modeTab.set(m.id)">
-                    {{ m.label }}<small>{{ m.id === 'general' ? ('for everything' | tr) : modeOwn()[m.id] ? 'propri' : ('like General' | tr) }}</small>
+                    {{ m.label }}<small>{{ m.id === 'general' ? ('for everything' | tr) : modeOwn()[m.id] ? ('its own' | tr) : ('like General' | tr) }}</small>
                   </button>
                 }
               </div>
@@ -770,7 +770,7 @@ export class SetupPageComponent {
       const rank = (state.brain.order || []).map(o => lk && o.provider === this.localProvider() && o.model === this.localModel() ? 'h'
         : o.model ? `m:${o.provider}:${o.model}` : `s:${o.provider}`);
       this.cloudRank.set(rank.length && lk && !rank.includes('h') ? ['h', ...rank] : rank);
-      // «Memoria»: the model in use (at home or in the cloud), else the recommended one at home
+      // «Memory»: the model in use (at home or in the cloud), else the recommended one at home
       const steps = catalog.embedding_steps?.length ? catalog.embedding_steps : catalog.embedding?.model ? [catalog.embedding] : [];
       const order: string[] = []; const picks: Record<string, string[]> = {}; let home = '';
       for (const s of steps) {
@@ -851,9 +851,9 @@ export class SetupPageComponent {
     const st = this.state();
     if (!st) return '';
     switch (s) {
-      case 'modelli': return [this.localModel(), ...this.cloudPicked().map(n => this.cloudLabel(n))].filter(Boolean).join(', ');
-      case 'memoria': return this.embeddingList().map(c => c.model).join(', ');
-      case 'ascolto': case 'voce': return this.voiceQueued() ? tr('Choice') : st.later.includes('voce') ? tr('Later') : '';
+      case 'models': return [this.localModel(), ...this.cloudPicked().map(n => this.cloudLabel(n))].filter(Boolean).join(', ');
+      case 'memory': return this.embeddingList().map(c => c.model).join(', ');
+      case 'listen': case 'voice': return this.voiceQueued() ? tr('Choice') : st.later.includes('voice') ? tr('Later') : '';
       case 'telegram': return st.telegram.linked ? tr('Linked') : st.later.includes('telegram') ? tr('Later') : '';
       case 'backup': return st.backup.passphrase ? tr('Ready') : st.later.includes('backup') ? tr('Later') : '';
       case 'away': return this.tunnel()?.on ? tr('Active') : '';
@@ -884,10 +884,10 @@ export class SetupPageComponent {
   recapText(s: Screen): string {
     const st = this.state()!;
     switch (s) {
-      case 'chi': return this.identity.ownerName() ? tr("{0} and {1}.", this.identity.ownerCall() || this.identity.ownerName(), this.identity.assistant()) : tr('You haven\'t told me your name yet.');
-      case 'modelli': return st.brain.summary || tr('pl::Not chosen yet.');
-      case 'memoria': { const list = this.embeddingList(); return list.length ? list.map(c => c.model).join(', ') : this.catalog()?.embedding?.model || tr('Not chosen yet.'); }
-      case 'voce': return this.voiceQueued() ? tr('Chosen.') : tr('Later.');
+      case 'who': return this.identity.ownerName() ? tr("{0} and {1}.", this.identity.ownerCall() || this.identity.ownerName(), this.identity.assistant()) : tr('You haven\'t told me your name yet.');
+      case 'models': return st.brain.summary || tr('pl::Not chosen yet.');
+      case 'memory': { const list = this.embeddingList(); return list.length ? list.map(c => c.model).join(', ') : this.catalog()?.embedding?.model || tr('Not chosen yet.'); }
+      case 'voice': return this.voiceQueued() ? tr('Chosen.') : tr('Later.');
       case 'telegram': return st.telegram.linked ? tr('Linked.') : tr('Later.');
       case 'backup': return st.backup.passphrase ? tr('Ready.') : tr('Later.');
       case 'away': return this.tunnel()?.on ? (this.tunnel()!.url || tr('Active.')) : tr('Only at home and from Telegram.');

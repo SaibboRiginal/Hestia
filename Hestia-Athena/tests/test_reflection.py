@@ -242,7 +242,7 @@ class TestApi:
             body = c.get("/api/athena/signals").json()
         assert body["signals"][0]["key"] == "b" and "fitness.sessions" in body["series"] and body["links"]
 
-    def test_manifest_has_segnali_page_and_tool(self, client):
+    def test_manifest_has_signals_page_and_tool(self, client):
         c, _ = client
         pages = c.get("/api/ui/manifest").json()["clients"]["webui"]["page"]
         assert [(p["id"], p["order"]) for p in pages] == [("thoughts", 130), ("signals", 131), ("recap", 132), ("learned", 133)]

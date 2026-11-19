@@ -83,7 +83,7 @@ class Images:
             raise Invalid(tr("the workflow is needed in ComfyUI API format (Save → API Format)"))
         purpose = body.get("purpose") or "generic"
         if purpose not in PURPOSES:
-            raise Invalid("scopo: " + ", ".join(PURPOSES))
+            raise Invalid(tr("purpose: ") + ", ".join(PURPOSES))
         inputs = {**detect_inputs(graph), **{k: v for k, v in (body.get("inputs") or {}).items() if k in INPUTS}}
         if "prompt" not in inputs:
             raise Invalid(tr("I can't find where the text goes: point to inputs.prompt (e.g. «6.inputs.text»)"))

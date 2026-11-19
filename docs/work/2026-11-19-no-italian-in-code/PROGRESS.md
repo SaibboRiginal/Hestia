@@ -6,5 +6,8 @@
 - [x] Areas in English (`day`, `training`, `expenses`…), people's words for areas in `words.json`
 - [x] Dossier folders with English slugs, every reference updated
 - [x] Aphrodite profiles/pages, Apollo purposes/pages, WebUI ChatHub texts
-- [ ] Every other module (see `python tools/governance/check_english.py --show all`)
-- [ ] Baseline empty
+- [x] Old branch `claude/project-thread-evwtog` adopted (stored values, keys, routes, tools/ scripts): 5068 → 253 words
+- [x] Every other module: stored values (gender she/he, Hercules kinds, Hygieia metrics, Hermes styles, Oracle brain
+      fallback, origin level), WebUI routes and setup steps, visible texts that were not in `tr`, comments
+- [x] Words the list missed found with a catalog-based scan and added to the list
+- [x] Baseline empty: any Italian word fails precheck and CI

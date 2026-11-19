@@ -16,8 +16,8 @@ import { TrPipe } from '../../core/i18n';
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <hx-page-header  [title]="'System' | tr"  [subtitle]="'How {assistant} is and how it works: health, models, notifications, agenda, settings, development' | tr">
-      <a hx-btn size="sm" variant="ghost" icon="refresh" routerLink="/aggiornamenti">{{ "Updates" | tr }}</a>
-      <a hx-btn size="sm" variant="ghost" icon="host" routerLink="/macchine">{{ "Machines" | tr }}</a>
+      <a hx-btn size="sm" variant="ghost" icon="refresh" routerLink="/updates">{{ "Updates" | tr }}</a>
+      <a hx-btn size="sm" variant="ghost" icon="host" routerLink="/machines">{{ "Machines" | tr }}</a>
       <a hx-btn size="sm" variant="ghost" icon="download" routerLink="/download">{{ "alt::Download" | tr }}</a>
       @if (hasDashboard()) { <a hx-btn size="sm" icon="grid" routerLink="/d/system">{{ "Dashboard" | tr }}</a> }
     </hx-page-header>

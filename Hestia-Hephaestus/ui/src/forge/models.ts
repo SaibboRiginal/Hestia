@@ -95,7 +95,7 @@ export const STATE_META: Record<string, { label: string; tone: string }> = {
   awaiting_review: { label: tr('diff to review'), tone: 'warning' },
   approved: { label: tr('merge in progress'), tone: 'accent' },
   merging: { label: tr('merge in progress'), tone: 'accent' },
-  merged: { label: 'applicato', tone: 'success' },
+  merged: { label: tr('applied'), tone: 'success' },
   deployed: { label: tr('in production'), tone: 'success' },
   failed: { label: tr('failed'), tone: 'danger' },
   rejected: { label: tr('rejected'), tone: 'neutral' },

@@ -1029,7 +1029,7 @@ def agenda_occurrences(days: int = Query(7, ge=1, le=400), owner: str | None = N
                        end: str | None = Query(None, description="ISO end (with start)"),
                        include_done: bool = Query(False, description="also completed/cancelled items")) -> dict:
     """Same as ``GET /api/agenda`` under the plugin's ``api_prefix`` (``/api/agenda/``): the calendar page
-    (WebUI plugin «Agenda di Hestia») reads its occurrences here."""
+    (WebUI plugin «Hestia's agenda») reads its occurrences here."""
     return agenda_view(days=days, owner=owner, type=type, past_hours=past_hours, start=start, end=end,
                        include_done=include_done)
 

@@ -8,7 +8,7 @@ and route. Metis keeps them in Archive ``dataset-store`` (big rows: always read 
 - kind ``toolset`` — id = hash of the tool schemas offered, stored once (the same domain mix repeats a lot);
 - kind ``signal``  — what the next turns tell about a trace, id ``<trace>:<type>``, ref_id = trace_id:
   ``rephrase`` (the owner asked again almost the same thing within minutes), ``correction`` (the next message
-  starts with «no», «intendevo»…), ``tool_failed`` (a tool of the turn failed). Votes stay in Archive feedback
+  starts with «no», «I meant»…), ``tool_failed`` (a tool of the turn failed). Votes stay in Archive feedback
   (``interaction_id`` = trace_id); the review of phase D2 reads both.
 
 A conversation marked «don't use for training» (Archive chat meta ``training_off``) is never stored;

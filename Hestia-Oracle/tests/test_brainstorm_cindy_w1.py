@@ -49,7 +49,7 @@ class TestLoopGuard:
         assert hits[-1] and r.reason == "loop"
 
     def test_checker_says_waiting(self):
-        g = LoopGuard(repeat=2, window=12, checker=lambda recent: "aspetta", max_checks=3)
+        g = LoopGuard(repeat=2, window=12, checker=lambda recent: "wait", max_checks=3)
         assert not g.add("a", {}, at=0) and not g.add("a", {}, at=1)
         assert g.checks == 1
 

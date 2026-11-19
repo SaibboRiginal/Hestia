@@ -56,7 +56,7 @@ export class AppearanceService {
     this.theme.setPalette(now?.profile.palette ?? {});
   }
 
-  /** The mascots to choose from (built-in ones first), for Impostazioni → Personali → «Mascotte». */
+  /** The mascots to choose from (built-in ones first), for Settings → Personal → «Mascot». */
   readonly pets = signal<{ id: string; name: string; builtin?: boolean }[]>([]);
   readonly hasLook = this.hasModule;
 

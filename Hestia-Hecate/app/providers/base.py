@@ -44,5 +44,5 @@ class AbstractCalendarProvider(ABC):
         pass
 
     def ensure_calendar(self, name: str) -> str:
-        """Id of the calendar called ``name``, created when missing (Hestia-owned calendars, e.g. «Allenamenti»)."""
+        """Id of the calendar called ``name``, created when missing (Hestia-owned calendars, e.g. «Workouts»)."""
         raise NotImplementedError(f"{self.name}: secondary calendars not supported")

@@ -47,7 +47,8 @@ UI work: **`Hestia-WebUI/frontend/DESIGN-SYSTEM.md`**. Texts and languages: **`d
 - Texts: ALL code is English, stored values and ids too. A text a person reads is English wrapped in `tr`, with its
   translation in `hestia_common/locales/<lang>/messages.json`; the owner's words are parsed from `words.json` of every
   language; labels declared at import/registration are plain English (translated at the edge), never `tr`. No
-  Italian in the code, ever. Every module follows «Language» (`docs/LANGUAGES.md`, gate `tools/governance/check_i18n.py`).
+  Italian in the code, ever. Every module follows «Language» (`docs/LANGUAGES.md`, gates `check_i18n.py` and
+  `check_english.py` in `tools/governance/`).
 - Prompts for local models: "caveman" style (short, dense) — every token is paid each turn. Hidden text is English;
   the answer follows the owner's language. A text for the owner = `/api/llm/generate` with `voice: true` (Oracle adds
   who speaks); never write «Sei Hestia…» in a module. Answer format belongs to the client, not to Oracle.

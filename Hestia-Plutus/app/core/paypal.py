@@ -35,7 +35,7 @@ def looks_like_money(subject: str, body: str = "") -> bool:
 
 def _clean_merchant(m: str) -> str:
     m = re.sub(r"\s+", " ", m or "").strip(" :.,\"'")
-    m = re.sub(r"\s+(?:di|for|per|of)\s+[-€$£]?\s*\d.*$", "", m, flags=re.I)
+    m = word_regex(r"\s+(?:{0})\s+[-€$£]?\s*\d.*$", "plutus.paypal.amount_for").sub("", m)
     return m[:80]
 
 

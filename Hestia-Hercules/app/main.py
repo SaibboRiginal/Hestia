@@ -370,7 +370,7 @@ def session_finish(id: str, body: dict = Body(default={})):
 
 
 def _sync_history() -> None:
-    """Finished gym sessions → «Allenamenti» calendar (history), off the request thread."""
+    """Finished gym sessions → «Workouts» calendar (history), off the request thread."""
     def run():
         try:
             activities.sync_sessions(3)
@@ -1206,7 +1206,7 @@ try:
                 path=f"{API}/activities/propose", clients=["telegram", "ui"], telegram_group="training",
                 telegram={"section": "Activity"}),
         MCPTool(name="fitness_confirm_activity", description=("Confirm the proposed intention (after the user's yes): slots = numbers of the moments to keep "
-                                                              "or ISO times the user chose (empty = all). Creates the events in the «Allenamenti» calendar and "
+                                                              "or ISO times the user chose (empty = all). Creates the events in the «Workouts» calendar and "
                                                               "asks after each outing whether it was done."),
                 parameters={"type": "object", "properties": {"plan_id": S, "slots": L}, "required": ["plan_id"]},
                 handler=_t(_confirm_activity), title="Confirm task", method="POST",

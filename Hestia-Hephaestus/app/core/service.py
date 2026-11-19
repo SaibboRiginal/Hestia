@@ -14,7 +14,7 @@ class HephaestusService(HestiaServiceBase):
                                        "repairs")
         caps.setdefault("manual", "forge_develop starts a development task only on an explicit build request or a "
                                   "«yes» to the proposal; forge_tasks/forge_status/forge_task read; approve, reject, "
-                                  "pause, rollback only when the owner says so. aggiornamenti_*: Hestia updates.")
+                                  "pause, rollback only when the owner says so. updates_*: Hestia updates.")
         caps.setdefault("title", "Development")
         caps["mcp_endpoint"] = f"{self.descriptor.base_url.rstrip('/')}/mcp"
         caps.update(ui.capabilities(self.descriptor.base_url))   # WebUI plugin manifest (System)

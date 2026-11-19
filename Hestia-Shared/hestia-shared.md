@@ -559,6 +559,6 @@ modules by it). A failure, or a finished download over 200 MB, goes to Notifiche
 
 **2026-11-16 (no Italian in the code, dossier `docs/work/2026-11-14-english-backend` v2.0)**: every text is English in the code; Italian lives only in `Hestia-Shared/hestia_common/locales/it/messages.json`. Labels declared at registration (manifest, capabilities, agenda rules, settings) are plain English, translated at the edge. `display.money` and the SDK `locale()` / `plural` follow the language; `areas` accepts English and Italian area names.
 
-**2026-11-16 (LLM bus, dossier `docs/work/2026-11-16-bus-llm`)**: Italian text of the new Oracle setting `oracle.bus.local_workers` added to `locales/it/messages.json`. No library change: modules keep calling `/api/llm/generate`; Oracle queues local model calls and an `X-Hestia-Origin` of level `utente` gives the call the owner's priority.
+**2026-11-16 (LLM bus, dossier `docs/work/2026-11-16-bus-llm`)**: Italian text of the new Oracle setting `oracle.bus.local_workers` added to `locales/it/messages.json`. No library change: modules keep calling `/api/llm/generate`; Oracle queues local model calls and an `X-Hestia-Origin` of level `user` gives the call the owner's priority.
 
 **2026-11-18 (problems of the real test, dossier `docs/work/2026-11-18-real-test-problems`)**: Italian texts of the Development and Deliveries pages, the chat waiting list, «Add now» (site and Telegram) and the «/» commands added to `locales/it/messages.json`. No library change.

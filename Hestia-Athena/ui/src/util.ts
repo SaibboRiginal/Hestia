@@ -74,8 +74,8 @@ export const AREAS: Record<string, string> = {
 export const area = (d?: string) => (d && AREAS[d]) || d || '';
 
 export const SEVERITY: Record<string, { label: string; tone: string; icon: string }> = {
-  alta: { label: tr('important'), tone: 'danger', icon: 'alert' },
-  attenzione: { label: tr('to watch'), tone: 'warning', icon: 'eye' },
+  high: { label: tr('important'), tone: 'danger', icon: 'alert' },
+  warning: { label: tr('to watch'), tone: 'warning', icon: 'eye' },
   info: { label: tr('information'), tone: 'neutral', icon: 'info' },
 };
 

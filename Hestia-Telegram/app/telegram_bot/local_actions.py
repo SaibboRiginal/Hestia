@@ -51,7 +51,7 @@ def _voice(chat_id, args, on: bool | None = None):
                     rows=[[ui.button(tr("Turn off") if value else tr("Turn on"), "n:voice")]])
 
 
-def _aiuto(chat_id, args):
+def _help(chat_id, args):
     from telegram_bot.menu import model
     menu = model.current()
     lines = [
@@ -235,7 +235,7 @@ def tools() -> list[catalog.Tool]:
         T("voice_off", "Turn off voice replies", "", group="system", hints={"section": "internal"},
           handler=lambda c, a: _voice(c, a, on=False)),
         T("help", "How to use it", "Quick guide and shortcuts", group="system", hints={"section": "Chat"},
-          handler=_aiuto),
+          handler=_help),
         T("webui_token", "Access to the web page", "A code to enter the web page", group="system",
           hints={"section": "Web page", "primary": 3, "label": "Web access"}, writes=False,
           handler=_webui_token),

@@ -22,9 +22,9 @@ DOMAINS = ("light", "switch", "cover", "climate", "fan", "media_player", "lock",
            "binary_sensor", "person")
 COMMANDS = {"on": "turn_on", "off": "turn_off", "toggle": "toggle", "open": "open_cover", "close": "close_cover",
             "lock": "lock", "unlock": "unlock"}
-LABELS = {"light": "Lights", "switch": "Prese", "cover": "Shutters", "climate": "Climate", "fan": "Ventilatori",
-          "media_player": "Media", "lock": "Serrature", "scene": "Scene", "script": "Actions", "sensor": "Sensori",
-          "binary_sensor": "Sensori", "person": "People"}
+LABELS = {"light": "Lights", "switch": "Sockets", "cover": "Shutters", "climate": "Climate", "fan": "Fans",
+          "media_player": "Media", "lock": "Locks", "scene": "Scene", "script": "Actions", "sensor": "Sensors",
+          "binary_sensor": "Sensors", "person": "People"}
 STATE_WORDS = {"on": "on", "off": "off", "open": "f::open", "closed": "f::closed", "locked": "f::closed",
                "unlocked": "f::open", "home": "at home", "not_home": "away", "unavailable": "unreachable"}   # through tr
 

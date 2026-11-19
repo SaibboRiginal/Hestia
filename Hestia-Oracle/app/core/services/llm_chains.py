@@ -38,7 +38,7 @@ DEFAULT_CHAINS: dict[str, dict] = {
     "fast": {"label": "Fast", "steps": [
         _step("llamacpp", "locale"), _step("ollama", "gemma4:e4b"), _step("gemini", "gemini-flash-lite-latest"),
         _step("gemini", "gemini-flash-latest")]},
-    "strong": {"label": "Potente", "steps": [
+    "strong": {"label": "Strong", "steps": [
         _step("llamacpp", "locale"), _step("ollama", "gemma4:e4b"), _step("gemini", "gemini-flash-latest"),
         _step("gemini", "gemini-flash-lite-latest")]},
     "code": {"label": "Code", "steps": [
@@ -50,7 +50,7 @@ DEFAULT_CHAINS: dict[str, dict] = {
         _step("gemini", "gemini-flash-latest"), _step("gemini", "gemini-flash-lite-latest")]},
     # One step only: vectors of different models are not comparable (memory and document search would break).
     "embedding": {"label": "Embedding", "steps": [_step("ollama", "qwen3-embedding:0.6b")]},
-    "vision": {"label": "Visione", "steps": [
+    "vision": {"label": "Vision", "steps": [
         _step("ollama", "gemma4:e4b"), _step("gemini", "gemini-flash-latest")]},
 }
 EMBEDDING_CHAIN = "embedding"
@@ -287,7 +287,7 @@ def register_agent_usecases(specs) -> None:
         for sp in specs:
             _agent_usecases.setdefault(sp.use_case, {
                 "id": sp.use_case, "module": sp.module, "label": "Module agent", "chain": "",
-                "thinking": "auto", "mode": "segui", "help": sp.when})
+                "thinking": "auto", "mode": "follow", "help": sp.when})
 
 
 def declared_usecases() -> dict[str, dict]:

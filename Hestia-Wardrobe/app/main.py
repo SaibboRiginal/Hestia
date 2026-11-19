@@ -733,7 +733,7 @@ try:
         kind = "pieces" if piece else "outfits"
         label = tr("the item") if piece else tr("the outfit")
         try:
-            _notify(f"wardrobe.delete.{target['id']}", tr("Wardrobe"), f"🗑 Elimino {label} «{target['name']}»?",
+            _notify(f"wardrobe.delete.{target['id']}", tr("Wardrobe"), tr("🗑 Delete {0} «{1}»?", label, target['name']),
                     [{"id": "delete", "label": tr("Delete"), "text": "🗑 Delete", "style": "danger", "service": "wardrobe",
                       "method": "DELETE", "path": f"{API}/{kind}/{target['id']}?hard=true", "body": {}, "resolves": True},
                      {"id": "archive", "label": tr("f::Archive"), "text": tr("📦 Archive only"), "service": "wardrobe",

@@ -1366,7 +1366,7 @@ class OracleEngine:
         if agents_mode:
             while _live_q is not None and not _live_q.empty():
                 thinking_ndjson_lines.append(_live_q.get_nowait())   # external brain: frames after its turn
-            # Everything the agents did joins the turn: changes + Annulla, notices, confirm cards, traces.
+            # Everything the agents did joins the turn: changes + Undo, notices, confirm cards, traces.
             tool_log = list(tool_log) + list(_agent_log)
 
         # ── Conversation goal rounds (Cindy 23): after the owner's message is answered ────────────

@@ -102,7 +102,7 @@ export class HephaestusRepairs extends HestiaElement {
         <span class="grow"></span><hxk-button variant="ghost" icon="refresh" @click=${() => this.load()}>${tr("Refresh")}</hxk-button></div>
       <hxk-stat .items=${this.stats()}></hxk-stat>
       ${this.info ? html`<div class="note">${tr("Mode:")} ${this.info.mode === 'policy_gated_execution' ? tr('run with consent rules') : this.info.mode}
-        · ${this.info.runbook_count} ${tr("runbook · in production")} ${this.info.production_execution_allowed ? 'consentita' : tr('never without you')}</div>` : nothing}
+        · ${this.info.runbook_count} ${tr("runbook · in production")} ${this.info.production_execution_allowed ? tr('allowed') : tr('never without you')}</div>` : nothing}
       <div class="filter"><hxk-field label=${tr("Show")} type="enum" .options=${FILTERS} .value=${this.filter}
         @change=${(e: any) => (this.filter = e.detail || '')}></hxk-field></div>
       ${list.length ? html`<div class="card">${list.map(t => {

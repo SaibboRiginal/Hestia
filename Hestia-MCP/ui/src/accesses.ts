@@ -92,7 +92,7 @@ export class McpAccesses extends HestiaElement {
 
   private async act(a: any, what: 'revoke' | 'renew' | 'delete') {
     const asks = { revoke: [tr('Revoke the access?'), tr("{0} stops working right away. You can renew it later.", a.name)],
-                   renew: a.kind === 'oauth' ? ['Riattivare?', tr("{0} works again for another 90 days.", a.name)]
+                   renew: a.kind === 'oauth' ? [tr('Turn it on again?'), tr("{0} works again for another 90 days.", a.name)]
                      : [tr('New token?'), tr("The current token of {0} stops working right away.", a.name)],
                    delete: [tr('Delete the access?'), tr('{0} disappears from the list.', a.name)] }[what];
     if (!(await this.host.confirm(asks[0], asks[1], { label: tr('Confirm'), danger: what !== 'renew' }))) return;

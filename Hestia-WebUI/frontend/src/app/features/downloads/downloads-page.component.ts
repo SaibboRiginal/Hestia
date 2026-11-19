@@ -143,7 +143,7 @@ export class DownloadsPageComponent {
   detail(d: DownloadRow): string {
     if (d.state === 'error') return d.error || tr('Failed.');
     if (d.state === 'done') return d.size ? bytes(d.size) : tr('Ready.');
-    const parts = [d.size ? `${bytes(d.done)} di ${bytes(d.size)}` : this.state(d).label];
+    const parts = [d.size ? tr('{0} of {1}', bytes(d.done), bytes(d.size)) : this.state(d).label];
     if (d.state === 'running' && d.speed) parts.push(`${bytes(d.speed)}/s`);
     if (d.state === 'running' && d.eta_s) parts.push(d.eta_s < 60 ? tr('less than a minute') : tr("{0} min left", Math.round(d.eta_s / 60)));
     if (d.state === 'paused') parts.push(tr('paused'));

@@ -211,7 +211,7 @@ class Learning:
         for mid in p["retire"]:
             if self._patch_memory(mid, {"is_active": False}):
                 self.record("retire", mid, before={"is_active": True}, after={"is_active": False},
-                            fact=f"rivista: {p.get('why') or ''}")
+                            fact=f"reviewed: {p.get('why') or ''}")
         p.update({"status": "applied", "by": by, "decided_at": _now()})
         self._put("memory_proposal", pid, p)
         return 200, {"status": "ok", "message": tr("Done: memory tidied")}

@@ -96,7 +96,7 @@ usage_store = Store(RoutedHub(_HUB_API_URL), "metis-store", name="metis")
 usage = Usage(usage_store, usage_store.hub, tz_name=os.getenv("TZ") or "Europe/Rome", agenda=agenda)
 # Training dataset (docs/work/2026-10-30-training-dataset): chat turn traces in Archive ``dataset-store``.
 traces = Traces(usage_store.hub, keep_days=traces_keep_days)
-# Nightly correction by the teacher model (cloud, personal data masked) + «Da rivedere» (D2).
+# Nightly correction by the teacher model (cloud, personal data masked) + «To review» (D2).
 review = Review(usage_store.hub, llm=usage_store.hub.llm, auto_accept=review_auto_accept, batch=review_batch)
 exporter = Exporter(usage_store.hub, people=review.people)
 REVIEW_AT = "02:30"
@@ -300,7 +300,7 @@ def metis_review_run():
 
 @app.get("/api/metis/review/pending")
 def metis_review_pending(limit: int = 10):
-    """«Da rivedere»: corrections waiting for the owner (original vs corrected)."""
+    """«To review»: corrections waiting for the owner (original vs corrected)."""
     return _traces_call(review.pending, limit)
 
 

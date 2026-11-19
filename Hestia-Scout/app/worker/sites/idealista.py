@@ -321,7 +321,7 @@ class IdealistaSiteHandler(BaseSiteHandler):
         # Listing id from URL.
         normalized = self.normalize_url(str(enriched.get("url", "")).strip())
         if normalized:
-            match = re.search(r"/immobile/(\d+)", normalized)
+            match = re.search(r"/immobile/(\d+)", normalized)  # external-name: the site's own address
             if match:
                 extras.setdefault("listing_id", match.group(1))
 
@@ -532,7 +532,7 @@ class IdealistaSiteHandler(BaseSiteHandler):
 
         for text in sources:
             match = re.search(
-                r"in vendita in\s+(.+?)(?:\s+[—-]\s+idealista|$)",
+                r"in vendita in\s+(.+?)(?:\s+[—-]\s+idealista|$)",  # external-name: the site's own text
                 text, re.IGNORECASE,
             )
             if match:

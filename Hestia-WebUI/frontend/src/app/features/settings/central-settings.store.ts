@@ -249,7 +249,7 @@ export class CentralSettingsStore {
     try {
       await this.api.applyPreset(group.module, presetId);
       await this.loadItems();
-      this.toast.success(`${group.group}: preset «${preset.label}» applicato`);
+      this.toast.success(tr('{0}: preset «{1}» applied', group.group, preset.label));
     } catch (e) {
       this.toast.error(apiError(e));
       await this.loadItems();

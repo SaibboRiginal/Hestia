@@ -44,7 +44,7 @@ settings.declare([
             help="Each of your exchanges with the assistant stays local to build the training dataset; after these days it is deleted."),
     setting(REVIEW_AUTO_ACCEPT, "Lowest confidence to accept a fix by itself", "float", 0.85,
             group=_GROUP, min=0.5, max=1.0, order=5,
-            help="At night a stronger model rereads the answers and corrects them; below this confidence the correction waits for you in «Da rivedere»."),
+            help="At night a stronger model rereads the answers and corrects them; below this confidence the correction waits for you in «To review»."),
     setting(REVIEW_BATCH, "Answers reread per night", "int", 30, group=_GROUP, min=1, max=500, order=6,
             advanced=True, help="How many answers the reviewer rereads at each night round."),
 ]).declare_log_level()

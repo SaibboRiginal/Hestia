@@ -343,7 +343,7 @@ def test(provider: str, model: str = "") -> dict[str, Any]:
 
 
 def is_chat(name: str) -> bool:
-    """A model to chat with: not an embedding one, not speech/pictures/live audio (the «Modelli» step lists only these)."""
+    """A model to chat with: not an embedding one, not speech/pictures/live audio (the «Models» step lists only these)."""
     from core.services import llm_providers
     return llm_providers.is_chat_name(name)
 
@@ -683,7 +683,7 @@ def _run_pull(job) -> None:
             if data.get("status") == "success":
                 logger.info("event=llm_setup_pull_done model=%s", model)
                 return
-    raise RuntimeError("download interrotto")
+    raise RuntimeError("download interrupted")
 
 
 def _remove_model(job) -> None:

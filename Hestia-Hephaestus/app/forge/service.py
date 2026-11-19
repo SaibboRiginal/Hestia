@@ -489,7 +489,7 @@ class Forge:
         """``title``: short title for the owner (a module's proposal writes it in his language); ``origin``: where a
         proposal comes from (Argus: what, where, how often, when), shown by the Development page.
         ``workdoc``: continue an existing docs/work/<workdoc>/ (SPEC/PROGRESS/CHANGELOG).
-        ``parent_task``: follow-up of an earlier task (Sviluppo page "Chiedi una modifica")."""
+        ``parent_task``: follow-up of an earlier task (Development page «Ask for a change»)."""
         if not self.cfg.enabled:
             raise ForgeError("Forge disabled (HEPHAESTUS_FORGE_ENABLED=0)", 503)
         if not git_ops.is_repo(self.cfg.repo_path):
@@ -1083,7 +1083,7 @@ class Forge:
         except ForgeError as exc:
             task["error"] = str(exc)
             self._set_state(task, "awaiting_review", f"not mergeable: {exc}")
-            self._notify(task, f"⚠️ Forge <code>{task['id'][:6]}</code>: merge impossibile — {_esc(str(exc))}")
+            self._notify(task, f"⚠️ Forge <code>{task['id'][:6]}</code>: " + tr("merge not possible: {0}", _esc(str(exc))))
             return
         self._set_state(task, "merging", f"approved by {approved_by}")
         try:
@@ -1128,7 +1128,7 @@ class Forge:
         if forge_settings.get_bool(forge_settings.AUTO_ROLLBACK):
             self._do_rollback(task, f"auto: {why}")
         else:
-            self._notify(task, f"⚠️ Forge <code>{task['id'][:6]}</code>: deploy problematico ({_esc(why)}).")
+            self._notify(task, f"⚠️ Forge <code>{task['id'][:6]}</code>: " + tr("deploy in trouble ({0}).", _esc(why)))
 
     def _restart_self(self) -> None:
         """Hephaestus restarts itself last (state already saved; resumes on boot)."""

@@ -5,7 +5,7 @@ using Microsoft.AspNetCore.Mvc;
 using Hestia.WebUI.Services;
 
 /// <summary>
-/// Guided setup «Benvenuto» (SPEC docs/work/2026-10-30-one-click-setup §4.2). Thin proxy: browser → WebUI → Hub →
+/// Guided setup «Welcome» (SPEC docs/work/2026-10-30-one-click-setup §4.2). Thin proxy: browser → WebUI → Hub →
 /// Hephaestus <c>/api/setup/*</c>, which writes the secrets and asks Oracle for the brain. Only the screens' paths
 /// are forwarded: <c>telegram/claim</c> belongs to the bot, never to the browser.
 /// </summary>

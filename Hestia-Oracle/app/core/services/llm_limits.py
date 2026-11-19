@@ -7,7 +7,7 @@ learned limit the step is skipped *before* the request (``ahead``) until its win
 next step without spending a failed call.
 
 A learned limit is trusted for one day, then forgotten: if the provider changed it, the next 429 teaches the new one
-(«si rompe? si aggiusta»). The reactive path stays exactly as before: any 429 still marks the pair exhausted until the
+(«it breaks? it gets fixed»). The reactive path stays exactly as before: any 429 still marks the pair exhausted until the
 provider's hint (``llm_chains.mark_exhausted``).
 
 The exhausted pairs and the learned limits are kept in Archive (``oracle-store``, kind ``llm_quota``) so a restart

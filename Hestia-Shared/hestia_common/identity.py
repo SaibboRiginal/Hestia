@@ -19,7 +19,7 @@ A module reads the values with its own ``SettingsClient`` after ``follow_persona
 The repository, the modules and the releases keep the name Hestia; the voice and the clients take the chosen name.
 
 Texts people read (buttons, notices, help) use the same two tokens where they speak of the assistant as a person
-(«Chiedi a {assistant}», «Ciao, sono {assistant}»): :func:`named` fills only ``{assistant}`` and ``{g:…|…}``, and
+(«Ask {assistant}», «Hi, I am {assistant}»): :func:`named` fills only ``{assistant}`` and ``{g:…|…}``, and
 ``hestia_common.i18n.t`` calls it on every fixed text (docs/work/2026-11-16-name-everywhere). The clients call
 themselves with it too (docs/work/2026-11-17-client-names); «Hestia» stays for releases, installer, file format.
 """

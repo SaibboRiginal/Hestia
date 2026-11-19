@@ -234,7 +234,7 @@ export class EchoVoice extends HestiaElement {
     const sp = k.space || {};
     const pct = sp.limit_bytes ? Math.min(100, Math.round((sp.total_bytes / sp.limit_bytes) * 100)) : 0;
     return html`
-      <hxk-card heading=${tr("Space")} subtitle=${`${bytes(sp.total_bytes)} di ${bytes(sp.limit_bytes)}`}>
+      <hxk-card heading=${tr("Space")} subtitle=${tr('{0} of {1}', bytes(sp.total_bytes), bytes(sp.limit_bytes))}>
         <div class="bar"><span style=${`width:${pct}%`}></span></div>
         ${Object.entries<any>(sp.classes || {}).map(([c, v]) => html`<div class="row"><span>${CLASSES[c] || c}</span>
           <span class="num small muted">${v.count} · ${bytes(v.bytes)}</span></div>`)}

@@ -147,8 +147,8 @@ def _preempt_for_owner() -> None:
 
 
 def for_origin(origin: dict | None) -> str:
-    """``chat`` for a request the owner started (``hestia_common.origin`` level ``utente``), else ``background``."""
-    return CHAT if (origin or {}).get("level") == "utente" else BACKGROUND
+    """``chat`` for a request the owner started (``hestia_common.origin`` level ``user``), else ``background``."""
+    return CHAT if (origin or {}).get("level") == "user" else BACKGROUND
 
 
 @contextlib.contextmanager

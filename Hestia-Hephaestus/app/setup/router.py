@@ -36,7 +36,7 @@ class BrainApply(BaseModel):
     cloud_models: dict[str, list[str] | str] = Field(default_factory=dict)
     embedding: dict[str, Any] = Field(default_factory=dict)   # {steps: [{provider, model, url?…}]} memory models in order
     local_runtime: dict[str, str] = Field(default_factory=dict)
-    modes: dict[str, dict[str, Any]] = Field(default_factory=dict)   # per mode potente/codice/visione: {steps: [{provider, model}]}
+    modes: dict[str, dict[str, Any]] = Field(default_factory=dict)   # per mode strong/code/vision: {steps: [{provider, model}]}
     order: list[dict[str, str]] = Field(default_factory=list)   # «Chosen» in the user's order: [{provider, model}]
     keys: dict[str, str] = Field(default_factory=dict)
     claude_token: str = ""

@@ -2,7 +2,7 @@
  * <metis-improvement> — "Improvement": where Hestia does worse according to your grades (weak domains,
  * labels, examples), the datasets built from them and the LoRA training jobs (planned in the agenda window,
  * running, finished). Building a dataset or starting a training stays a chat / agenda action.
- * Training dataset (docs/work/2026-10-30-training-dataset): saved turns and «Da rivedere», the nightly
+ * Training dataset (docs/work/2026-10-30-training-dataset): saved turns and «To review», the nightly
  * corrections that wait for you (Accept / Discard / Correct with your own answer) and «Export», the JSONL zip
  * to download, with names and contacts hidden (default) or in clear: the owner picks at each export.
  * SPEC docs/work/2026-10-18-core-modules-and-external-mcp §A2. Every path is under the api_prefix /api/metis/.

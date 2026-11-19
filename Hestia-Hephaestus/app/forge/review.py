@@ -97,7 +97,7 @@ def acceptance_from_workdoc(worktree: Path, workdoc: str) -> str:
         text = spec.read_text(encoding="utf-8")
     except OSError:
         return "(no SPEC found)"
-    match = re.search(r"^#+\s*(acceptance|criteri)[^\n]*\n(.*?)(?=^#+\s|\Z)", text, re.I | re.M | re.S)
+    match = re.search(r"^#+\s*(acceptance)[^\n]*\n(.*?)(?=^#+\s|\Z)", text, re.I | re.M | re.S)
     return (match.group(2) if match else text)[:4000].strip() or "(empty)"
 
 

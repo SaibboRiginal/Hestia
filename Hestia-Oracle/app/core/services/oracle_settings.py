@@ -35,7 +35,7 @@ BRAIN_MODEL = "oracle.brain.model"
 BRAIN_FALLBACK = "oracle.brain.fallback"
 BRAIN_MODES = [("internal", "Internal"), ("external", "External")]
 BRAIN_AGENTS = [("claude", "Claude Code (subscription)"), ("codex", "Codex (ChatGPT)")]
-BRAIN_FALLBACKS = [("interna", "Redo the turn in internal mode"), ("nessuno", "None: tell me it did not answer")]
+BRAIN_FALLBACKS = [("internal", "Redo the turn in internal mode"), ("none", "None: tell me it did not answer")]
 # Operating mode (dossier docs/work/2026-11-06-modules-as-agents): how a chat turn works. More values may come.
 OPERATING_MODE = "oracle.operating_mode"
 OPERATING_MODES = [("classic", "Classic"), ("agents", "Module agents")]
@@ -61,7 +61,7 @@ def _definitions() -> list[dict]:
         setting(CHAIN_COOLDOWN, "Pause of a model without quota", "int", 60, group="Models", order=3,
                 min=1, max=1440, unit="min", advanced=True,
                 help="When the provider does not say when the quota refills (Gemini daily: Pacific midnight)."),
-        setting(BRAIN_MODE, "Brain mode", "enum", "interna", group="Models", order=4, options=BRAIN_MODES,
+        setting(BRAIN_MODE, "Brain mode", "enum", "internal", group="Models", order=4, options=BRAIN_MODES,
                 help="Internal: Oracle reasons with the model chains (classifier, Quick/Thoughtful/CoT, agent loop). External: an agent (Claude Code, Codex) runs the loop with {assistant}'s tools; Oracle prepares the context, saves messages and memory. Each use can choose its own."),
         setting(BRAIN_AGENT, "External agent", "enum", "claude", group="Models", order=5, options=BRAIN_AGENTS,
                 help="It needs its login: Claude Code with CLAUDE_CODE_OAUTH_TOKEN, Codex with `codex login` (image with ORACLE_INSTALL_CODEX=1)."),
@@ -515,7 +515,7 @@ def normalize_mode(raw: str | None) -> str:
     """A known mode name, or "" (= follow the setting)."""
     value = str(raw or "").strip().lower()
     value = _MODE_ALIASES.get(value, value)
-    if value and value not in {m for m, _ in MODES}:   # the mode's name as the owner reads it, in any language («Rapida»)
+    if value and value not in {m for m, _ in MODES}:   # the mode's name as the owner reads it, in any language («Quick»)
         for code in i18n.languages():
             texts = i18n.catalog("messages", code)
             value = next((m for m, label in MODES if str(texts.get(label) or "").strip().lower() == value), value)
