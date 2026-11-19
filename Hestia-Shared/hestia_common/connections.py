@@ -173,21 +173,21 @@ class Connections:
             resp.raise_for_status()
             routed = resp.json() or {}
         except Exception as exc:  # noqa: BLE001
-            logger.warning("[🔄] event=connection_secret_unsaved module=%s keys=%s error=%s", self.module,
-                           ",".join(sorted(envs)), type(exc).__name__)
+            logger.warning("[🔄] event=connection_secret_unsaved module=%s keys=%d error=%s", self.module,
+                           len(envs), type(exc).__name__)
             raise ConnectError(tr("I couldn't save the key: try again in a minute.")) from None
         status, payload = int(routed.get("status_code", 500)), routed.get("payload") or {}
         if status >= 400 or not (isinstance(payload, dict) and payload.get("applied", False)):
             detail = payload.get("detail") if isinstance(payload, dict) else ""
-            logger.warning("event=connection_secret_refused module=%s keys=%s status=%s", self.module,
-                           ",".join(sorted(envs)), status)
+            logger.warning("event=connection_secret_refused module=%s keys=%d status=%s", self.module,
+                           len(envs), status)
             raise ConnectError(tr("I couldn't save the key: {0}", str(detail or status)[:160]))
         for env, value in envs.items():         # the live re-read already ran; make sure this process sees it
             if value:
                 os.environ[env] = value
             else:
                 os.environ.pop(env, None)
-        logger.info("event=connection_secret_saved module=%s keys=%s", self.module, ",".join(sorted(envs)))
+        logger.info("event=connection_secret_saved module=%s keys=%d", self.module, len(envs))
 
     def reload_keys(self) -> list[str]:
         """Re-read ``<MODULE>_KEY_*`` from the module's ``.env`` (empty line = removed) → the names that have a value."""
