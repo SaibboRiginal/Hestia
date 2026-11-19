@@ -7931,5 +7931,6 @@
   "📎 Handed to «{0}».": "📎 Passato a «{0}».",
   ". Shall I log them? Answer «yes» or check them in Expenses › Import.": ". Li registro? Rispondi «sì» o controllali in Spese › Importa.",
   "It didn't work: try again in a moment.": "Non ha funzionato: riprova tra un momento.",
-  "alt::Undo": "Annulla"
+  "alt::Undo": "Annulla",
+  "Change ready · by {0}": "Modifica pronta · da {0}"
 }

@@ -1087,7 +1087,7 @@ class Forge:
             ext["pending"] = False
             task["summary"] = tr("{0}\n\n(branch {1} of {2})", summary, branch, by)
         self._review(task, worktree, base_sha, head, task["summary"], True,
-                     heading=tr("Change ready"))
+                     heading=tr("Change ready · by {0}", by))
 
     def _check_mergeable(self, task: dict) -> None:
         repo = self.cfg.repo_path
