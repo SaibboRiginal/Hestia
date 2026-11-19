@@ -415,8 +415,9 @@ def _run_once() -> None:
 
         for event in new_events:
             due = forge_proposer.observe(event.service, event.level, event.message)
-            if due:
-                forge_proposer.propose(hub_client.HUB_API_URL, event.service, due)
+            if due:   # off the loop: the proposal asks the model for a title the owner can read
+                threading.Thread(target=forge_proposer.propose, args=(hub_client.HUB_API_URL, event.service, due),
+                                 name="argus-forge-proposal", daemon=True).start()
             send_alert(
                 ServiceAlert(
                     service=event.service,

@@ -111,7 +111,9 @@ class Talk:
         self._loaded_day = day
         last = _parse(self._sent[0].get("at")) if self._sent else None
         gap = timedelta(hours=get_int(S.TALK_MIN_GAP_HOURS))
-        self._next_at = max(now, last + gap) if last else now
+        nxt = max(now, last + gap) if last else now
+        # A wait already set (weighed «not now» just before midnight) survives the new day.
+        self._next_at = max(nxt, self._next_at) if self._next_at else nxt
 
     def sent_today(self, now: datetime) -> int:
         day = local_day(now)

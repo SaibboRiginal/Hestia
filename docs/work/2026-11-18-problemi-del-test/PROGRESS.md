@@ -25,6 +25,11 @@
       setup «Memoria» takes several models (`embedding: {steps}`), Hephaestus pulls each Ollama one. Tests
       `test_embedding_chain.py`, Archive `test_vectors.py`. Context settings: already reduced by PR #118 (window read
       from the model); nothing else to remove.
-- [ ] F — Deliveries, Development, Argus on `[🔄]`
+- [x] F — Deliveries rebuilt (day groups, area icon from `hestia_common.areas`, title without HTML, one sentence per
+      row, plain error + «Try again now» `POST /api/ui/deliveries/retry`, details on demand, tiles filter, subscriptions
+      closed); Development: `title` + `origin` on Forge tasks, full title, «Where it comes from», title in notices and
+      agenda, sources without module names, Italian leftovers in the plugin translated; Argus: recurring `[🔄]` lines
+      proposed like recurring errors, readable title (model, fallback sentence), origin. Tests `test_forge_proposer.py`,
+      `test_forge_pause.py::test_proposal_keeps_its_title_and_origin`.
 - [ ] B — queue, steering, «/» commands
 - [ ] G — mascot

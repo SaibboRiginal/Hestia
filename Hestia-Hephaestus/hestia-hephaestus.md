@@ -46,7 +46,11 @@ Icons, never emoji (DESIGN-SYSTEM rule, `docs/work/2026-10-20-icone-nei-client`)
 Hephaestus ships its own inside view on the client plugin contract (`hestia_common.plugin_client`, SPEC
 `docs/work/2026-10-18-moduli-core-e-mcp-esterno` §A2/A3): `app/core/webui_plugin.py` declares it, kind `core`
 (WebUI sidebar section *Sistema*), `api_prefix` `/api/hephaestus/` (remediation and Forge share it).
-- page **Sviluppo** (`sviluppo`, `hephaestus-sviluppo`, order 170, first; §A4 — ported from the WebUI built-in
+- page **Sviluppo** (2026-11-18: a task shows its `title` — a module's proposal writes one in the owner's language —
+  in full, never cut, and «Where it comes from»: who proposed it and why, from the task's `origin` — area, how many
+  times, first/last seen, what the log says — with the engine's request under «What it was asked»; notices, agenda and
+  the list use the title too; sources named as people see them, never module names)
+  (`sviluppo`, `hephaestus-sviluppo`, order 170, first; §A4 — ported from the WebUI built-in
   `/forge` page, which calls nothing of its own any more): Forge task list (search, filters Tutti / Aperti / *Dai
   moduli* / Applicati / Non riusciti, open count, paused banner), the engine conversation (transcript polled every 4 s
   while working — no streaming), follow-up composer (new task with `parent_task`), side panel Panoramica (incl. notes

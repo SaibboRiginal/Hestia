@@ -76,6 +76,11 @@ def normalize_mode(mode: str) -> str:
     return _MODE_ALIASES.get(mode, mode)
 
 
+
+def title_of(task: dict) -> str:
+    """What the owner reads for a task: the proposer's title (in his language) or the request."""
+    return str(task.get("title") or task.get("request") or "")
+
 class ForgeError(Exception):
     def __init__(self, message: str, status_code: int = 400):
         super().__init__(message)
@@ -364,7 +369,7 @@ class Forge:
                 return  # handled by _schedule (needs the window time)
             label = self._AGENDA_LABELS.get(state)
             if label:
-                self.agenda.show_task(task["id"], f"{label}: {task.get('request', '')}", _now(),
+                self.agenda.show_task(task["id"], f"{label}: {title_of(task)}", _now(),
                                       f"Task Forge {task['id']} ({state}). Engine: {task.get('engine_requested') or self._default_engine}.",
                                       parent=task.get("agenda_parent"))
         except Exception as exc:
@@ -479,8 +484,11 @@ class Forge:
     def submit(self, *, request: str, services: list[str] | None = None, engine: str = "",
                source: str = "user", requested_by: str = "user", auto_start: bool | None = None,
                auto_merge: bool | None = None, context: str = "", notify_target: str = "",
-               workdoc: str = "", parent_task: str = "", agenda_parent: str = "") -> dict[str, Any]:
-        """``workdoc``: continue an existing docs/work/<workdoc>/ (SPEC/PROGRESS/CHANGELOG).
+               workdoc: str = "", parent_task: str = "", agenda_parent: str = "", title: str = "",
+               origin: dict | None = None) -> dict[str, Any]:
+        """``title``: short title for the owner (a module's proposal writes it in his language); ``origin``: where a
+        proposal comes from (Argus: what, where, how often, when), shown by the Development page.
+        ``workdoc``: continue an existing docs/work/<workdoc>/ (SPEC/PROGRESS/CHANGELOG).
         ``parent_task``: follow-up of an earlier task (Sviluppo page "Chiedi una modifica")."""
         if not self.cfg.enabled:
             raise ForgeError("Forge disabled (HEPHAESTUS_FORGE_ENABLED=0)", 503)
@@ -506,6 +514,9 @@ class Forge:
         task = {
             "id": task_id,
             "request": request[:4000],
+            "title": " ".join(str(title or "").split())[:160],
+            "origin": {str(k)[:40]: (v if isinstance(v, (int, float, bool)) else str(v)[:1500])
+                       for k, v in (origin or {}).items() if isinstance(origin, dict)} or None,
             "services": [s.strip().lower() for s in (services or []) if str(s).strip()],
             "engine_requested": normalize_engine(engine) or "auto",
             "source": source,
@@ -542,7 +553,7 @@ class Forge:
         else:
             self._set_state(task, "proposed", f"proposed by {source} ({why})")
             self._notify(task, (
-                tr("💡 <b>Development proposal</b> <code>{0}</code>\n{1}\n\nAnswer \"approva sviluppo {2}\" to start it, \"rifiuta {3}\" to discard it.", task_id[:6], _esc(request[:600]), task_id[:6], task_id[:6])))
+                tr("💡 <b>Development proposal</b> <code>{0}</code>\n{1}\n\nAnswer \"approva sviluppo {2}\" to start it, \"rifiuta {3}\" to discard it.", task_id[:6], _esc(title_of(task)[:600]), task_id[:6], task_id[:6])))
         return task
 
     def approve(self, task_id: str, approved_by: str = "user", now: bool = False,
@@ -598,7 +609,8 @@ class Forge:
         if old.get("state") in ACTIVE_STATES or old.get("state") in {"proposed", "scheduled", "awaiting_review",
                                                                         "waiting_limit", "reviewing"}:
             raise ForgeError(f"Task in state '{old.get('state')}' is still open: nothing to retry", 409)
-        return self.submit(request=old.get("request", ""), services=old.get("services") or [],
+        return self.submit(request=old.get("request", ""), title=old.get("title") or "", origin=old.get("origin") or None,
+                           services=old.get("services") or [],
                            engine="" if old.get("engine_requested") in (None, "auto") else old["engine_requested"],
                            source="ui", requested_by=requested_by, context=f"Retry of task {old['id']}. Previous outcome: {str(old.get('error') or old.get('summary') or '')[:800]}"
                            + notes_text(old),
@@ -670,11 +682,11 @@ class Forge:
         st = self.claude_budget.status()
         self._set_state(task, "scheduled", f"{note}; {st['reason']}")
         nights = self.agenda.window(KEY_NIGHTS) or {}
-        self.agenda.show_task(task["id"], task["request"], nights.get("next_open") or st["next_reset"],
+        self.agenda.show_task(task["id"], title_of(task), nights.get("next_open") or st["next_reset"],
                               f"Forge task scheduled (Claude Pro). id={task['id']}",
                               parent=task.get("agenda_parent"))
         self._notify(task, (
-            tr("🌙 <b>Scheduled development</b> <code>{0}</code> (Claude Pro)\n{1}\nIt starts in the night window before the reset ({2}). To start it now: \"approva sviluppo {3} subito\".", task['id'][:6], _esc(task['request'][:300]), _esc(st['next_reset'][:16]), task['id'][:6])))
+            tr("🌙 <b>Scheduled development</b> <code>{0}</code> (Claude Pro)\n{1}\nIt starts in the night window before the reset ({2}). To start it now: \"approva sviluppo {3} subito\".", task['id'][:6], _esc(title_of(task)[:300]), _esc(st['next_reset'][:16]), task['id'][:6])))
 
     def claude_window(self) -> tuple[bool, str]:
         """Agenda windows first (user can move/skip them), built-in schedule as fallback."""
@@ -808,7 +820,7 @@ class Forge:
                          "base_sha": base_sha, "engine": engine.name})
         self._set_state(task, "running", f"engine={engine.name} base={base_branch}@{base_sha[:8]}")
         self._notify(task, (
-            tr("🔨 <b>Forge at work</b> <code>{0}</code> ({1})\n{2}", task['id'][:6], engine.name, _esc(task['request'][:400]))))
+            tr("🔨 <b>Forge at work</b> <code>{0}</code> ({1})\n{2}", task['id'][:6], engine.name, _esc(title_of(task)[:400]))))
 
         def test_runner(paths: list[str] | None):
             changed = git_ops.git(worktree, "status", "--porcelain").splitlines()
@@ -927,7 +939,7 @@ class Forge:
             import random
             at = datetime.fromisoformat(until) if "T" in str(until) else datetime.now(timezone.utc)
             at = (at if at.tzinfo else at.replace(tzinfo=timezone.utc)) + timedelta(seconds=random.randint(30, 90))
-            self.agenda.plan(f"forge.resume.{task['id']}", tr("Resume the development: {0}", task['request'][:60]), at,
+            self.agenda.plan(f"forge.resume.{task['id']}", tr("Resume the development: {0}", title_of(task)[:60]), at,
                              action={"service": "hephaestus", "method": "POST",
                                      "path": f"/api/hephaestus/forge/tasks/{task['id']}/resume",
                                      "timeout_seconds": 30},

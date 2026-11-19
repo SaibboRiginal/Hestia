@@ -191,7 +191,7 @@ from every client. All `live` (read at use time) except `athena.tasks.store_max`
 Third output, next to the system briefs and the life observations (those stay in the evening recap):
 1. **When**: agenda window `athena.talk` («Ti scrive per prima», default 9–21; paused = never), at most
    `athena.talk.max_per_day` a day (0 = never), `athena.talk.min_gap_hours` apart, never while he is chatting
-   (Oracle `/api/activity` < 10 min). No clock and no dice (dossier `docs/work/2026-11-13-prima-osserva-poi-propone`):
+   (Oracle `/api/activity` < 10 min; a «not now» wait survives midnight, the day reload never shortens it). No clock and no dice (dossier `docs/work/2026-11-13-prima-osserva-poi-propone`):
    she writes when her **drive** (0–1) reaches the bar of `athena.talk.eagerness` (1 → 0.80 … 3 → 0.50 … 5 → 0.20).
    Drive = 0.45 × silence (full after 36 h) + 0.40 × true things to say today (two = full) + 0.10 if he answered
    her last message − 0.25 for each of her last messages left unanswered, all damped in the first days (× 0.5 on

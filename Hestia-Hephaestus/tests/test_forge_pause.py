@@ -106,3 +106,16 @@ def test_approve_with_engine_choice(monkeypatch):
     assert task["engine_requested"] == "claude"
     assert task["budgeted"] is False
     assert task["state"] == "queued"
+
+
+def test_proposal_keeps_its_title_and_origin(monkeypatch):
+    """Development page (dossier 2026-11-18-problemi-del-test F): a module's proposal shows its own title, in the
+    owner's language, and where it comes from; the notice uses the title."""
+    forge = _forge(monkeypatch, paused=False)
+    task = forge.submit(request="Fix recurring error in service 'oracle' (seen 3x in 60 min).", source="argus",
+                        requested_by="argus.monitor", title="L'assistente non trova più il modello",
+                        origin={"kind": "recurring_error", "service": "oracle", "count": 3, "line": "x" * 5000})
+    assert task["title"] == "L'assistente non trova più il modello"
+    assert task["origin"]["count"] == 3 and len(task["origin"]["line"]) == 1500
+    assert forge_service.title_of(task) == task["title"]
+    assert forge_service.title_of({"request": "Add ICS export"}) == "Add ICS export"

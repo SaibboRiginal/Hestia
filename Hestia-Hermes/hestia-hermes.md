@@ -168,7 +168,8 @@ text and it is **never retracted** from Telegram. The inbox view and `GET /api/n
 | `POST` | `/api/notifications/{id}/reply` | Answer to a notification question `{client, answer}` → forwarded to the module, first answer wins |
 | `POST` | `/api/notifications/{id}/secret` | Secret form `{client, values}` → forwarded to the module, never stored (Cindy 4) |
 | `GET` · `POST` · `DELETE` | `/api/push/key` · `/api/push/subscribe` | Web Push: VAPID public key · browser subscription on/off (C15) |
-| `GET` | `/api/ui/deliveries` | Delivery log for the plugin page *Consegne* (`since`, `before` cursor, `limit` ≤200, `flag` held/quiet/retracted/failed/answered/superseded/pending, `client`, `source`) → `{items, summary, next_before}`; every row: per-client `{state, at, attempts, retracted, detail}`, flags, answer, message preview (no event payload). 502 = Archive down |
+| `POST` | `/api/ui/deliveries/retry` | «Try again now»: failed deliveries sent again now (same pass as the retry loop) |
+| `GET` | `/api/ui/deliveries` | Delivery log for the plugin page *Consegne* (rows carry `area {key, label, icon}`, title HTML-stripped) (`since`, `before` cursor, `limit` ≤200, `flag` held/quiet/retracted/failed/answered/superseded/pending, `client`, `source`) → `{items, summary, next_before}`; every row: per-client `{state, at, attempts, retracted, detail}`, flags, answer, message preview (no event payload). 502 = Archive down |
 | `GET` | `/api/ui/subscriptions` · `/api/ui/clients` | Active subscriptions (domain, event type, filters, channels) · clients reached now |
 | `GET` | `/api/ui/inbox` · `/api/ui/inbox/counts` | Plugin page *Notifiche*: same as `/api/notifications` · `/counts` with `client=webui` by default; `counts` is the sidebar badge source |
 | `GET` | `/api/ui/inbox/{id}/voice?format=mp3` | Audio of a notification sent also as voice (from Echo): `{mime_type, audio_b64, blob_id, duration_s}`; 404 without voice |
@@ -209,11 +210,14 @@ are spread over `/api/notifications`, `/api/events`…, so the pages use small `
   notification shows its form in the card (password fields masked, *Invia* → `/api/ui/inbox/{id}/secret`, the
   values leave the page and are never kept); a button whose answer is `{execute: "command", command}` opens that tool
   on the *Comandi* page (`/p/mcp/comandi?command=…`).
-- sub-page **Consegne** (`hermes-deliveries`, order 141, parent `notifiche`): every notification (newest first, paged) with its state on each client
-  (consegnata / solo elenco / fallita / abbandonata, attempts, *ritirata* from the chat), *trattenuta* by
-  presence (+ released in the digest), *silenziosa* (quiet inbox copy), *sostituita* (repeat chain), the answer
-  (action, client, outcome) or the actions still waiting; filters by flag and client; active subscriptions and the
-  clients reached. Read-only: the inbox to read and answer is the **Notifiche** page above.
+- sub-page **Consegne** (`hermes-deliveries`, order 141, parent `notifiche`; rebuilt 2026-11-18, dossier
+  `docs/work/2026-11-18-problemi-del-test` F): grouped by day; each row = the icon of its area (`area` from
+  `hestia_common.areas`, never a module name), the title without HTML and ONE sentence on what happened (delivered
+  where · held back while you were busy · only in the list · not delivered: the reason in plain words + «Try again
+  now» → `POST /api/ui/deliveries/retry` · waiting for your answer · your answer); the technical details (per-client
+  state, attempts, raw error, type, id) only under «Details». Count tiles filter the list; filters by state and,
+  with more than one device, by device; «How notifications are chosen» (subscriptions) is a closed section.
+  Read-only apart from the retry: the inbox to read and answer is the **Notifiche** page above.
 - widget **Consegne oggi** (`hermes-today-widget`, s/m, auto): today's notifications, failed, held, waiting.
 - Hermes down → the page shows «Hermes non raggiungibile» (SDK `hxk-state offline`).
 

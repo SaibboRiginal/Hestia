@@ -47,7 +47,7 @@ export class ForgeStore {
     const q = this.search.trim().toLowerCase();
     const f = this.filter;
     return this.tasks.filter(t => {
-      if (q && !`${t.request} ${t.id} ${t.workdoc ?? ''} ${(t.services ?? []).join(' ')}`.toLowerCase().includes(q)) return false;
+      if (q && !`${t.title ?? ""} ${t.request} ${t.id} ${t.workdoc ?? ''} ${(t.services ?? []).join(' ')}`.toLowerCase().includes(q)) return false;
       if (f === 'open') return !CLOSED.includes(t.state);
       if (f === 'modules') return !USER_SOURCES.includes(t.source || 'user');
       if (f === 'done') return ['merged', 'deployed'].includes(t.state);

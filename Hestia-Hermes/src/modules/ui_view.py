@@ -31,6 +31,12 @@ def _plain(text: Any, limit: int = 160) -> str:
     return out if len(out) <= limit else out[: limit - 1] + "…"
 
 
+def _area(source: str) -> dict[str, str]:
+    from hestia_common.areas import area_of
+    a = area_of({}, module=str(source or "").split(".")[0])
+    return {"key": a["key"], "label": a["label"], "icon": a["icon"]}
+
+
 def delivery_view(row: dict[str, Any]) -> dict[str, Any]:
     """One notification as the Consegne page shows it (no event payload, message preview only)."""
     stored = row.get("payload") if isinstance(row.get("payload"), dict) else {}
@@ -63,7 +69,9 @@ def delivery_view(row: dict[str, Any]) -> dict[str, Any]:
         "created_at": row.get("created_at"),
         "updated_at": row.get("updated_at"),
         "state": state,
-        "title": n.get("title") or "",
+        "title": _plain(n.get("title"), 200),
+        # The part of Hestia it comes from as people see it (icon + area name), never the module's name.
+        "area": _area(n.get("source") or row.get("domain") or ""),
         "preview": _plain(n.get("message")),
         "level": n.get("level") or "info",
         "source": n.get("source") or row.get("domain") or "",
