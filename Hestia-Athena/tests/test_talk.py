@@ -50,6 +50,16 @@ def test_no_clock_and_no_dice_the_drive_decides(monkeypatch):
     assert quiet.due(datetime.now(timezone.utc) + timedelta(minutes=31)) is True
 
 
+def test_a_wait_set_before_midnight_survives_the_new_day(monkeypatch):
+    """Regression: the day reload at midnight used to reset the wait, so «not now» at 23:55 became «now» at 00:05."""
+    talk, _ = _talk(monkeypatch)
+    late = datetime(2026, 11, 18, 23, 55).astimezone()          # local time, like local_day
+    assert talk.due(late) is True
+    talk._wait(late, 30 * 60)
+    assert talk.due(late + timedelta(minutes=10)) is False
+    assert talk.due(late + timedelta(minutes=31)) is True
+
+
 def test_drive_grows_with_silence_and_material_drops_when_ignored_low_when_new():
     base = dict(idle=24 * 3600, material=1, unanswered=0, answered_last=False, known_days=30)
     assert drive(**base) == drive(**base)                                            # same state, same answer
