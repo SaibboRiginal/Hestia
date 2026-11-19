@@ -550,7 +550,7 @@ SPEC `docs/work/2026-10-20-icons-in-clients`. The WebUI and plugins draw `<hx-ic
 `ChatMessage.icon` (paperclip = file, zap = command) and `error` (alert icon, danger). Toasts and the Hermes inbox hide the
 emoji that module texts carry for Telegram (`noEmoji`). Favicon `/icon.svg`.
 
-## Guided setup «Benvenuto» (dossier `docs/work/2026-10-30-one-click-setup`)
+## Guided setup «Welcome» (dossier `docs/work/2026-10-30-one-click-setup`)
 
 `/setup` (`features/setup/`; the old `/welcome` redirects there) is a full-screen page outside the shell, one
 question per screen: Inizio → **Modelli → Memoria** → models ready → **Ascolto → Voce** → Telegram → Backup →

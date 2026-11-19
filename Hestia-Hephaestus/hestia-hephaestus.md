@@ -425,7 +425,7 @@ The context of a Forge task prompt passes through `hestia_common.redact.redact` 
 
 **2026-10-29 (texts for people, dossier `docs/work/2026-10-29-frontend-review-and-tests`)**: Plugin title «Development»; agenda titles «Scheduled development» and «Riprendi lo sviluppo: …».
 
-## Guided setup «Benvenuto» (`app/setup/`, dossier `docs/work/2026-10-30-one-click-setup`)
+## Guided setup «Welcome» (`app/setup/`, dossier `docs/work/2026-10-30-one-click-setup`)
 
 Hephaestus owns the setup's writes because it already has the repo (`/repo`, where the `.env` files are) and the
 Docker socket. Endpoints `/api/setup/*` (state, later, complete, brain/catalog|test|apply|pull|pulls,
