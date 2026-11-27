@@ -135,7 +135,7 @@ def select_representative_records(
 
 def listing_segments(clean_text: str) -> dict[str, str]:
     """Split an alert email by listing: each URL gets its anchor text and what follows its link up to the next
-    listing's link. An alert lists many houses, and a status word in one description («in trattativa») used to
+    listing's link. An alert lists many houses, and a status word in one description («under offer») used to
     change the status of every known house of the same email."""
     segments: dict[str, list[str]] = {}
     matches = list(_PROPERTY_LINK_RE.finditer(clean_text))

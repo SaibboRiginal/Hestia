@@ -587,3 +587,8 @@ modules by it). A failure, or a finished download over 200 MB, goes to Notifiche
 **2026-11-16 (LLM bus, dossier `docs/work/2026-11-16-bus-llm`)**: Italian text of the new Oracle setting `oracle.bus.local_workers` added to `locales/it/messages.json`. No library change: modules keep calling `/api/llm/generate`; Oracle queues local model calls and an `X-Hestia-Origin` of level `user` gives the call the owner's priority.
 
 **2026-11-18 (problems of the real test, dossier `docs/work/2026-11-18-real-test-problems`)**: Italian texts of the Development and Deliveries pages, the chat waiting list, «Add now» (site and Telegram) and the «/» commands added to `locales/it/messages.json`. No library change.
+
+**2026-11-27 (Scout house-hunt review, dossier `docs/work/2026-11-27-scout-house-hunt-review`)**: `locales/*/words.json`
+lists `scout.status.*` and `scout.page.sold` narrowed (no bare «sold»-like words that appear in every description or
+page menu); `locales/*/tools.json` summaries of the Scout tools rewritten (Italian added, no module names), with the
+help of the new flat `scout.search` parameters. No library change.

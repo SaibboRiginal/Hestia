@@ -333,7 +333,7 @@ def enrich_payload_from_listing(payload: dict, timeout_seconds: int = 30) -> dic
 
     # ── Content-based availability check ─────────────────────────────
     # On the words a person reads, not the raw HTML: scripts and menus of the portals carry words like
-    # «venduto» on every page, which marked live listings as sold and took them off the list.
+    # «sold» on every page, which marked live listings as sold and took them off the list.
     for tag in soup(["script", "style", "noscript", "head", "nav", "footer"]):
         tag.decompose()
     _text_lower = soup.get_text(" ", strip=True).lower()
