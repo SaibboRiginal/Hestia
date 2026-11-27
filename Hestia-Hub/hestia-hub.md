@@ -24,6 +24,13 @@ Hub is **fully generic**: no domain, no DB, no user/business logic.
   `main_new.py` copies were removed on 2026-11-27).
 - Keep metadata: name, base URL, health endpoint, tags, capabilities.
 
+### Failover between instances
+- A name with several instances is tried freshest first. A read (`GET`/`HEAD`/`OPTIONS`) goes to the next instance
+  on any network error. A write goes to the next one **only when the first was never reached** (connection refused,
+  unknown host, connect timeout): after a read timeout or a connection cut mid-answer the first one may have done
+  the work, so Hub answers 503 instead of running it twice (`modules/router.py` `may_fail_over`, log
+  `event=hub_no_failover_for_write`; core review 2026-11-27 §4.6).
+
 ### Persistent registry (snapshot)
 SPEC `docs/work/2026-10-20-hub-persistent-registry`. Code: `src/modules/snapshot.py`.
 - Hub saves its routing table to `/code/data/registry.json` (volume `./Hestia-Hub/data`), atomically: at once on

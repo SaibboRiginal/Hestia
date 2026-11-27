@@ -37,6 +37,11 @@ are treated as stale and do NOT block re-delivery. This prevents persistent issu
 like auth failures from being permanently silenced while still suppressing spam
 within the cooldown window.
 
+**Price drop (batched listings):** a listing already told to a subscription is told again only when its price
+falls below the last price told (the lowest live row of that `dedupe_key`); the entity then carries
+`previous_price` and the message says it is cheaper now. Same or higher price, or a batch still `queued`, stays
+deduped (core review 2026-11-27 §4.5).
+
 ---
 
 ## Global notifications (2026-10-10, dossier `docs/work/2026-10-10-hermes-global-notifications`)

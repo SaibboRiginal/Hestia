@@ -227,6 +227,9 @@ Every allowed message, file and button pings Chronos presence (`telegram`, debou
 SPEC `docs/work/2026-10-19-oracle-offline`, `services/chat_queue.py`. A message Oracle does not accept is stored in
 Archive (`/api/chat-queue`, client `telegram`) and the reply is «🟠 Non disponibile: messaggio in coda, ti rispondo
 appena possibile.» `POST /api/chat-queue/drain` and startup answer the queue chat by chat in one turn (`queued`).
+After 5 drains without an answer Archive marks the message `failed`: the owner then gets one notice through Hermes
+(«Messaggio senza risposta», with the text, key `chat_queue.failed.telegram.<id>`) instead of losing it silently
+(core review 2026-11-27 §4.2).
 
 ## Constraints
 - Domain decisions stay in modules; Telegram only presents and asks.

@@ -47,6 +47,15 @@ def _dedupe_anchor(payload, question_id, brief_id, event_type, domain, entity_id
     return base
 
 
+def _price(payload: Any) -> float | None:
+    """Positive numeric price of an entity payload, else None."""
+    try:
+        value = float((payload or {}).get("price"))
+    except (TypeError, ValueError, AttributeError):
+        return None
+    return value if value > 0 else None
+
+
 def subscription_audience(channels: list[dict[str, Any]]) -> tuple[str, dict | None]:
     """Subscription channels → audience (SPEC §5.2/§5.6).
 
@@ -142,6 +151,23 @@ class HermesService:
             voice=voice)
         return bool(result.get("deliveries"))
 
+    def _last_notified_price(self, dedupe_key: str) -> float | None:
+        """Lowest price among the live rows of an entity for one subscription = the last price told to the owner
+        (a new row is written only when the price falls). None while one is still queued in a batch: that batch
+        has not been told yet, so there is nothing to compare with."""
+        prices: list[float] = []
+        for row in self.archive.get_outbound_events({"dedupe_key": dedupe_key, "limit": 50}):
+            state = str(row.get("lifecycle_state") or "").lower()
+            if state == "queued":
+                return None
+            if state not in {"created", "delivered", "seen", "answered"}:
+                continue
+            body = row.get("payload") if isinstance(row.get("payload"), dict) else {}
+            price = _price(body.get("event_payload") if isinstance(body.get("event_payload"), dict) else body)
+            if price is not None:
+                prices.append(price)
+        return min(prices) if prices else None
+
     def process_event(self, event_type: str, domain: str, entity_id: str, payload: dict):
         t0 = time.perf_counter()
         payload = payload if isinstance(payload, dict) else {}
@@ -182,8 +208,16 @@ class HermesService:
             for subscription in matched_subs:
                 sub_id = subscription.get("id")
                 dedupe_key = f"{anchor}:{sub_id}"
+                entity_payload = payload
                 if self.archive.find_active_outbound_event(dedupe_key, max_age_seconds=max_age):
-                    continue
+                    # Already notified: again only when the price falls below the last one told (core review §4.5).
+                    previous = self._last_notified_price(dedupe_key)
+                    current = _price(payload)
+                    if previous is None or current is None or current >= previous:
+                        continue
+                    entity_payload = {**payload, "previous_price": previous}
+                    logger.info("event=entity_price_drop_renotify entity_id=%s subscription=%s previous=%s price=%s",
+                                entity_id, sub_id, previous, current)
                 audience, origin = subscription_audience(subscription.get("channels") or [])
                 audience_key = (f"client:{origin['client']}:{origin['session_id']}"
                                 if audience == "origin" and origin else "all")
@@ -193,11 +227,11 @@ class HermesService:
                     "lifecycle_state": "queued", "event_type": event_type, "domain": domain,
                     "entity_id": entity_id, "subscription_id": str(sub_id), "channel": "batch",
                     "target": "*", "source_service": "hermes", "detail": "queued in entity batch",
-                    "payload": {"event_payload": payload, "audience_key": audience_key,
+                    "payload": {"event_payload": entity_payload, "audience_key": audience_key,
                                 "filters": subscription.get("filters") or {}},
                 })
                 enqueue_entity(subscription_id=sub_id, channel_type=audience_key, channel_target="",
-                               domain=domain, entity_id=entity_id, payload=payload,
+                               domain=domain, entity_id=entity_id, payload=entity_payload,
                                filters=subscription.get("filters") or {}, row_id=row_id)
                 queued += 1
             return {"subscriptions_checked": len(subscriptions),

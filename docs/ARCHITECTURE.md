@@ -98,7 +98,8 @@ create-service.bat Markets module 8012
 Service registry + routing gateway.
 - Registers services and their capabilities.
 - Exposes discovery APIs for Oracle and other services.
-- Proxies internal requests by service name.
+- Proxies internal requests by service name. Failover to another instance of the same service: reads on any network
+  error, writes only when the first instance was never reached (a write is never run twice).
 - Keeps a snapshot of its own registry (`Hestia-Hub/data/registry.json`, not business data, so not in Archive):
   after a restart routes work at once instead of waiting for every service's 60 s re-registration.
 

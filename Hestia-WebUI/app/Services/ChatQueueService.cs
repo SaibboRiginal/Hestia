@@ -90,8 +90,14 @@ public class ChatQueueService
                 if (claimed.Count == 0) continue;
                 var (ok, detail) = await AnswerAsync(oracle, chat.Key, claimed);
                 foreach (var item in claimed)
-                    await hub.RouteRawAsync("archive", $"/api/chat-queue/{item.GetProperty("id").GetInt32()}/done",
+                {
+                    var (_, closed) = await hub.RouteRawAsync("archive",
+                        $"/api/chat-queue/{item.GetProperty("id").GetInt32()}/done",
                         HttpMethod.Post, new { ok, detail = Trim(detail, 400) }, timeoutSeconds: 8);
+                    if (closed.ValueKind == JsonValueKind.Object && closed.TryGetProperty("state", out var st)
+                        && st.GetString() == "failed")
+                        await NotifyGivenUpAsync(hub, item);
+                }
                 if (!ok) break;
                 answered += claimed.Count;
             }
@@ -156,6 +162,31 @@ public class ChatQueueService
             message = string.Join("\n", texts), reply = answer,
         });
         return (true, "");
+    }
+
+    /// <summary>Archive gave up on a queued message (too many drains): tell the owner through Hermes, with the
+    /// text, instead of dropping it silently (core review 2026-11-27 §4.2).</summary>
+    private async Task NotifyGivenUpAsync(HubClient hub, JsonElement item)
+    {
+        var id = item.GetProperty("id").GetInt32();
+        var text = (item.TryGetProperty("text", out var t) ? t.GetString() : null)?.Trim() ?? "";
+        if (text.Length > 300) text = text[..297].TrimEnd() + "…";
+        var key = $"chat_queue.failed.{Client}.{id}";
+        var body = new
+        {
+            event_type = "service.action_required", domain = "system", entity_id = key,
+            payload = new Dictionary<string, object?>
+            {
+                ["kind"] = key, ["service"] = "webui", ["source"] = "webui", ["domain"] = "chat", ["_source"] = "webui",
+                ["_title"] = Texts.Tr("Message not answered"), ["target"] = "owner", ["replaces"] = key,
+                ["level"] = "warning", ["_actions"] = Array.Empty<object>(),
+                ["_message"] = Texts.Tr(
+                    "I couldn't answer this message you wrote while I was not available: «{0}». Write it to me again if it still matters.",
+                    System.Net.WebUtility.HtmlEncode(text)),
+            },
+        };
+        var (status, _) = await hub.RouteRawAsync("hermes", "/api/events/ingest", HttpMethod.Post, body, timeoutSeconds: 8);
+        _logger.LogInformation("[🔄] event=chat_queue_given_up_notified id={Id} status={Status}", id, status);
     }
 
     private static string Trim(string? value, int max) =>

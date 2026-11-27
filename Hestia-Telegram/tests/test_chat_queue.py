@@ -27,10 +27,12 @@ class _Archive:
             if item["state"] != "queued":
                 return MagicMock(status_code=200, json=lambda: {"status_code": 409, "payload": {}})
             item["state"] = "answering"
+            item["attempts"] = int(item.get("attempts") or 0) + 1
             payload = item
         else:  # done
             item = self.items[int(path.split("/")[2]) - 1]
-            item["state"] = "answered" if body.get("ok") else "queued"
+            item["state"] = ("answered" if body.get("ok")
+                             else "failed" if int(item.get("attempts") or 0) >= 5 else "queued")
             payload = item
         return MagicMock(status_code=200, json=lambda p=payload: {"status_code": 200, "payload": p})
 
@@ -42,7 +44,7 @@ def env(monkeypatch):
     bot = MagicMock()
     core_module.bot = bot
     archive = _Archive()
-    oracle = {"up": False, "calls": []}
+    oracle = {"up": False, "calls": [], "hermes": []}
 
     class _Stream:
         status_code = 200
@@ -62,6 +64,9 @@ def env(monkeypatch):
     def post(url, json=None, **kw):
         if "/route/archive/" in url:
             return archive.route(url, json=json)
+        if "/route/hermes/api/events/ingest" in url:
+            oracle["hermes"].append(json["body"])
+            return MagicMock(status_code=200, json=lambda: {"status_code": 200, "payload": {}})
         if "/route/" in url:   # settings and other Hub routes: not Oracle
             return MagicMock(status_code=503, json=lambda: {})
         oracle["calls"].append(json)
@@ -115,3 +120,20 @@ def test_drain_stops_when_still_offline(env):
     out = chat_queue.drain("test")
     assert out == {"status": "ok", "answered": 0, "failed": 2}
     assert len(oracle["calls"]) == 1 and all(i["state"] == "queued" for i in archive.items)
+
+
+@pytest.mark.unit
+def test_given_up_message_is_told_to_the_owner(env):
+    """Core review 2026-11-27 §4.2: after the last drain Archive marks it failed; the owner gets one notice."""
+    _, archive, oracle = env
+    from telegram_bot.services import chat_queue
+    chat_queue.enqueue(12345, "s-1", "ricordami <il> latte", 7)
+    for _ in range(4):
+        chat_queue.drain("still offline")
+    assert archive.items[0]["state"] == "queued" and oracle["hermes"] == []
+    chat_queue.drain("last try")
+    assert archive.items[0]["state"] == "failed"
+    [notice] = oracle["hermes"]
+    payload = notice["payload"]
+    assert payload["target"] == "owner" and payload["replaces"] == "chat_queue.failed.telegram.1"
+    assert "ricordami &lt;il&gt; latte" in payload["_message"] and "telegram" not in payload["_message"].lower()

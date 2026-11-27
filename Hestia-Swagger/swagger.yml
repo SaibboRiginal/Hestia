@@ -1926,6 +1926,10 @@ paths:
           The Hub sends the target ``X-Hestia-Deadline`` (epoch seconds = now + timeout_seconds): work still waiting
           when the caller has given up can be skipped (Oracle's LLM bus does).
 
+          Several instances of one service are tried freshest first. A read (GET/HEAD/OPTIONS) goes to the next one on
+          any network error; a write only when the first was never reached (refused, unknown host, connect timeout).
+          After a read timeout a write answers 503 instead of running twice (core review 2026-11-27 §4.6).
+
           | Value | Mode | Example |
           |-------|------|---------|
           | ``oracle`` | Unicast | Route to oracle only |
@@ -12210,6 +12214,7 @@ paths:
     post:
       tags: [Archive — Chat queue]
       summary: "ok → answered; not ok → queued again (failed after 5 attempts)"
+      description: The answer is the item with its new `state`. A client that reads `failed` tells the owner through Hermes (one notice with the text, key `chat_queue.failed.<client>.<id>`; core review 2026-11-27 §4.2).
       servers:
         - url: http://localhost:19002
       parameters:

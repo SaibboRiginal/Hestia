@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import logging
 import threading
+from html import escape
 from typing import Any
 
 import requests
@@ -96,7 +97,9 @@ def drain(reason: str = "") -> dict:
                 continue
             ok, detail = _answer(claimed)
             for item in claimed:
-                _archive("POST", f"api/chat-queue/{item['id']}/done", {"ok": ok, "detail": detail})
+                _code, closed = _archive("POST", f"api/chat-queue/{item['id']}/done", {"ok": ok, "detail": detail})
+                if isinstance(closed, dict) and closed.get("state") == "failed":
+                    notify_given_up(item)
             if ok:
                 answered += len(claimed)
                 continue
@@ -106,6 +109,30 @@ def drain(reason: str = "") -> dict:
         return {"status": "ok", "answered": answered, "failed": failed}
     finally:
         _drain_lock.release()
+
+
+def notify_given_up(item: dict) -> None:
+    """Archive gave up on a queued message (too many drains): tell the owner instead of dropping it silently.
+
+    One notice per message through Hermes (the only messenger to the owner), with the text so it can be written
+    again. Core review 2026-11-27 §4.2."""
+    from hestia_common.reminders import reminder_event
+
+    text = str(item.get("text") or "").strip()
+    quoted = text if len(text) <= 300 else text[:297].rstrip() + "…"
+    body = reminder_event(
+        module="telegram", domain="chat", key=f"chat_queue.failed.{CLIENT}.{item.get('id')}",
+        title=tr("Message not answered"),
+        text=tr("I couldn't answer this message you wrote while I was not available: «{0}». Write it to me again if it still matters.",  # noqa: E501
+                escape(quoted)),
+        actions=[], level="warning")
+    try:
+        resp = requests.post(f"{core.HUB_API_URL}/route/hermes/api/events/ingest",
+                             json={"method": "POST", "headers": {}, "query": {}, "body": body,
+                                   "timeout_seconds": 8}, timeout=12)
+        logger.info("[🔄] event=chat_queue_given_up_notified id=%s status=%s", item.get("id"), resp.status_code)
+    except Exception as exc:
+        logger.warning("[🔄] event=chat_queue_given_up_notify_failed id=%s error=%s", item.get("id"), exc)
 
 
 def _answer(items: list[dict]) -> tuple[bool, str]:

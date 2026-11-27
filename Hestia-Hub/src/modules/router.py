@@ -42,3 +42,25 @@ def proxy_request(
         return response.status_code, response.json()
 
     return response.status_code, {"raw": response.text}
+
+
+_SAFE_METHODS = frozenset({"GET", "HEAD", "OPTIONS"})
+
+
+def may_fail_over(method: str, error: BaseException) -> bool:
+    """Whether a failed call may be sent again to the next instance of the same service.
+
+    A read can always go elsewhere. A write (POST, PUT, PATCH, DELETE) goes elsewhere only when the first instance
+    was never reached (connection refused, unknown host, connect timeout): after a read timeout or a connection cut
+    mid-answer the first instance may have done the work already, and running it twice is worse than one error
+    (core review 2026-11-27 §4.6)."""
+    from urllib3.exceptions import NewConnectionError
+
+    if str(method or "GET").upper() in _SAFE_METHODS:
+        return True
+    if isinstance(error, requests.ConnectTimeout):
+        return True
+    if isinstance(error, requests.ConnectionError) and not isinstance(error, requests.Timeout):
+        cause = error.args[0] if error.args else None              # urllib3 MaxRetryError(reason=...)
+        return isinstance(getattr(cause, "reason", cause), NewConnectionError)
+    return False

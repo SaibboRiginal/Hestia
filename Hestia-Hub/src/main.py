@@ -46,7 +46,7 @@ from .modules import inside
 from .modules.nodes import NODE_HEADER, NodeError, Nodes
 from .modules.registry import NODE_FRESH_SECONDS, ServiceRegistry
 from .modules import relay
-from .modules.router import proxy_request
+from .modules.router import may_fail_over, proxy_request
 from .modules.snapshot import RegistrySnapshot
 from .modules.schemas import (
     ALLOWED_TOPOLOGY_DIMENSIONS,
@@ -450,6 +450,8 @@ def _route_sync(service_name: str, path: str, req: RouteRequest):
             except req_lib.RequestException as exc:
                 last_error = f"{target_url}: {exc}"
                 logger.warning("[🔄] event=hub_stream_upstream_unreachable target=%s error=%s", target_url, exc)
+                if not may_fail_over(req.method, exc):
+                    break          # the instance may have started the work: never run a write twice
                 continue
             if resp.status_code >= 400:
                 detail = resp.text[:500]
@@ -515,6 +517,10 @@ def _route_sync(service_name: str, path: str, req: RouteRequest):
                 break
             except requests.RequestException as error:
                 last_error = error
+                if not may_fail_over(req.method, error):
+                    logger.warning("[🔄] event=hub_no_failover_for_write service=%s method=%s error=%s",
+                                   name, req.method, str(error)[:200])
+                    break          # the instance may have done the work already: never run a write twice
                 continue
 
         if not responded:

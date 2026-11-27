@@ -598,6 +598,10 @@ lists `scout.status.*` and `scout.page.sold` narrowed (no bare «sold»-like wor
 page menu); `locales/*/tools.json` summaries of the Scout tools rewritten (Italian added, no module names), with the
 help of the new flat `scout.search` parameters. No library change.
 
+**2026-11-27 (core review §4, dossier `docs/work/2026-11-27-core-modules-review`)**: `locales/it/messages.json` gets
+the texts of the notice for a queued chat message never answered («Message not answered») and the «was €{0}» of a
+listing whose price fell. No library change.
+
 **2026-11-27 (v1.1 of the same dossier)**: tool `scout.search` renamed `scout_search` in `locales/*/tools.json` and in the
 `mcp_helpers` docstring example; Italian texts of the Scout retry settings and agenda title in `locales/it/messages.json`.
 No library change.
