@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Version** | 2.25 |
+| **Version** | 2.26 |
 | **Source** | user via Project thread (Marko 2026-10-30: «possiamo fare un setup in one click per windows e linux e mac os? che fa letteralmente tutto con fallback e no fail? magari si puo pensare che hestia si costruisce da sola? si mette su da sola ma essendo su docker magari non so se ha accesso al host?») |
 | **Status** | Approved by Marko 2026-10-30 («principale è Windows e linux. mac os solo se semplice. rendilo facile da configurare tutte le parti importanti e necessarie come oracle ovviamente») — implemented (all phases on main; Marko real run pending) |
 
@@ -113,7 +113,7 @@ sentence). State in `<install dir>/.hestia-install/state.json` + log `install.lo
 
 | # | Step | Windows | Linux | macOS |
 |---|---|---|---|---|
-| 0 | Preflight: OS/arch, RAM ≥ 8 GB (warn), disk ≥ 30 GB free, internet, virtualization, ports 19000-19030/5432 free | ✔ | ✔ | ✔ |
+| 0 | Preflight: OS/arch, RAM ≥ 8 GB (warn), disk ≥ 30 GB free, internet, virtualization, ports 19000-19030/5432 free (a busy port names what holds it; another Hestia's containers are offered to be stopped) | ✔ | ✔ | ✔ |
 | 1 | git (fallback: download the zip of `main`, switch to git later) | winget `Git.Git` → direct installer | apt/dnf/pacman/zypper | `xcode-select --install` → Homebrew |
 | 2 | Docker | WSL2 (`wsl --install`, reboot + resume via RunOnce) → winget `Docker.DockerDesktop` → direct installer | `get.docker.com` → distro package; add user to `docker` group | Homebrew cask (else: «installa Docker Desktop da docker.com e rilancia») |
 | 3 | Start Docker and wait until `docker info` answers (up to 5 min, progress shown) | ✔ | systemd | ✔ |

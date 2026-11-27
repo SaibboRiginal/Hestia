@@ -4,6 +4,7 @@ One line per finished task (details in `docs/work/<task>/`).
 
 ## 2026-11-27
 
+- Installer: when a port is busy it says what holds it, and if it is another Hestia already on it offers to stop it and goes on → `docs/work/2026-10-30-one-click-setup/` [ext-chat]
 - After the core review, your answers: a message written while I was offline that I could never answer now reaches you as a notice with its text, a house already told is told again when its price falls below the last one, and a write is never sent twice to two copies of a module → `docs/work/2026-11-27-core-modules-review/` [ext-chat]
 - Houses: emails the model could not read yet are read again by themselves (after 30 minutes, then less often; both times in the settings), and the house search tool is called `scout_search` like the other house tools (routines already saved follow) → `docs/work/2026-11-27-scout-house-hunt-review/` [ext-chat]
 - Core modules checked like Scout: a house listing is no longer lost when Hermes restarts or gives up, new agenda tasks keep firing however much history there is (and a job never fires twice after the hourly re-assert), old setting proposals can still be approved, an answer arriving meanwhile is never reopened, one slow tool no longer freezes a whole service, the nightly memory work no longer fills the memory with copies nor retires a memory with nothing in its place, cards never name modules → `docs/work/2026-11-27-core-modules-review/` [ext-chat]

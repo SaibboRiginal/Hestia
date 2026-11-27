@@ -228,19 +228,56 @@ preflight() {
   fi
 }
 
+# A busy port is named with what holds it. Another Hestia (its containers, from another folder or an older install)
+# is offered to be stopped, so the user never hunts for it; any other program is named so they know what to close.
+port_holder() {   # prints «container:<name>» or «program:<name>» or nothing
+  local row prog=""
+  if dk info >/dev/null 2>&1; then
+    while IFS= read -r row; do
+      case "${row#*|}" in *":$1->"*) printf 'container:%s' "${row%%|*}"; return 0 ;; esac
+    done < <(dk ps --format '{{.Names}}|{{.Ports}}' 2>/dev/null)
+  fi
+  has lsof && prog="$(lsof -nP -iTCP:"$1" -sTCP:LISTEN 2>/dev/null | awk 'NR==2 {print $1}')"
+  [ -z "$prog" ] && has ss && prog="$(ss -ltnp 2>/dev/null | grep "[:.]$1 " | sed -n 's/.*users:(("\([^"]*\)".*/\1/p' | head -n1)"
+  [ -n "$prog" ] && printf 'program:%s' "$prog"
+  return 0
+}
+
 ports_check() {
   # Only on a first install: a running Hestia of course holds its own ports.
   dk ps --format '{{.Names}}' 2>/dev/null | grep -q '^hestia_hub$' && return 0
-  local busy="" port
+  local busy="" others="" hestia="" port holder
   local ports="19001 19002 19015 5432"
   [ "$ROLE" = satellite ] && ports="19001 19021 19014"
   for port in $ports; do
     if { has ss && ss -ltn 2>/dev/null | grep -q "[:.]$port "; } || \
        { has lsof && lsof -nP -iTCP:"$port" -sTCP:LISTEN >/dev/null 2>&1; }; then
       busy="$busy $port"
+      holder="$(port_holder "$port")"
+      case "$holder" in
+        container:hestia_*) hestia="$hestia ${holder#container:}" ;;
+        ?*) others="$others $port (${holder#*:})" ;;
+        *) others="$others $port" ;;
+      esac
     fi
   done
-  [ -n "$busy" ] && fail "$(t "these ports are already used by another program:{0}. Close it and run again." "$busy")"
+  log "ports_busy ports=\"${busy# }\" hestia=\"${hestia# }\" others=\"${others# }\""
+  [ -n "$others" ] && fail "$(t "these ports are already used by another program:{0}. Close it and run again." "$others")"
+  [ -z "$hestia" ] && return 0
+  # Another Hestia is on: stop all of its containers (they start again with docker start; data stays in its volumes).
+  local first where place answer="n" running
+  first="$(echo $hestia | awk '{print $1}')"
+  where="$(dk inspect -f '{{ index .Config.Labels "com.docker.compose.project.working_dir" }}' "$first" 2>/dev/null)"
+  place="${where:-$(t "another folder")}"
+  running="$(dk ps --format '{{.Names}}' 2>/dev/null | grep '^hestia_' | tr '\n' ' ')"
+  say "$(t "Another Hestia is already on ({0}) and holds the ports Hestia needs." "$place")"
+  [ -r /dev/tty ] && read -r -p "[Hestia] $(t "Stop it and go on? [Y/n]") " answer < /dev/tty || true
+  [ -r /dev/tty ] || answer="n"
+  case "$answer" in [nN]*) fail "$(t "stop the other Hestia first (docker stop on its containers), then run again.")" ;; esac
+  # shellcheck disable=SC2086
+  [ "$DRY_RUN" = 1 ] || dk stop $running >/dev/null 2>&1 || true
+  log "other_hestia_stopped where=\"$place\""
+  say "$(t "Other Hestia stopped: its data stays where it was.")"
   return 0
 }
 

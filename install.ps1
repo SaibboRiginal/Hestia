@@ -243,14 +243,47 @@ function Test-Preflight {
     }
 }
 
+# A busy port is named with what holds it. Another Hestia (its containers, from another folder or an older install)
+# is offered to be stopped, so the user never hunts for it; any other program is named so they know what to close.
+function Get-PortHolder([int]$Port) {
+    if (Test-Docker) {
+        foreach ($row in @(& docker ps --format '{{.Names}}|{{.Ports}}' 2>$null)) {
+            $cut = ([string]$row).IndexOf('|')
+            if ($cut -gt 0 -and ([string]$row).Substring($cut + 1) -match (":$Port->")) { return @{ container = ([string]$row).Substring(0, $cut) } }
+        }
+    }
+    $conn = Get-NetTCPConnection -State Listen -LocalPort $Port -ErrorAction SilentlyContinue | Select-Object -First 1
+    $proc = if ($conn) { Get-Process -Id $conn.OwningProcess -ErrorAction SilentlyContinue } else { $null }
+    return @{ program = $(if ($proc) { $proc.ProcessName } else { '' }) }
+}
+
 function Test-Ports {
     if ((Test-Docker) -and ((& docker ps --format '{{.Names}}' 2>$null) -contains 'hestia_hub')) { return }
-    $busy = @()
+    $busy = @(); $hestia = @(); $others = @()
     $ports = if ($script:Role -eq 'satellite') { @(19001, 19021, 19014) } else { @(19001, 19002, 19015, 5432) }
     foreach ($port in $ports) {
-        if (Get-NetTCPConnection -State Listen -LocalPort $port -ErrorAction SilentlyContinue) { $busy += $port }
+        if (-not (Get-NetTCPConnection -State Listen -LocalPort $port -ErrorAction SilentlyContinue)) { continue }
+        $busy += $port
+        $holder = Get-PortHolder $port
+        if ($holder.container -like 'hestia_*') { $hestia += $holder.container }
+        elseif ($holder.container) { $others += "$port ($($holder.container))" }
+        elseif ($holder.program) { $others += "$port ($($holder.program))" }
+        else { $others += "$port" }
     }
-    if ($busy.Count) { Stop-Install (T 'these ports are already used by another program: {0}. Close it and run again.' ($busy -join ', ')) }
+    Write-Log "ports_busy ports=`"$($busy -join ',')`" hestia=`"$($hestia -join ',')`" others=`"$($others -join ',')`""
+    if ($others.Count) { Stop-Install (T 'these ports are already used by another program: {0}. Close it and run again.' ($others -join ', ')) }
+    if (-not $hestia.Count) { return }
+    # Another Hestia is on: stop all of its containers (they start again with docker start; data stays in its volumes).
+    $first = $hestia[0]
+    $where = [string](& docker inspect -f '{{ index .Config.Labels "com.docker.compose.project.working_dir" }}' $first 2>$null)
+    $running = @(& docker ps --format '{{.Names}}' 2>$null | Where-Object { $_ -like 'hestia_*' })
+    $place = if ($where.Trim()) { $where.Trim() } else { T 'another folder' }
+    Say (T 'Another Hestia is already on ({0}) and holds the ports Hestia needs.' $place)
+    $answer = if (Test-Interactive) { Read-Host (T '[Hestia] Stop it and go on? [Y/n]') } else { 'n' }
+    if ($answer -match '^[nN]') { Stop-Install (T 'stop the other Hestia first (Docker Desktop, Containers, Stop), then run again.') }
+    if (-not $DryRun) { & docker stop @running 2>&1 | ForEach-Object { Write-Log "  | $_" } }
+    Write-Log "other_hestia_stopped where=`"$place`" containers=$($running.Count)"
+    Ok (T 'Other Hestia stopped: its data stays where it was.')
 }
 
 # -- 1. git -------------------------------------------------------------------------------------------------------

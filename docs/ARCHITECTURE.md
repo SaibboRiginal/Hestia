@@ -38,7 +38,7 @@ One line installs or repairs everything (prerequisites, `.env` with generated se
 / `Install-Hestia.cmd` on Windows (it must run both as a file and as text through `irm | iex`: ASCII only, no
 `[ValidateSet]` in `param`; CI tries both). Installer messages are in English by default and in Italian when the
 computer is (`T 'en' 'it'` / `$(t "en" "it")`, `--lang` / `-Lang` / `HESTIA_LANG`), and Hestia goes where the installer is launched (a Hestia folder as it is,
-otherwise `Hestia` inside it), `install.sh` on Linux (macOS on the simple path). Releases = tags `vX.Y.Z`:
+otherwise `Hestia` inside it; a busy port names its holder and another Hestia's containers are stopped on the owner's yes), `install.sh` on Linux (macOS on the simple path). Releases = tags `vX.Y.Z`:
 CI publishes every service image in `ghcr.io/saibboriginal/hestia` (`<service>-<version>`) and the installer pulls
 them through `docker-compose.images.yml`; without that override compose builds locally as always (development,
 Forge). After the install the WebUI opens the guided setup `/setup`: the only writer of secrets from a screen

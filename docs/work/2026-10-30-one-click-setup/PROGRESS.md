@@ -37,4 +37,5 @@
 - [x] v2.23 (Marko 2026-11-07): Echo `core/lang.py` + `speak_language`, Kokoro/Piper `for_language`, `echo.language` default auto, all Kokoro voices, Chatterbox 8004 / Kokoro-FastAPI 8880 probes + `programs`; setup chain «Altri programmi gratis»; real Kokoro checked (English text with Sara → Heart, audible); Echo 48, ng build. XTTS not added: no maintained server with the OpenAI API found (openedai-speech archived, AllTalk v2 not verifiable)
 - [x] Connected services as one list of N (Marko 2026-11-07): Hecate `connections.py` (Google, Garmin, phone connectors, `/api/gateway/connections*`), `<hecate-connections>` in Dispositivi + setup, old cards removed; Hecate 119 tests, Hecate tsc, ng build
 - [x] v2.25 (Marko 2026-11-07): voice `lang`/`lang_label` from Echo, `setup-pick` language selector; Echo 48, ng build, screenshot
-- Left to Marko: real Windows install, real Linux run (Actions → Installer → real_run), first tag v1.0.0 + GHCR package public, two-machine run, real tunnel, .NET build
+- [x] v2.26 (Marko 2026-11-27): installer busy ports name their holder (container or program); another Hestia's containers stopped on «S» (install.ps1 + install.sh, Italian catalog); shellcheck, bash dry run with a held port
+- Left to Marko: real Windows install, real Linux run (Actions → Installer → real_run), two-machine run, real tunnel, .NET build
