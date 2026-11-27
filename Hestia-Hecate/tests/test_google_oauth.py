@@ -249,7 +249,7 @@ def test_client_typed_in_webui_is_kept_and_used(client, monkeypatch, tmp_path):
 
 
 def test_builtin_client_one_login_own_client_wins(tmp_path, monkeypatch):
-    """Marko 2026-11-27 «premo, faccio login e basta»: the release image brings a desktop client; the owner's own
+    """Marko 2026-11-27 (one button, then the login): the release image brings a desktop client; the owner's own
     client typed in the card wins; with the built-in one the redirect is the loopback (desktop clients accept no other)."""
     builtin = tmp_path / "google_client.json"
     monkeypatch.setenv("HECATE_GOOGLE_BUILTIN_FILE", str(builtin))

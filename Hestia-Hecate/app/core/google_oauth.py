@@ -137,7 +137,7 @@ def is_public_redirect(uri: str) -> bool:
     return bool(host) and host not in {"localhost", "127.0.0.1", "::1"}
 
 
-# The Google app that comes with Hestia (Marko 2026-11-27 «premo, faccio login e basta»): a «Desktop app» OAuth client
+# The Google app that comes with Hestia (Marko 2026-11-27: one button, then the login): a «Desktop app» OAuth client
 # written into the Hecate image by the release build (GitHub secrets, never in the repository). Outside /code, which
 # compose mounts over. Google says a desktop client's secret is not confidential; the owner's own client always wins.
 BUILTIN_CLIENT_FILE = "/opt/hestia/google_client.json"
