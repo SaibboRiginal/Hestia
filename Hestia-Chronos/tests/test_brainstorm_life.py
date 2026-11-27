@@ -132,12 +132,21 @@ class TestRoutines:
     def test_empty_precheck_stops_without_the_model(self, store):
         from services import routines
         item = routines.create(title="Case", instruction="Le migliori", recurrence="FREQ=DAILY",
-                               precheck={"tool": "scout.search", "args": {}})
+                               precheck={"tool": "scout_search", "args": {}})
         with patch.object(routines, "_mcp") as mcp, patch.object(routines, "_ask_oracle") as ask:
             mcp.return_value.call.return_value = (True, {"items": []})
             out = routines.run(item["key"])
         assert out["ran"] is False and out["reason"] == "niente di nuovo"
         ask.assert_not_called()
+
+    def test_stored_precheck_follows_a_renamed_tool(self, store):
+        from services import routines
+        item = routines.create(title="Case", instruction="Le migliori", recurrence="FREQ=DAILY",
+                               precheck={"tool": "scout.search", "args": {"limit": 10}})
+        assert routines.rename_stored_tools() == 1
+        r = routines.routine_of(routines.agenda.get(item["key"]))
+        assert r["precheck"] == {"tool": "scout_search", "args": {"limit": 10}}
+        assert routines.rename_stored_tools() == 0
 
     def test_nothing_to_say_is_not_delivered(self, store):
         from services import routines

@@ -6988,13 +6988,13 @@ paths:
               properties:
                 trigger:
                   type: string
-                  description: "agenda | user | api"
+                  description: "agenda | user | api | retry"
                 wait:
                   type: boolean
                   description: "run synchronously"
       responses:
         "200":
-          description: "{status: started|busy|ok|error, trigger}"
+          description: "{status: started|busy|ok|error, trigger, waiting (emails still waiting for the model, wait=true)}"
     get:
       tags: [Scout]
       summary: Cycle state
@@ -7315,7 +7315,7 @@ paths:
               properties:
                 trigger:
                   type: string
-                  description: "agenda | user | api"
+                  description: "agenda | user | api | retry"
       responses:
         "200":
           description: "{status: started, trigger, agenda_job}"

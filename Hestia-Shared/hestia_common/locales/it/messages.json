@@ -8060,5 +8060,10 @@
   "{0}: {1}": "{0}: {1}",
   "⚙️ {0} proposes to change «{1}»: {2} → {3}.": "⚙️ {0} propone di cambiare «{1}»: {2} → {3}.",
   "{assistant} thinks": "{assistant} pensa",
-  "No": "No"
+  "No": "No",
+  "First new try": "Primo nuovo tentativo",
+  "When the model could not read some emails, after how long they are read again (then the time doubles at each try).": "Se il modello non è riuscito a leggere alcune email, dopo quanto tempo vengono rilette (poi il tempo raddoppia a ogni tentativo).",
+  "Longest wait between tries": "Attesa massima tra due tentativi",
+  "Longest time between two new tries of emails still waiting to be read.": "Tempo massimo tra due nuovi tentativi per le email ancora da leggere.",
+  "Read the listing emails again ({0} waiting)": "Rileggi le email degli annunci ({0} in attesa)"
 }

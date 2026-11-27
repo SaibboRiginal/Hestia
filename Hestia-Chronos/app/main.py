@@ -664,6 +664,7 @@ def _life_boot() -> None:
     """Mail routines re-subscribe to Iris; the owner's birthday follows ``themis.personal.birth_date``."""
     from services import routines, smart_calendar, special
     routines.refresh_mail_subscriptions()
+    routines.rename_stored_tools()
     routines.load_results()
     smart_calendar.load_kept()
     try:

@@ -231,6 +231,8 @@ Declared in `app/core/scout_settings.py` (owner `scout`), all `apply=live` (read
 | `scout.batch.debounce` | int (s) | `45` | Wait to gather near-simultaneous mails (0 = none) |
 | `scout.batch.cooldown` | int (s) | `15` | Pause between model batches (quota) |
 | `scout.llm.timeout` | int (s) | `120` | Per-call timeout of the Oracle extraction call |
+| `scout.retry.first` | int (min) | `30` | Emails the model did not answer for are read again after this long (doubling) |
+| `scout.retry.max` | int (min) | `360` | Longest wait between two new tries |
 | `scout.reconcile.every_cycles` | int | `1` | Reconcile stored entities every N cycles (0 = never) |
 | `scout.enrichment.enabled` | bool | `true` | Listing-page enrichment + retry of pending enrichments |
 | `scout.notifications.voice` | bool | `false` | New-listing notifications also as voice (event `_voice`, Hermes adds the audio from Echo) |
@@ -273,7 +275,7 @@ mail cycle brings listings back anyway). Settings travel through Themis.
 ## Telegram card (`display`)
 `scout_stats` counts up to 100 listings (request limit 50 × 5; it used to ask 100 and fail on the limit ≤ 50); the
 search tools called with no arguments get the body `{}` and list the latest houses (2026-10-30).
-`POST /api/tools/real_estate/search` (tool `scout.search`; `scout_listings` was its double and was removed on 2026-11-14) and `scout_stats` return a `display` card: one line per house (title linked to the listing, price, surface, rooms, address) and counts by listing status, with Cerca / Controlla email. Built with `hestia_common.display`; Hestia-MCP keeps it only for Telegram (docs/work/2026-10-23-telegram-from-scratch §6).
+`POST /api/tools/real_estate/search` (tool `scout_search`, named `scout.search` until 2026-11-27; `scout_listings` was its double and was removed on 2026-11-14) and `scout_stats` return a `display` card: one line per house (title linked to the listing, price, surface, rooms, address) and counts by listing status, with Cerca / Controlla email. Built with `hestia_common.display`; Hestia-MCP keeps it only for Telegram (docs/work/2026-10-23-telegram-from-scratch §6).
 
 ## Module guide for the assistant (dossier `docs/work/2026-10-24-whole-cindy-brainstorm`, Cindy 30)
 The Hub registration declares `capabilities.when_to_use` (one line in the assistant's «MODULI» index) and
@@ -315,7 +317,7 @@ app keep «Hestia».
   and 3 failed fetches in a row stop the round; `pending_steps` is kept in `HousePayload`, so a page not read the
   first time is retried.
 - **Prices**: «€ 250.000» → 250000 (`_to_int_or_none` read 250).
-- **Search** (`scout.search` / `POST /api/tools/real_estate/search`): flat parameters `query, city, nearby,
+- **Search** (`scout_search` / `POST /api/tools/real_estate/search`): flat parameters `query, city, nearby,
   radius_km, price_min, price_max, rooms_min, surface_min, limit`; the old `filters`/`filters_gt`/`filters_lt` dicts
   are mapped on them (they were ignored: nothing was filtered). Bounds inclusive; a city keeps the houses that name
   it (or, with `nearby`, the ones within `radius_km`); discarded houses never come back. The MCP handler returns the
@@ -325,4 +327,9 @@ app keep «Hestia».
 - **Texts**: `scout_stats` counts every active listing (not the 100 newest) and names the states with the plugin's
   labels in the owner's language; status labels of the plugin API go through `tr`; «1 room» translated; tool
   summaries in `locales/*/tools.json` without module names.
-
+- **New try of waiting emails** (v1.1, Marko's go 2026-11-27): when a cycle leaves emails waiting, Scout plans a
+  one-off agenda task `scout.retry_waiting` (`POST /api/scout/cycle {trigger: retry}`) after `scout.retry.first`
+  minutes, doubling up to `scout.retry.max`; a cycle with nothing waiting closes it. `POST /api/scout/cycle` with
+  `wait: true` returns `waiting` too.
+- **Tool name**: `scout.search` → `scout_search` (rule `<domain>_<verb>`, like `scout_fetch`/`scout_stats`); the
+  stored routines that pre-check with the old name are renamed by Chronos at boot (`routines.rename_stored_tools`).

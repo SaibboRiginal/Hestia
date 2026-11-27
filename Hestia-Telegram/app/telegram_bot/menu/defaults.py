@@ -37,7 +37,7 @@ ALIASES = {
     "create_event": "create_event", "create_reminder": "new_reminder", "create_task": "new_activity",
     "notification_add": "new_alert", "notification_get": "notifications_active", "notification_remove": "notification_disable",
     "now": "metis_now", "discover": "metis_discover", "status": "presence_status",
-    "webui_revoke": "webui_revoke", "revoke_webui": "webui_revoke", "scout_list": "scout.search",
+    "webui_revoke": "webui_revoke", "revoke_webui": "webui_revoke", "scout_list": "scout_search",
 }
 
 # Areas in order (`aliases`: older or module group names that mean the same area) and, as last resort when a

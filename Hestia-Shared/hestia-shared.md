@@ -597,3 +597,7 @@ modules by it). A failure, or a finished download over 200 MB, goes to Notifiche
 lists `scout.status.*` and `scout.page.sold` narrowed (no bare «sold»-like words that appear in every description or
 page menu); `locales/*/tools.json` summaries of the Scout tools rewritten (Italian added, no module names), with the
 help of the new flat `scout.search` parameters. No library change.
+
+**2026-11-27 (v1.1 of the same dossier)**: tool `scout.search` renamed `scout_search` in `locales/*/tools.json` and in the
+`mcp_helpers` docstring example; Italian texts of the Scout retry settings and agenda title in `locales/it/messages.json`.
+No library change.
