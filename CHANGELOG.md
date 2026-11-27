@@ -4,6 +4,7 @@ One line per finished task (details in `docs/work/<task>/`).
 
 ## 2026-11-27
 
+- Installer on Windows: no more crash when it has to build the modules itself (folder with local changes) → `docs/work/2026-10-30-one-click-setup/` [ext-chat]
 - Installer: no model is downloaded before the setup, you pick in the setup and only that is downloaded → `docs/work/2026-10-30-one-click-setup/` [ext-chat]
 - Installer: while it downloads the ready-made modules it shows each one as it arrives, with how many are done → `docs/work/2026-10-30-one-click-setup/` [ext-chat]
 - Installer: when a port is busy it says what holds it, and if it is another Hestia already on it offers to stop it and goes on → `docs/work/2026-10-30-one-click-setup/` [ext-chat]

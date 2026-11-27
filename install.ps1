@@ -213,7 +213,7 @@ function Invoke-Compose {
     $files = @('-f', 'docker-compose.global.yml')
     if ($script:VersionTag -and (Test-Path (Join-Path $Dir 'docker-compose.images.yml'))) { $files += @('-f', 'docker-compose.images.yml') }
     if ($DryRun) { Write-Host "  [dry-run] docker compose $($args -join ' ')"; return $true }
-    $env:HESTIA_VERSION = $script:VersionTag.TrimStart('v')
+    $env:HESTIA_VERSION = ([string]$script:VersionTag).TrimStart('v')
     Push-Location $Dir
     try {
         Write-Log "compose args=`"$($args -join ' ')`""
@@ -228,7 +228,7 @@ function Invoke-ComposePull {
     $files = @('-f', 'docker-compose.global.yml')
     if ($script:VersionTag -and (Test-Path (Join-Path $Dir 'docker-compose.images.yml'))) { $files += @('-f', 'docker-compose.images.yml') }
     if ($DryRun) { Write-Host "  [dry-run] docker compose pull $($args -join ' ')"; return $true }
-    $env:HESTIA_VERSION = $script:VersionTag.TrimStart('v')
+    $env:HESTIA_VERSION = ([string]$script:VersionTag).TrimStart('v')
     $script:PullSeen = @{}; $script:PullDone = @{}
     Push-Location $Dir
     try {
