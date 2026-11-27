@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Version** | 1.1 |
+| **Version** | 1.2 |
 | **Source** | user via external chat (Marko, 2026-11-27: «ho scritto in chat e poi sono uscito e tornato mentre pensava: il messaggio è andato perso con la risposta»; then «perdo anche il ragionamento quando ritorno sulla chat») |
 | **Status** | Done |
 
@@ -40,7 +40,8 @@ client. Only «Stop» stops an answer.
   then `attach`; after a SignalR reconnect (or back on the page after the connection gave up) during an answer the
   same. Opening another conversation detaches, it does not stop.
 - **Telegram**: when the stream breaks, `follow_live_turn` reads the same turn again from the last frame into the same
-  message (3 attempts); heartbeats ignored.
+  message, retrying up to 10 minutes; a turn no longer live gives its saved answer from the conversation; heartbeats
+  ignored. A bot restart mid-turn is accepted as not covered (Marko 2026-11-27).
 - **Others**: Chronos routines, MCP door and voice use the same Oracle path, so their turns also finish and are saved.
 
 ## 4. New feature checklist

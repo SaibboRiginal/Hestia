@@ -16,7 +16,7 @@ from typing import Any
 
 import requests
 
-from telegram_bot import core, store, ui
+from telegram_bot import catalog, core, store, ui
 from telegram_bot.services import assistant_questions, chat_queue, chat_wait, reactions, voice_service
 from telegram_bot.services.reply_renderer import ReplyRenderer
 from hestia_common.i18n import t as tr  # fixed texts in the owner's language
@@ -183,25 +183,32 @@ def ask_oracle(chat_id, session_id: str, user_text: str, status_message_id: int,
     return OracleResult(renderer, signals, questions)
 
 
-FOLLOW_ATTEMPTS = 3
+FOLLOW_FOR_S = 600.0         # how long a broken answer is followed again before giving up
 
 
 def follow_live_turn(session_id: str, turn_id: str, renderer: "ReplyRenderer", signals: list, questions: list,
                      progress: dict, error: Exception) -> None:
-    """The stream of a turn broke (timeout, Oracle restarted its connection, network): Oracle keeps running the turn
-    on its own, so read it again from the last frame seen into the same message. Raises *error* when the turn can
-    not be followed any more (then the answer is still saved in the conversation)."""
+    """The stream of a turn broke (timeout, network, Oracle or the Hub unreachable for a while): Oracle keeps running
+    the turn on its own, so read it again from the last frame seen into the same message, retrying with a growing
+    pause for up to ``FOLLOW_FOR_S``. When the turn is no longer live, its answer is taken from the conversation (it is
+    saved there). Raises *error* only when no answer exists (docs/work/2026-11-27-chat-turn-survives)."""
     logger.warning("[🔄] event=oracle_stream_broken session_id=%s turn_id=%s lines=%d error=%s fallback=follow_again",
                    session_id, turn_id, progress.get("lines", 0), error)
     url = f"{core.resolve_oracle_chat_url()}/live/stream"
-    for attempt in range(1, FOLLOW_ATTEMPTS + 1):
+    until = time.time() + FOLLOW_FOR_S
+    attempt = 0
+    while True:
+        attempt += 1
         try:
             with requests.get(url, params={"session_id": session_id, "offset": progress.get("lines", 0),
                                            "turn_id": turn_id},
                               stream=True,
                               timeout=(10, float(core.settings.get(core.tg_settings.ORACLE_STREAM_TIMEOUT)))) as res:
                 if res.status_code == 404:
-                    break                    # the turn is gone (ended long ago or Oracle restarted)
+                    # Not live any more (ended a while ago, or Oracle restarted): the saved answer, if any.
+                    if _deliver_saved_answer(session_id, renderer, progress):
+                        return
+                    break
                 res.raise_for_status()
                 consume_oracle_stream(res, renderer, signals, questions, progress)
             logger.info("event=oracle_stream_followed_again session_id=%s attempt=%d lines=%d",
@@ -210,8 +217,27 @@ def follow_live_turn(session_id: str, turn_id: str, renderer: "ReplyRenderer", s
         except requests.RequestException as again:
             logger.warning("[🔄] event=oracle_stream_follow_failed session_id=%s attempt=%d error=%s",
                            session_id, attempt, again)
-            time.sleep(min(2 * attempt, 5))
+        if time.time() >= until:
+            if _deliver_saved_answer(session_id, renderer, progress):
+                return
+            break
+        time.sleep(min(5 * attempt, 60))
     raise error
+
+
+def _deliver_saved_answer(session_id: str, renderer: "ReplyRenderer", progress: dict) -> bool:
+    """The last message of the conversation is the assistant's answer to his message: show it in the same message."""
+    if progress.get("final"):
+        return True
+    ok, data = catalog.route("oracle", f"api/ui/chats/{session_id}/messages", query={"limit": 4}, timeout=10)
+    items = (data or {}).get("items") if ok and isinstance(data, dict) else None
+    last = items[-1] if items else None
+    if not isinstance(last, dict) or last.get("role") != "assistant" or not str(last.get("content") or "").strip():
+        return False
+    logger.info("[🔄] event=oracle_answer_from_history session_id=%s", session_id)
+    renderer.on_final(str(last.get("content")), None, str(last.get("model") or ""))
+    progress["final"] = True
+    return True
 
 
 def is_authorized(message) -> bool:

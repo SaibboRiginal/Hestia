@@ -114,7 +114,10 @@ subscription compile), `rating_paused`.
 - **A broken answer goes on** (dossier `docs/work/2026-11-27-chat-turn-survives`): Oracle runs the turn on its own and
   sends `heartbeat` frames while silent (ignored). If the stream breaks anyway, `follow_live_turn` reads the same turn
   again (`/api/chat/live/stream`, offset = frames already read, header `X-Hestia-Turn`) into the same message,
-  3 attempts; the answer is saved in the conversation in any case.
+  retrying with a growing pause for up to 10 minutes (Hub/Oracle unreachable for a while). When the turn is no longer
+  live, its saved answer is taken from the conversation (`/api/ui/chats/{id}/messages`) and shown in the same
+  message; «I couldn't answer» only when no answer exists. Not covered: the bot itself restarting mid-turn (Marko
+  2026-11-27: acceptable).
 
 ### Voice (`services/voice_service.py`, dossier `docs/work/2026-10-20-voice-module`)
 - A voice note is transcribed by Echo (use `telegram.voice_note`) and shown as «*testo*», then handled like the same
