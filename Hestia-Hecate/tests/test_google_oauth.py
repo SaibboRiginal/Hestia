@@ -263,7 +263,7 @@ def test_builtin_client_one_login_own_client_wins(tmp_path, monkeypatch):
     monkeypatch.setenv("HECATE_KEY_GOOGLE_CLIENT_ID", "mine.apps.googleusercontent.com")
     monkeypatch.setenv("HECATE_KEY_GOOGLE_CLIENT_SECRET", "minesecret")
     assert google_oauth.client_credentials() == ("mine.apps.googleusercontent.com", "minesecret")
-    assert not google_oauth.builtin_in_use() and google_oauth.redirect_uri().startswith("https://tunnel.example.org")
+    assert not google_oauth.builtin_in_use() and urlparse(google_oauth.redirect_uri()).hostname == "tunnel.example.org"
     builtin.write_text("not json")
     monkeypatch.setenv("HECATE_KEY_GOOGLE_CLIENT_ID", "")
     assert google_oauth.client_credentials() == ("", "")

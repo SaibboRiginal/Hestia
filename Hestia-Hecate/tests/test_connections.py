@@ -5,6 +5,8 @@ from __future__ import annotations
 
 import os
 
+from urllib.parse import urlparse
+
 import pytest
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
@@ -239,5 +241,5 @@ def test_google_with_the_builtin_app_is_one_button_then_login(world):
     assert item["id"] == "google" and item["step"]["fields"] == [] and item["step"]["submit"]
     assert [a["id"] for a in item["actions"]] == ["client"] and item["actions"][0]["label"] in ("Use your own Google app", "Usa la tua app Google")
     r = c.post("/api/gateway/connections/google", json={"values": {}}).json()
-    assert r["open_url"].startswith("https://accounts.google.com") and "Hestia" in r["item"]["step"]["text"]
+    assert urlparse(r["open_url"]).hostname == "accounts.google.com" and "Hestia" in r["item"]["step"]["text"]
     assert g.calls == []                               # nothing saved: the built-in client is used as it is
