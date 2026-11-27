@@ -385,17 +385,9 @@ def _start_tools_api():
 if _HAS_MCP:
     from tools.schemas import RealEstateSearchRequest
 
-    def _mcp_scout_search(query: str = "", filters: dict | None = None,
-                          filters_gt: dict | None = None, filters_lt: dict | None = None,
-                          sort_by: str | None = None, sort_order: str = "desc",
-                          limit: int = 30) -> dict:
-        req = RealEstateSearchRequest(
-            domain=TARGET_DOMAIN, query=query,
-            filters=filters or {}, filters_gt=filters_gt or {},
-            filters_lt=filters_lt or {}, sort_by=sort_by,
-            sort_order=sort_order, limit=limit,
-        )
-        return {"domain": TARGET_DOMAIN, "items": retrieval_service.search(req)}
+    def _mcp_scout_search(**arguments) -> dict:
+        # Same body as POST /api/tools/real_estate/search (the filters used to be dropped on the way).
+        return search_real_estate(RealEstateSearchRequest(**arguments))
 
     def _mcp_scout_reconcile(dry_run: bool = False) -> dict:
         if dry_run:
@@ -410,21 +402,14 @@ if _HAS_MCP:
 
     def _mcp_scout_stats() -> dict:
         """Return real_estate domain summary: counts, statuses, date ranges."""
-        entities = retrieval_service._fetch_archive_entities(
-            RealEstateSearchRequest(domain=TARGET_DOMAIN, limit=50))   # le=50: 100 failed every call (bench 2026-10-30)
-        total = len(entities)
+        # Every active listing (it used to count at most the 100 newest), without the discarded ones.
+        views = [v for v in ui_store.views() if v["flag"] != "discarded"]
+        total = len(views)
         status_counts: dict[str, int] = {}
-        newest = None
-        oldest = None
-        for e in entities:
-            st = str((e.get("listing_status") or e.get("payload", {}).get("listing_status") or "unknown")).strip().lower()
-            status_counts[st] = status_counts.get(st, 0) + 1
-            ct = e.get("created_at")
-            if ct:
-                if newest is None or ct > newest:
-                    newest = ct
-                if oldest is None or ct < oldest:
-                    oldest = ct
+        for v in views:
+            status_counts[v["status"]] = status_counts.get(v["status"], 0) + 1
+        dates = sorted(str(v["created_at"]) for v in views if v.get("created_at"))
+        oldest, newest = (dates[0], dates[-1]) if dates else (None, None)
         return {
             "domain": TARGET_DOMAIN,
             "total_entities": total,
@@ -436,11 +421,10 @@ if _HAS_MCP:
 
     def stats_display(total: int, by_status: dict, newest) -> dict:
         from hestia_common.display import action, display, item
-        names = {"available": tr("available"), "sold": tr("sold"), "rented": tr("rented"), "removed": tr("removed"),
-                 "unknown": "without a state"}
+        from ui_api import STATUS_LABELS
         when = str(newest or "")[:10]
         return display(tr("Houses"), subtitle=tr("{0} listings", total), footer=tr("Latest arrived on {0}/{1}", when[8:10], when[5:7]) if when else "",
-                       items=[item(names.get(k, k.replace("_", " ")), [str(v)]) for k, v in sorted(by_status.items(),
+                       items=[item(tr(STATUS_LABELS.get(k, "To check")), [str(v)]) for k, v in sorted(by_status.items(),
                                                                                          key=lambda kv: -kv[1])],
                        actions=[action(tr("Search houses"), "scout.search", style="primary")])
 
@@ -450,13 +434,15 @@ if _HAS_MCP:
                 parameters={
                     "type": "object",
                     "properties": {
-                        "query": {"type": "string", "description": "Free-text search query"},
-                        "filters": {"type": "object", "description": "Exact-match filters (city, type)"},
-                        "filters_gt": {"type": "object", "description": "Numeric > filters (price_min)"},
-                        "filters_lt": {"type": "object", "description": "Numeric < filters (price_max)"},
-                        "sort_by": {"type": "string"},
-                        "sort_order": {"type": "string", "enum": ["asc", "desc"]},
-                        "limit": {"type": "integer", "description": "Max results (default 30)"},
+                        "query": {"type": "string", "description": "Free words (e.g. terrace, garden)"},
+                        "city": {"type": "string", "description": "City or area"},
+                        "nearby": {"type": "boolean", "description": "Also the places around the city"},
+                        "radius_km": {"type": "number", "description": "Distance for nearby (default 20)"},
+                        "price_min": {"type": "number", "description": "Lowest price in euro"},
+                        "price_max": {"type": "number", "description": "Highest price in euro"},
+                        "rooms_min": {"type": "number", "description": "At least these rooms"},
+                        "surface_min": {"type": "number", "description": "At least these m²"},
+                        "limit": {"type": "integer", "description": "Max results (default 12, max 50)"},
                     },
                 }, handler=_mcp_scout_search,
                 title="Search houses", method="POST", path="/api/tools/real_estate/search",

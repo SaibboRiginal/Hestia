@@ -1828,8 +1828,7 @@
  ],
  "scout.status.occupied": [
   "\\btenant\\s+occupied\\b",
-  "\\bsold\\s+with\\s+tenant\\b",
-  "\\blet\\b"
+  "\\bsold\\s+with\\s+tenants?\\b"
  ],
  "scout.status.sold": [
   "\\bsold\\b",

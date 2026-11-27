@@ -1885,8 +1885,8 @@
   "annuncio rimosso",
   "immobile venduto",
   "non più disponibile",
-  "venduta",
-  "venduto"
+  "non è più disponibile",
+  "annuncio scaduto"
  ],
  "scout.status.available": [
   "\\bdisponibile\\s+subito\\b",
@@ -1895,23 +1895,21 @@
  "scout.status.negotiation": [
   "\\btrattativa\\s+in\\s+corso\\b",
   "\\bin\\s+trattativa\\b",
-  "\\btrattativa\\s+riservata\\b",
-  "\\btrattativa\\b"
+  "\\bproposta\\s+accettata\\b"
  ],
  "scout.status.occupied": [
   "\\bgià\\s+affittato\\b",
-  "\\baffittato\\b",
+  "\\battualmente\\s+affittato\\b",
   "\\bimmobile\\s+occupato\\b",
   "\\boccupato\\s+da\\s+inquilino\\b",
   "\\binquilino\\s+presente\\b",
   "\\bvendita\\s+con\\s+inquilino\\b",
-  "\\binvestimento\\s+immobiliare\\b"
+  "\\bnuda\\s+proprietà\\b"
  ],
  "scout.status.sold": [
   "\\bvendita\\s+conclusa\\b",
   "\\bgià\\s+venduto\\b",
-  "\\bimmobile\\s+venduto\\b",
-  "\\bvenduto\\b"
+  "\\bimmobile\\s+venduto\\b"
  ],
  "scout.value.none": [
   "assente",
