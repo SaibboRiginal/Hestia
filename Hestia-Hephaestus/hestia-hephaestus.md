@@ -523,3 +523,5 @@ app keep «Hestia».
 
 ## Module agent (Oracle operating mode «agents», 2026-11-17)
 The Hub registration declares `when_to_use`, `manual` and `title`: in Oracle's operating mode `agents` they are this module's agent (job area, rules, label in the clients), which works only with this module's tools. Dossier `docs/work/2026-11-06-modules-as-agents`.
+
+**2026-11-27 (setup one-click v2.28)**: the installer no longer pulls any Ollama model; the setup apply downloads the chosen chat model and the memory model when missing (comment updated, no behaviour change here).
