@@ -1,7 +1,7 @@
 """Hecate settings declared to Themis (central settings).
 
-Env keeps only secrets (OAuth client ids/secrets/tokens), infrastructure (URLs, token/tunnel files)
-and credential-bound deployment choices (provider enable flags, OAuth flow mode/scopes).
+Env keeps only secrets (the keys written by Hestia from Connections, tokens) and infrastructure (URLs, token/tunnel
+files, OAuth flow mode/scopes).
 """
 from __future__ import annotations
 
@@ -29,6 +29,7 @@ PHONE_HOME_WIFI = "hecate.phone.home_wifi"
 PHONE_APPS = "hecate.phone.app"
 GMAIL_PUSH_TOPIC = "hecate.gmail.push_topic"
 GMAIL_PUSH_SUBSCRIPTION = "hecate.gmail.push_subscription"
+MCP_SERVERS = "hecate.mcp.servers"     # == core.outbound.SERVERS
 
 settings = SettingsClient("hecate")
 settings.declare([
@@ -66,4 +67,8 @@ settings.declare([
     setting(GMAIL_PUSH_SUBSCRIPTION, "Gmail instant notices: subscription", "string", "", group="Email",
             editor="connection:hecate.gmail_push", advanced=True,
             help="The pull subscription Hestia reads (projects/<project>/subscriptions/<sub>)."),
+    # Set from the «External MCP servers» card (Connections); the keys are HECATE_KEY_MCP_<NAME>.
+    setting(MCP_SERVERS, "External MCP servers", "object", [], group="External services",
+            editor="connection:hecate.external_mcp", advanced=True,
+            help="Third-party MCP servers {assistant} can use: name and address of each one."),
 ]).declare_log_level().follow_personal()

@@ -2,6 +2,10 @@
 
 One line per finished task (details in `docs/work/<task>/`).
 
+## 2026-11-27
+
+- Nothing left to write by hand in Hecate's .env: external MCP servers have their card in Connections (add, test, remove; the ones already written move in by themselves), Google and Outlook turn on as soon as they are linked (no on/off switch), Garmin only from its card (an old email/password is used once, then emptied) → `docs/work/2026-11-27-connections-leftovers/` [ext-chat]
+
 ## 2026-11-19
 
 - No Italian in the code, wave 1: gate `check_english.py` (ratchet to zero), tool names, areas, dossier folders, Aphrodite, Apollo, ChatHub in English; owner's words in `locales/<lang>/words.json` (`docs/work/2026-11-19-no-italian-in-code`) [ext-chat]

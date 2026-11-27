@@ -54,7 +54,7 @@ Adding a new data source = implementing this interface and registering the conne
 | `GET` | `/api/logs` | Runtime log inspection (limit/level/contains) |
 | `GET` | `/api/gateway/providers` | List provider runtime status + registry |
 | `GET` | `/api/gateway/auth/status` | Auth/configuration state by provider |
-| `GET` | `/api/gateway/outbound/mcp` | Outbound MCP servers (third-party MCP servers Hestia may use): `{servers: [{name, host, auth, status}], how_to}` from `HECATE_MCP_<NAME>_URL/_KEY`, never a key (`app/core/outbound.py`); shown on WebUI *Accessi AI → Servizi esterni* |
+| `GET` | `/api/gateway/outbound/mcp` | Outbound MCP servers (third-party MCP servers Hestia may use): `{servers: [{name, host, auth, status}], how_to}` from the card «External MCP servers» (and old hand-written `HECATE_MCP_<NAME>_URL/_KEY`), never a key (`app/core/outbound.py`); shown on WebUI *Accessi AI → Servizi esterni* |
 | `POST` | `/api/gateway/auth/refresh/{provider}` | Re-acquire token via provider.refresh() (real OAuth refresh) |
 | `GET` | `/api/gateway/auth/google` | «Google» card (Connections and the guided setup): `{client_set, linked, pending, auth_url, redirect_uri, public_redirect, error}` (never the secret) |
 | `POST` | `/api/gateway/auth/google/client` | The OAuth client typed in the page `{client_id, client_secret}` or the downloaded JSON `{json}` (`installed`/`web`) → saved as `HECATE_KEY_GOOGLE_CLIENT_ID/SECRET` in Hecate's `.env` by Hephaestus (`hestia_common.connections`), used at once (`data/google_client.json` is no longer read: link Google again once) |
@@ -88,7 +88,7 @@ Adding a new data source = implementing this interface and registering the conne
 | `GET` | `/api/gateway/drive/files/{id}/chunk?offset=&length=` | `{data_b64, eof, size}` |
 | `PATCH` | `/api/gateway/drive/files/{id}` | `{app_properties}` |
 | `DELETE` | `/api/gateway/drive/files/{id}` | Move to the Drive trash |
-| `GET` | `/api/gateway/garmin/status` | Garmin state `{connected, tokens, env_credentials, waiting_code, last_sync, last_error}` |
+| `GET` | `/api/gateway/garmin/status` | Garmin state `{connected, tokens, waiting_code, last_sync, last_error}` |
 | `POST` | `/api/gateway/garmin/connect` | «Link Garmin»: Hermes secret form (email + password) to the owner |
 | `GET` | `/api/gateway/connections` | Hecate's linkable services, shared shape `{id, label, icon, what, group, keywords, state, detail, step, actions, test}` (`?place=setup`: only the ones offered in the setup) |
 | `POST` | `/api/gateway/connections/{id}` | The current step's values `{values}` → `{item, open_url?, message?}`; refused → 422 with the reason in words |
@@ -166,6 +166,7 @@ Garmin tokens).
 | `outlook` | account | the Microsoft app (client ID, tenant default `common`, optional secret → `HECATE_KEY_OUTLOOK_CLIENT_ID/_TENANT/_CLIENT_SECRET`, short guide + link) → Microsoft's device code shown in the card, polled → connected (refresh token in `data/outlook_token.json`, kept on rotation); actions «Change the Microsoft app», «Unlink» |
 | `gmail_push` | account | optional Gmail instant notices: topic + subscription (Themis `hecate.gmail.push_topic` / `hecate.gmail.push_subscription`) + the service account JSON (`HECATE_KEY_GMAIL_PUBSUB_ACCOUNT`, base64) → the stream restarts; not in the setup |
 | `garmin` | device | email + password (used once, never stored) → the two-step code when Garmin asks → connected, first read in background; actions «Read now», «Unlink» |
+| `external_mcp` | home_service | third-party MCP servers, N of them: name + address (setting `hecate.mcp.servers`) + optional key (`HECATE_KEY_MCP_<NAME>`) → «Add and test» (MCP `initialize`); actions «Add a server», «Remove <name>»; «Test» tries each one. Old `HECATE_MCP_<NAME>_URL/_KEY` lines are adopted once (`ExternalMcpConnector.adopt`, `[🔄] event=external_mcp_adopted_from_env`); not in the setup |
 | `phone` | device | «Create the phone's key» → `HECATE_KEY_PHONE` (random, shown once in the card) + how to set Tasker/MacroDroid; connected once it has sent a signal; not in the setup |
 
 The old endpoints (`auth/google*`, `auth/initiate|poll|complete/google|microsoft`, `garmin/*`) stay for Telegram,
@@ -273,7 +274,7 @@ Env holds only secrets, infrastructure and credential-bound deployment choices
 | `HUB_API_URL` | `http://hestia_hub:19001/api` | Hub routing base URL |
 | `HECATE_SERVICE_BASE_URL` | `http://hestia_hecate:19003` | URL reported to Hub registry |
 | `HECATE_SERVICE_VERSION` | `1.0.0` | Version reported to Hub |
-| `HECATE_MCP_<NAME>_URL` · `HECATE_MCP_<NAME>_KEY` | — | Outbound MCP server address and its key (optional, sent as Bearer); one pair per server |
+| `HECATE_KEY_MCP_<NAME>` | — | Key of an external MCP server (optional, sent as Bearer), written by Hestia from Connections; name and address are the setting `hecate.mcp.servers`. Old hand-written `HECATE_MCP_<NAME>_URL/_KEY` still work and move into the card on the next start |
 | `HECATE_KEY_GOOGLE_CLIENT_ID` | — | Google OAuth client ID, written by Hestia from Connections → Google (never by hand) |
 | `HECATE_KEY_GOOGLE_CLIENT_SECRET` | — | Google OAuth client secret, written the same way |
 | `GOOGLE_REFRESH_TOKEN` | — | Google OAuth refresh token (never expires — the only secret needed for API access) |
@@ -284,14 +285,12 @@ Env holds only secrets, infrastructure and credential-bound deployment choices
 | `GOOGLE_CREDENTIALS_JSON` | — | Google service account JSON (JSON string; not a path) |
 | `GOOGLE_SERVICE_ACCOUNT_JSON` | — | Alias for `GOOGLE_CREDENTIALS_JSON` |
 | `HECATE_KEY_OUTLOOK_CLIENT_ID` · `_TENANT` · `_CLIENT_SECRET` | — | The Microsoft app, written by Hestia from Connections → Outlook (never by hand); sign-in token in `data/outlook_token.json` |
-| `HECATE_ENABLE_PROVIDER_GOOGLE` | `false` | Force-enable Google provider even without credentials (deployment choice tied to credentials → stays in env) |
-| `HECATE_ENABLE_PROVIDER_MICROSOFT` | `false` | Force-enable Microsoft provider even without credentials |
 | `GOOGLE_OAUTH_FLOW_MODE` | `redirect` | `redirect` (PKCE; any device with the Cloudflare tunnel, paste-URL fallback otherwise) or `device_code` (Desktop/TV clients only) |
 | `GOOGLE_TUNNEL_URL_FILE` | `/code/data/tunnel-url.txt` | Public tunnel URL written by `cloudflare-tunnel.bat`, used as redirect base |
 | `GOOGLE_OAUTH_REDIRECT_URI` | `http://localhost:19003/api/gateway/auth/callback/google` | Redirect URI for `redirect` flow mode |
 | `HECATE_MAIL_WATCH_STATE` | `/code/data/mail_watch.json` | Mail watcher state file (history cursor, pending ids) |
 | `HECATE_KEY_GMAIL_PUBSUB_ACCOUNT` | — | Gmail instant notices: the service account JSON (base64), written by Hestia from Connections; topic and subscription are Themis settings |
-| `GARMIN_EMAIL` · `GARMIN_PASSWORD` | — | Optional: Garmin Connect login without the secret form (used once to get the tokens) |
+| `GARMIN_EMAIL` · `GARMIN_PASSWORD` | — | Not needed (Connections → Garmin). An old pair written by hand is used once, only when there are no tokens yet |
 | `HECATE_GARMIN_TOKENS` | `/code/data/garmin` | Garmin tokens (`garmin_tokens.json`, garminconnect ≥ 0.3), data volume |
 | `HECATE_KEY_PHONE` | — | The phone's key (sent in `X-Hestia-Phone-Token`), created in Connections → Android phone; empty = phone webhook off (503) |
 | `LOG_LEVEL` | `INFO` | Boot log level only; runtime level = setting `hecate.log.level` |
@@ -450,3 +449,8 @@ The Hub registration declares `capabilities.when_to_use` (one line in the assist
 **2026-11-16 (no Italian in the code, dossier `docs/work/2026-11-14-english-backend` v2.0)**: every text is English in the code; Italian lives only in `Hestia-Shared/hestia_common/locales/it/messages.json`. Labels declared at registration (manifest, capabilities, agenda rules, settings) are plain English, translated at the edge.
 
 **2026-11-17** (dossier `docs/work/2026-11-17-client-names`): the Google sign-in result page and the sign-in texts use the assistant's chosen name.
+
+**2026-11-27 (connections leftovers, dossier `docs/work/2026-11-27-connections-leftovers`)**: external MCP servers are a
+card in Connections (old `.env` lines keep working and are moved in once); Google/Outlook have no on/off switch any
+more (`HECATE_ENABLE_PROVIDER_*` removed: listed once their app is typed, configured once signed in); Garmin is
+linked only from its card or Telegram (an old `GARMIN_EMAIL/PASSWORD` pair is used once if there are no tokens).

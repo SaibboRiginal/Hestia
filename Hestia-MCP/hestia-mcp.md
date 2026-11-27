@@ -79,7 +79,8 @@ access in the list like claude.ai's.
   `event=mcp_oauth_token_refused error=`, `event=mcp_oauth_access_revoked_on_replay`.
 
 **Servizi esterni** (`GET /api/mcp/outbound`): third-party MCP servers Hestia may use, read from Hecate
-(`/api/gateway/outbound/mcp`, credentials in Hecate's `.env` only): names, host, key yes/no.
+(`/api/gateway/outbound/mcp`, linked from Hecate's card «External MCP servers» in Connections, which the page opens):
+names, host, key yes/no.
 
 **WebUI plugin** (core module, *Sistema*, bundle `ui/` → `/ui/dist/webui/mcp.js`, outside `/code` so the compose dev
 mount does not hide it):

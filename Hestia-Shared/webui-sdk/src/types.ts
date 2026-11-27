@@ -71,7 +71,8 @@ export interface HestiaHost {
   /** Opens Settings on one central setting (its key, highlighted), or on this module's settings (no key):
    *  the shortcut to put next to a value the user can change there. */
   openSetting(key?: string): void;
-  /** Opens the «Connections» page on one card (its id, e.g. 'comfyui' of this module), or the whole list. */
+  /** Opens the «Connections» page on one card (its id, e.g. 'comfyui' of this module, or '<module>.<id>' of another
+   *  module, e.g. 'hecate.external_mcp'), or the whole list. */
   openConnection(id?: string): void;
   toast(text: string, tone?: Tone, action?: { label: string; run: () => void }): void;
   confirm(title: string, text: string, opts?: { label?: string; danger?: boolean }): Promise<boolean>;

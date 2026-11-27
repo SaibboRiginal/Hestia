@@ -36,6 +36,10 @@ WHITELIST: dict[str, Target] = {
 CONNECTION_MODULES: dict[str, str] = {"apollo": "Hestia-Apollo/app/.env", "lares": "Hestia-Lares/app/.env",
                                       "hecate": "Hestia-Hecate/app/.env", "hermes": "Hestia-Hermes/src/.env"}
 _CONNECTION_KEY = re.compile(r"^(" + "|".join(m.upper() for m in CONNECTION_MODULES) + r")_KEY_[A-Z0-9_]{1,40}$")
+# Old lines written by hand before a card existed: only emptied, once their value moved into the card.
+LEGACY_CLEARABLE: dict[str, re.Pattern] = {
+    "hecate": re.compile(r"^(HECATE_MCP_[A-Z0-9_]{1,40}_(URL|KEY)|GARMIN_EMAIL|GARMIN_PASSWORD)$"),
+}
 _ORACLE_KEY = re.compile(r"^ORACLE_KEY_[A-Z0-9_]{1,40}$")
 _ECHO_KEY = re.compile(r"^ECHO_KEY_[A-Z0-9_]{1,40}$")     # speech services' keys (setup «Voice»)
 _VALUE_OK = re.compile(r"^[\x21-\x7e]{1,4096}$")          # printable ASCII, no spaces, no newlines, no quotes issues
@@ -111,10 +115,17 @@ def write_env(path: Path, key: str, value: str) -> None:
 def set_connection_secret(repo: Path, module: str, key: str, value: str) -> Target:
     """A key a connection card of ``module`` saves: only ``<MODULE>_KEY_<NAME>`` of that module; empty = cleared."""
     module = str(module or "").strip().lower()
+    value = str(value or "").strip()
+    legacy = LEGACY_CLEARABLE.get(module)
+    if module in CONNECTION_MODULES and legacy is not None and legacy.match(str(key or "")):
+        if value:
+            raise SecretRefused(f"old key can only be emptied: {key[:60]}")
+        write_env(repo / CONNECTION_MODULES[module], key, "")
+        logger.info("event=setup_legacy_key_cleared key=%s file=%s", key, CONNECTION_MODULES[module])
+        return Target(CONNECTION_MODULES[module], (module,))
     if module not in CONNECTION_MODULES or not key.startswith(f"{module.upper()}_KEY_"):
         raise SecretRefused(f"key not allowed for {module[:30]}: {key[:60]}")
     target = target_for(key)
-    value = str(value or "").strip()
     if value:
         value = validate(key, value)
     write_env(repo / target.env_file, key, value)

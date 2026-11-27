@@ -9,7 +9,7 @@ ENV = {"HECATE_MCP_NOTION_URL": "https://mcp.notion.example/mcp?x=1", "HECATE_MC
 
 @pytest.mark.unit
 def test_lists_servers_without_secrets_or_paths():
-    servers = outbound_servers(ENV)
+    servers = outbound_servers(None, ENV)
     assert [s["name"] for s in servers] == ["bad", "local", "notion"]
     notion = servers[2]
     assert notion == {"name": "notion", "host": "mcp.notion.example", "auth": "key", "status": "configured"}
@@ -20,3 +20,22 @@ def test_lists_servers_without_secrets_or_paths():
 @pytest.mark.unit
 def test_bearer_for_reads_the_key():
     assert bearer_for("notion", ENV) == "sk-secret" and bearer_for("local", ENV) is None
+
+
+class _Settings:
+    def __init__(self, values):
+        self.values = values
+
+    def get(self, key, default=None):
+        return self.values.get(key, default)
+
+
+@pytest.mark.unit
+def test_card_servers_first_then_the_hand_written_ones():
+    """2026-11-27: servers of the card (setting + HECATE_KEY_MCP_<NAME>) and old .env lines in one list."""
+    env = {"HECATE_KEY_MCP_GITHUB": "k", "HECATE_MCP_NOTION_URL": "https://mcp.notion.example/mcp"}
+    st = _Settings({"hecate.mcp.servers": [{"name": "github", "url": "https://api.github.example/mcp"},
+                                           {"name": "Bad Name", "url": "https://x"}]})
+    servers = outbound_servers(st, env)
+    assert [s["name"] for s in servers] == ["github", "notion"]
+    assert servers[0]["auth"] == "key" and bearer_for("github", env) == "k"

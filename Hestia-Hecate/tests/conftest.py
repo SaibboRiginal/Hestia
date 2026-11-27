@@ -15,8 +15,6 @@ os.environ.setdefault("LOG_LEVEL", "WARNING")
 os.environ.setdefault("HUB_API_URL", "http://localhost:19001/api")
 os.environ.setdefault("ARCHIVE_API_URL", "http://localhost:19002/api")
 # Disable real OAuth providers in tests
-os.environ.setdefault("HECATE_ENABLE_PROVIDER_GOOGLE", "0")
-os.environ.setdefault("HECATE_ENABLE_PROVIDER_MICROSOFT", "0")
 os.environ.setdefault("STARTUP_WAIT_TIMEOUT_SECONDS", "0")
 # Keep OAuth token/pending files out of /code/data during tests.
 import tempfile as _tempfile
