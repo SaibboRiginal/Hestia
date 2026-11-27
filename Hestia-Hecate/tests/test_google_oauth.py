@@ -246,3 +246,24 @@ def test_client_typed_in_webui_is_kept_and_used(client, monkeypatch, tmp_path):
     assert google_oauth.client_credentials() == ("abc.apps.googleusercontent.com", "GOCSPX-secret1")
     state = client.get("/api/gateway/auth/google").json()
     assert state["client_set"] is True and "GOCSPX" not in json.dumps(state)
+
+
+def test_builtin_client_one_login_own_client_wins(tmp_path, monkeypatch):
+    """Marko 2026-11-27 (one button, then the login): the release image brings a desktop client; the owner's own
+    client typed in the card wins; with the built-in one the redirect is the loopback (desktop clients accept no other)."""
+    builtin = tmp_path / "google_client.json"
+    monkeypatch.setenv("HECATE_GOOGLE_BUILTIN_FILE", str(builtin))
+    monkeypatch.setenv("HECATE_KEY_GOOGLE_CLIENT_ID", "")
+    monkeypatch.setenv("HECATE_KEY_GOOGLE_CLIENT_SECRET", "")
+    monkeypatch.setenv("GOOGLE_OAUTH_REDIRECT_URI", "https://tunnel.example.org/api/gateway/auth/callback/google")
+    assert google_oauth.client_credentials() == ("", "") and not google_oauth.builtin_in_use()
+    builtin.write_text(json.dumps({"client_id": "hestia.apps.googleusercontent.com", "client_secret": "s3cret"}))
+    assert google_oauth.client_credentials() == ("hestia.apps.googleusercontent.com", "s3cret")
+    assert google_oauth.builtin_in_use() and google_oauth.redirect_uri() == google_oauth.DEFAULT_REDIRECT_URI
+    monkeypatch.setenv("HECATE_KEY_GOOGLE_CLIENT_ID", "mine.apps.googleusercontent.com")
+    monkeypatch.setenv("HECATE_KEY_GOOGLE_CLIENT_SECRET", "minesecret")
+    assert google_oauth.client_credentials() == ("mine.apps.googleusercontent.com", "minesecret")
+    assert not google_oauth.builtin_in_use() and urlparse(google_oauth.redirect_uri()).hostname == "tunnel.example.org"
+    builtin.write_text("not json")
+    monkeypatch.setenv("HECATE_KEY_GOOGLE_CLIENT_ID", "")
+    assert google_oauth.client_credentials() == ("", "")

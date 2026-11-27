@@ -8068,5 +8068,7 @@
   "When the model could not read some emails, after how long they are read again (then the time doubles at each try).": "Se il modello non è riuscito a leggere alcune email, dopo quanto tempo vengono rilette (poi il tempo raddoppia a ogni tentativo).",
   "Longest wait between tries": "Attesa massima tra due tentativi",
   "Longest time between two new tries of emails still waiting to be read.": "Tempo massimo tra due nuovi tentativi per le email ancora da leggere.",
-  "Read the listing emails again ({0} waiting)": "Rileggi le email degli annunci ({0} in attesa)"
+  "Read the listing emails again ({0} waiting)": "Rileggi le email degli annunci ({0} in attesa)",
+  "Use your own Google app": "Usa la tua app Google",
+  " If Google says the app is not verified: «Advanced», then «Go to Hestia».": " Se Google dice che l'app non è verificata: «Avanzate», poi «Vai a Hestia»."
 }
