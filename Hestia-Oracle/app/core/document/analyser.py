@@ -72,6 +72,8 @@ class DocumentAnalyser:
         model_has_audio = capabilities.model_supports_audio(analyst_model_name)
         needs_local_audio = (is_audio or is_video) and not model_has_audio
 
+        # His message is saved now, not with the answer (docs/work/2026-11-27-chat-turn-survives).
+        user_saved = self._save_user(session_id, filename or mime_type, user_message)
         if is_audio or is_video:
             yield stream_emitter.emit_status(tr("🎙️ Transcribing the audio..."))
         else:
@@ -92,7 +94,8 @@ class DocumentAnalyser:
         if handed:
             # A module took the file (e.g. bank statement → Expenses): its answer is the reply, the file is its data
             # (blob), so no copy in the RAG archive.
-            self._save_history(session_id, filename or mime_type, user_message, handed["text"])
+            self._save_history(session_id, filename or mime_type, user_message, handed["text"],
+                               user_saved=user_saved)
             from hestia_common.areas import module_label
             yield stream_emitter.emit_signal(
                 event="attachment_handled", message=tr("📎 Handed to «{0}».", tr(module_label(handed['service']))),
@@ -112,7 +115,7 @@ class DocumentAnalyser:
 
         # Persist chat turn
         self._save_history(session_id, filename or mime_type,
-                           user_message, final_answer)
+                           user_message, final_answer, user_saved=user_saved)
 
         # Archive document in background
         document_id = uuid.uuid4().hex
@@ -213,13 +216,28 @@ class DocumentAnalyser:
 
         return tr("⚠️ I can't analyse the document right now.")
 
-    def _save_history(self, session_id: str, file_label: str, user_message: str, answer: str) -> None:
+    def _save_user(self, session_id: str, file_label: str, user_message: str) -> bool:
+        """The owner's message (with the file name) at the start; False when it failed (it goes with the answer)."""
         try:
             self._hub.post("/chat/history", {
                 "session_id": session_id,
                 "role": "user",
                 "content": f"[File: {file_label}] {user_message}",
             })
+            return True
+        except Exception as exc:
+            logger.warning("[🔄] event=analyser_failed_persist_user error=%s fallback=saved_with_answer", exc)
+            return False
+
+    def _save_history(self, session_id: str, file_label: str, user_message: str, answer: str,
+                      user_saved: bool = False) -> None:
+        try:
+            if not user_saved:
+                self._hub.post("/chat/history", {
+                    "session_id": session_id,
+                    "role": "user",
+                    "content": f"[File: {file_label}] {user_message}",
+                })
             self._hub.post("/chat/history", {
                 "session_id": session_id,
                 "role": "assistant",

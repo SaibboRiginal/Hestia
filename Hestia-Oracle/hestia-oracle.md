@@ -522,6 +522,18 @@ All interfaces consume the same event schema from Oracle:
 
 This makes UI behavior standardized: Telegram, web app, mobile app, or voice UI can all render the same lifecycle and user notifications.
 
+**A turn survives the client leaving** (`core/services/live_turns.py`, dossier `docs/work/2026-11-27-chat-turn-survives`):
+`/api/chat` and `/api/chat/document[/json]` run the turn in its own thread (`live_turns.start`, the request's context
+copied: priority, usage binding); the response only follows it (`follow`). A client that leaves, a timeout or a
+broken connection never stops the turn: the answer is finished and saved. Every frame is kept while the turn runs and
+for 2 minutes after; a silent turn sends `{type: heartbeat}` every 15 s (not a frame of the turn, clients ignore
+it). `GET /api/chat/live?session_id=` = the running (or just ended) turn `{turn_id, running, user_message, text, …}`;
+`GET /api/chat/live/stream?session_id=&offset=&turn_id=` = its frames again from `offset` (0 = all), live; header
+`X-Hestia-Turn` on every turn stream. `POST /api/chat/stop {session_id}` is the only way to stop a turn (at its next
+frame). The owner's message is saved right after the history load (`_save_user_message`; compaction drops the
+trailing copy, never twice in the prompt); the answer is saved with its reasoning frames (`steps`: the `thinking` /
+`agent` frames of the turn, `live_turns.steps()`, max 200), returned by `/api/ui/chats/{id}/messages`.
+
 **«Add now» while the answer runs** (`core/services/steering.py`, dossier `docs/work/2026-11-18-real-test-problems` B):
 `POST /api/chat/steer {session_id, text, id}` keeps a text for the chat turn of that session that is still running
 (`accepted: false` when none runs). `run_agent_loop` marks the chat loop running (`loop_label` `chat` only, not the

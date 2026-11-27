@@ -260,6 +260,9 @@ Tool titles are plain Italian without emoji; each tool says where it goes on Tel
 - `chat_history.model` (additive column): the model that wrote an answer. `POST /api/chat/history` accepts `model` and,
   for a message written again by compaction, `timestamp` (so it keeps the time it was first written); the history
   rows return `model`.
+- `chat_history.steps` (additive JSONB column, dossier `docs/work/2026-11-27-chat-turn-survives`): the reasoning
+  frames (`thinking` / `agent`) shown while an answer was written; `POST /api/chat/history` accepts it, the history
+  rows return it, so a reopened chat shows the reasoning again.
 
 ## Wave 3 additions (dossier `docs/work/2026-10-24-whole-cindy-brainstorm`, wave 3)
 - `/api/athena-store` (table `athena_records`): Athena's learning log (kind `learning`) and memory review proposals

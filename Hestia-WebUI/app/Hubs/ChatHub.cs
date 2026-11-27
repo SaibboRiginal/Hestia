@@ -12,7 +12,9 @@ using Hestia.WebUI.Services;
 ///
 /// Protocol (browser → server):
 ///   {"type":"chat","message":"...","session_id":"...","mode":"auto|quick|thinking|cot|","model":"generic","spoken":false}
-///   {"type":"cancel"}
+///   {"type":"cancel","session_id":"..."}   «Stop»: the only thing that stops an answer
+///   {"type":"attach","session_id":"..."}   page opened again / reconnected: follow the answer still running
+///   {"type":"detach"}   stop following the answer here (another conversation opened); it goes on and is saved
 ///   {"type":"steer","message":"...","session_id":"...","id":"..."}   «Add now» while the answer runs
 ///   {"type":"retry"}
 ///   {"type":"question_answer","question_id":"...","answer":"..."}
@@ -30,6 +32,11 @@ using Hestia.WebUI.Services;
 ///   {"type":"steer","id":"...","accepted":true|false}   false = no answer running: the browser sends it next
 ///   {"type":"queued","queue_id":N,"position":N,"content":"..."}   Oracle offline: message queued
 ///   {"type":"queued_answer","queue_id":N,"session_id":"...","message":"...","reply":"..."}  (to every tab)
+///   {"type":"live","running":bool,"session_id":"...","user_message":"...","text":"...","turn_id":"..."}  reply to
+///       attach; when running, the turn's frames follow from its start, then stream_done
+///
+/// The answer runs in Oracle on its own (docs/work/2026-11-27-chat-turn-survives): a connection that goes away only
+/// stops READING it; the answer is finished and saved, and the page follows it again with attach.
 /// </summary>
 public class ChatHub : Hub
 {
@@ -41,8 +48,10 @@ public class ChatHub : Hub
     private readonly ChatQueueService _chatQueue;
     private readonly ILogger<ChatHub> _logger;
 
-    // Track active cancellation tokens per connection
+    // What each connection is reading (cancelling it stops the reading, never the answer in Oracle)
     private static readonly ConcurrentDictionary<string, CancellationTokenSource> _activeStreams = new();
+    // The conversation each connection's running answer belongs to («Stop» stops that one)
+    private static readonly ConcurrentDictionary<string, string> _activeSessions = new();
 
     public ChatHub(
         TokenManager tokenManager,
@@ -80,6 +89,8 @@ public class ChatHub : Hub
 
     public override async Task OnDisconnectedAsync(Exception? exception)
     {
+        // The page went away: stop reading only. Oracle finishes and saves the answer; the page follows it again
+        // with attach when it comes back.
         CancelStream(Context.ConnectionId);
         _logger.LogInformation("event=signalr_disconnected connection={Conn}", Context.ConnectionId);
         await base.OnDisconnectedAsync(exception);
@@ -96,9 +107,16 @@ public class ChatHub : Hub
                 await HandleChat(message);
                 break;
             case "cancel":
-                CancelStream(Context.ConnectionId);
+                await StopAnswer(message);
                 await Clients.Caller.SendAsync("ReceiveEvent",
                     new { type = "status", content = "Cancelled" });
+                break;
+            case "attach":
+                await HandleAttach(message);
+                break;
+            case "detach":
+                // Another conversation opened / new chat: stop following here; the answer ends and is saved.
+                CancelStream(Context.ConnectionId);
                 break;
             case "steer":
                 await HandleSteer(message);
@@ -165,6 +183,7 @@ public class ChatHub : Hub
 
         var cts = new CancellationTokenSource();
         _activeStreams[Context.ConnectionId] = cts;
+        _activeSessions[Context.ConnectionId] = sessionId;
 
         try
         {
@@ -261,6 +280,7 @@ public class ChatHub : Hub
 
         var cts = new CancellationTokenSource();
         _activeStreams[Context.ConnectionId] = cts;
+        _activeSessions[Context.ConnectionId] = sessionId;
 
         try
         {
@@ -354,8 +374,89 @@ public class ChatHub : Hub
         }
     }
 
+    /// <summary>«Stop»: Oracle stops the answer of this conversation, then this connection stops reading it.</summary>
+    private async Task StopAnswer(ChatHubMessage message)
+    {
+        var sessionId = message.SessionId?.Trim();
+        if (string.IsNullOrEmpty(sessionId))
+            _activeSessions.TryGetValue(Context.ConnectionId, out sessionId);
+        if (string.IsNullOrEmpty(sessionId))
+            sessionId = _sessionManager.GetSession();
+        CancelStream(Context.ConnectionId);
+        try
+        {
+            await _hubClient.RouteRawAsync("oracle", "/api/chat/stop", HttpMethod.Post, new { session_id = sessionId },
+                timeoutSeconds: 8);
+            _logger.LogInformation("event=chat_stop_sent connection={Conn} session={S}", Context.ConnectionId, sessionId);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning("[🔄] event=chat_stop_failed connection={Conn} session={S} error={Err}",
+                Context.ConnectionId, sessionId, ex.Message);
+        }
+    }
+
+    /// <summary>The page is open again (reload, back from another app, reconnected): if an answer of this
+    /// conversation is still running in Oracle, say so and follow it from its start until it ends.</summary>
+    private async Task HandleAttach(ChatHubMessage message)
+    {
+        var sessionId = message.SessionId?.Trim();
+        if (string.IsNullOrEmpty(sessionId))
+            sessionId = _sessionManager.GetSession();
+        JsonElement turn = default;
+        try
+        {
+            var (status, payload) = await _hubClient.RouteRawAsync("oracle", "/api/chat/live", HttpMethod.Get,
+                query: new Dictionary<string, string> { ["session_id"] = sessionId }, timeoutSeconds: 8);
+            if (status < 400 && payload.ValueKind == JsonValueKind.Object && payload.TryGetProperty("turn", out var t)
+                && t.ValueKind == JsonValueKind.Object)
+                turn = t;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning("[🔄] event=chat_attach_failed connection={Conn} error={Err} fallback=history_only",
+                Context.ConnectionId, ex.Message);
+        }
+        string Str(string key) => turn.ValueKind == JsonValueKind.Object && turn.TryGetProperty(key, out var v)
+            && v.ValueKind == JsonValueKind.String ? v.GetString() ?? "" : "";
+        var running = turn.ValueKind == JsonValueKind.Object && turn.TryGetProperty("running", out var r)
+            && r.ValueKind == JsonValueKind.True;
+        var turnId = Str("turn_id");
+        await Clients.Caller.SendAsync("ReceiveEvent", new
+        {
+            type = "live", running, session_id = sessionId, turn_id = turnId,
+            user_message = Str("user_message"), text = Str("text"),
+            found = turn.ValueKind == JsonValueKind.Object,
+        });
+        if (!running) return;
+
+        CancelStream(Context.ConnectionId);
+        var cts = new CancellationTokenSource();
+        _activeStreams[Context.ConnectionId] = cts;
+        _activeSessions[Context.ConnectionId] = sessionId;
+        _logger.LogInformation("event=chat_attach connection={Conn} session={S} turn={T}",
+            Context.ConnectionId, sessionId, turnId);
+        try
+        {
+            await foreach (var evt in _oracleStream.StreamLiveAsync(sessionId, 0, turnId, cts.Token))
+                await Clients.Caller.SendAsync("ReceiveEvent", evt, cts.Token);
+            await Clients.Caller.SendAsync("ReceiveEvent", new { type = "stream_done" }, cts.Token);
+        }
+        catch (OperationCanceledException) { }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "event=chat_attach_stream_error connection={Conn}", Context.ConnectionId);
+        }
+        finally
+        {
+            if (_activeStreams.TryGetValue(Context.ConnectionId, out var cur) && cur == cts)
+                _activeStreams.TryRemove(Context.ConnectionId, out _);
+        }
+    }
+
     private static void CancelStream(string connectionId)
     {
+        _activeSessions.TryRemove(connectionId, out _);
         if (_activeStreams.TryRemove(connectionId, out var cts))
         {
             cts.Cancel();

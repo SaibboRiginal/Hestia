@@ -346,6 +346,13 @@ components:
           enum: [user, assistant, system]
         content:
           type: string
+        model:
+          type: string
+          description: the model that wrote an answer
+        steps:
+          type: array
+          items: {type: object}
+          description: "the reasoning frames (thinking / agent) shown while the answer was written (docs/work/2026-11-27-chat-turn-survives)"
 
     PreferenceRequest:
       type: object
@@ -4175,6 +4182,57 @@ paths:
       responses:
         "200":
           description: "{accepted: bool} — false = no chat turn of this session is running"
+
+  /api/chat/live:
+    get:
+      tags: [Oracle]
+      summary: "The chat turn of this session that is running (or ended in the last 2 minutes): his message and the answer so far (docs/work/2026-11-27-chat-turn-survives)"
+      description: "A chat turn runs in Oracle on its own: a client that leaves never stops it, the answer is finished and saved. Clients that come back (page reopened, connection lost) read this, then follow it with /api/chat/live/stream."
+      servers:
+        - url: http://localhost:19004
+      parameters:
+        - {name: session_id, in: query, required: true, schema: {type: string}}
+      responses:
+        "200":
+          description: "{session_id, turn: null | {turn_id, session_id, running, stopped, kind: chat|document, client, user_message, text, events, started_at, ended_at}}"
+
+  /api/chat/live/stream:
+    get:
+      tags: [Oracle]
+      summary: "Follow the live chat turn again: its NDJSON frames from offset (0 = all of it), live until it ends"
+      description: "Same frames as /api/chat (response header X-Hestia-Turn = turn id). While the turn is silent every stream (also /api/chat) sends {type: heartbeat} every 15 s: clients ignore it; it is not counted in offset."
+      servers:
+        - url: http://localhost:19004
+      parameters:
+        - {name: session_id, in: query, required: true, schema: {type: string}}
+        - {name: offset, in: query, required: false, schema: {type: integer, default: 0}}
+        - {name: turn_id, in: query, required: false, schema: {type: string}}
+      responses:
+        "200":
+          description: NDJSON stream
+          content:
+            application/x-ndjson: {}
+        "404":
+          description: no live turn for this session
+
+  /api/chat/stop:
+    post:
+      tags: [Oracle]
+      summary: "«Stop»: the running turn of this session stops at its next step (the only way to stop an answer)"
+      servers:
+        - url: http://localhost:19004
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [session_id]
+              properties:
+                session_id: {type: string}
+      responses:
+        "200":
+          description: "{session_id, stopped: N} — how many running turns were asked to stop"
 
   /api/chat/reaction:
     post:

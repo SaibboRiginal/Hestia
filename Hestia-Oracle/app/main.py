@@ -215,6 +215,7 @@ except Exception as exc:
 from core.services import oracle_settings as _oracle_settings  # noqa: E402
 from core.services import llm_stats  # noqa: E402
 from core.services import llm_bus  # noqa: E402
+from core.services import live_turns  # noqa: E402
 from core.services import activity_log  # noqa: E402
 from core.services import prompt_config as _prompt_config  # noqa: E402
 from core.services import awareness  # noqa: E402
@@ -1079,10 +1080,13 @@ def chat_endpoint(req: ChatRequest, request: Request):
             stream = reaction_marker.filter_stream(stream)
         # The owner's turn goes ahead of background work in the local-model queue (llm_bus).
         stream = llm_bus.bind(stream, llm_bus.for_origin(turn_origin))
-        return StreamingResponse(
-            llm_stats.bind_session(current_session, stream, client=req.client or ""),
-            media_type="application/x-ndjson"
-        )
+        stream = llm_stats.bind_session(current_session, stream, client=req.client or "")
+        # The turn runs on its own: a client that leaves never stops it, its answer is finished and saved; the
+        # response only follows it (docs/work/2026-11-27-chat-turn-survives).
+        turn = live_turns.start(current_session, stream, user_message=req.message if not queued else message,
+                                client=req.client or "")
+        return StreamingResponse(live_turns.follow(turn), media_type="application/x-ndjson",
+                                 headers={"X-Hestia-Turn": turn.id})
     except Exception as e:
         logger.exception(
             "event=unhandled_error_chat_endpoint_session Unhandled error in chat endpoint | session=%s", req.session_id)
@@ -1164,8 +1168,7 @@ async def chat_document_endpoint(
             default_message += f" Answer in {_identity.LANGUAGES.get(_prompt_config.owner_language(), 'English')}."
 
         from hestia_common import origin as _origin
-        return StreamingResponse(
-            llm_bus.bind(engine.analyze_document(
+        stream = llm_bus.bind(engine.analyze_document(
                 file_bytes=file_bytes,
                 mime_type=content_type,
                 user_message=message.strip() or default_message,
@@ -1174,9 +1177,12 @@ async def chat_document_endpoint(
                 client_instructions=_with_personal_settings(client_instructions, client, current_session,
                                                             presence_state),
                 filename=resolved_filename,
-            ), llm_bus.for_origin(_origin.parse({}, client or ""))),
-            media_type="application/x-ndjson",
-        )
+            ), llm_bus.for_origin(_origin.parse({}, client or "")))
+        # Like a chat turn: it ends and is saved even when the client leaves (docs/work/2026-11-27-chat-turn-survives).
+        turn = live_turns.start(current_session, stream, client=client or "", kind="document",
+                                user_message=f"[File: {resolved_filename or content_type}] {message.strip() or default_message}")
+        return StreamingResponse(live_turns.follow(turn), media_type="application/x-ndjson",
+                                 headers={"X-Hestia-Turn": turn.id})
     except Exception as exc:
         logger.exception(
             "event=unhandled_error_document_endpoint Unhandled error in document endpoint")
@@ -1366,6 +1372,34 @@ def steer_endpoint(req: SteerRequest):
     """
     from core.services import steering
     return {"accepted": steering.add(req.session_id, req.text, req.id or "")}
+
+
+@app.get("/api/chat/live")
+def live_turn_endpoint(session_id: str):
+    """The chat turn of this session that is running (or just ended): what the owner wrote and the answer so far.
+    Clients that come back (page reopened, connection lost) use it to show it and follow it again."""
+    turn = live_turns.current(session_id)
+    return {"session_id": session_id, "turn": turn.snapshot() if turn else None}
+
+
+@app.get("/api/chat/live/stream")
+def live_turn_stream_endpoint(session_id: str, offset: int = 0, turn_id: str = ""):
+    """Follow the running turn again: its NDJSON lines from *offset* (0 = all of it), live until it ends.
+    404 when no turn of this session is running or just ended."""
+    turn = live_turns.get(session_id, turn_id)
+    if turn is None:
+        raise HTTPException(status_code=404, detail="no live turn")
+    return StreamingResponse(live_turns.follow(turn, offset), media_type="application/x-ndjson",
+                             headers={"X-Hestia-Turn": turn.id})
+
+
+@app.post("/api/chat/stop")
+def stop_turn_endpoint(body: dict = Body(...)):
+    """«Stop»: the running turn of this session stops at its next step. Leaving the page no longer stops it."""
+    session_id = str((body or {}).get("session_id") or "").strip()
+    if not session_id:
+        raise HTTPException(status_code=400, detail="session_id required")
+    return {"session_id": session_id, "stopped": live_turns.stop(session_id)}
 
 
 @app.get("/api/chat/questions")

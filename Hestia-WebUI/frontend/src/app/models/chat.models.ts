@@ -94,6 +94,7 @@ export type ServerEventType =
   | 'notice'
   | 'resume'
   | 'changes'
+  | 'live'
   | 'stream_done';
 
 export interface ServerEvent {
@@ -152,6 +153,11 @@ export interface ServerEvent {
   reaction_only?: boolean;
   /** final: the model that answered. */
   model?: string;
+  /** live (answer to attach): an answer of this conversation is still being written / was found at all. */
+  running?: boolean;
+  found?: boolean;
+  user_message?: string;
+  turn_id?: string;
 }
 
 /** Interactive question asked by Oracle mid-stream (answered via SignalR question_answer). */
@@ -170,7 +176,9 @@ export interface PendingQuestion {
 // ── WebSocket messages (client → server) ──────────────────────────────────
 
 export interface ClientMessage {
-  type: 'chat' | 'cancel' | 'retry' | 'question_answer' | 'steer';
+  /** cancel = «Stop» (the only thing that stops an answer) · detach = stop following it here (it goes on and is saved)
+   *  · attach = follow again the answer still running in this conversation (reload, reconnect). */
+  type: 'chat' | 'cancel' | 'detach' | 'attach' | 'retry' | 'question_answer' | 'steer';
   /** steer («Add now»): the browser's id of the text, given back when the assistant takes it. */
   id?: string;
   message?: string;
