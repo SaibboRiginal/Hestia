@@ -680,6 +680,9 @@ pull_with_progress() {
   local seen=" " got=" " nseen=0 ndone=0 line raw what name mark rc_file
   rc_file="$(mktemp)"
   { compose pull "$@" 2>&1; echo $? > "$rc_file"; } | while IFS= read -r line; do
+    # Layer progress (Downloading/Extracting ... many lines a second) stays out of the log.
+    case "$line" in *[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]" Downloading"*|\
+                    *" Extracting"*|*" Waiting"*|*" Verifying"*) continue ;; esac
     printf '%s\n' "$line" >> "$LOG_FILE"
     raw="$(printf '%s' "$line" | sed -nE 's/.*[[:space:]]([^[:space:]]+)[[:space:]]+(Pulling|Pulled|Error)([[:space:]].*)?$/\1 \2/p')"
     [ -n "$raw" ] || continue

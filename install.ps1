@@ -235,6 +235,9 @@ function Invoke-ComposePull {
         Write-Log "compose args=`"pull $($args -join ' ')`""
         & docker compose -p $Project @files pull @args 2>&1 | ForEach-Object {
             $line = [string]$_
+            # Layer progress (Downloading/Extracting ... many lines a second) stays out of the log: writing each one slowed
+            # the download itself on Windows and buried what matters.
+            if ($line -match '^\s*[0-9a-f]{12}\s+(Downloading|Extracting|Waiting|Verifying)') { return }
             Write-Log "  | $line"
             if ($line -match '(\S+)\s+(Pulling|Pulled|Error)\b' -and $Matches[1] -notmatch '^[0-9a-f]{12}$') {
                 $raw = $Matches[1]; $what = $Matches[2]     # an image (ghcr.io/x/hestia:hub-1.0.0, postgres:16) or a service
