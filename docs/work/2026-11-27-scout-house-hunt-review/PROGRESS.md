@@ -4,5 +4,5 @@
 - [x] Fix links, lost mails, cleanup, status words, recheck stamp, pending steps, prices (worker, domain)
 - [x] Fix search tool, bounds, city, discarded, alert fields, stats, labels, texts
 - [x] Regression tests, module doc, swagger, root CHANGELOG
-- [ ] precheck 0 failed, PR, CI green, merged
+- [x] precheck 0 failed (PR, CI and merge follow)
 - [ ] Marko's real run (his alert emails, Atlas on the PC) — design proposals waiting for his go
