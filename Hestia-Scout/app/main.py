@@ -2,7 +2,7 @@ import logging
 import os
 import threading
 import time
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 import sys
 from typing import Any
@@ -150,8 +150,9 @@ def run_cycle_guarded(trigger: str) -> dict:
     try:
         _cycle_state.update(running=True, last_trigger=trigger, last_error=None,
                             last_started=datetime.now(timezone.utc).isoformat(), last_ts=time.time())
-        worker.run_cycle()
-        return {"status": "ok", "trigger": trigger}
+        waiting = worker.run_cycle() or 0
+        _plan_retry(waiting)
+        return {"status": "ok", "trigger": trigger, "waiting": waiting}
     except Exception as error:
         _cycle_state["last_error"] = str(error)[:300]
         logger.error("[🔄] event=scout_cycle_failed trigger=%s error=%s", trigger, error)
@@ -159,6 +160,32 @@ def run_cycle_guarded(trigger: str) -> dict:
     finally:
         _cycle_state.update(running=False, last_finished=datetime.now(timezone.utc).isoformat())
         _cycle_lock.release()
+
+
+RETRY_KEY = "scout.retry_waiting"
+_retry = {"attempt": 0}
+
+
+def _plan_retry(waiting: int) -> None:
+    """Emails the model did not answer for stay unread in Archive: a one-off agenda task reads them again
+    (first after ``scout.retry.first`` minutes, then doubling up to ``scout.retry.max``), so they are not left
+    until the next listing email arrives. Nothing waiting any more → the planned try is closed."""
+    if waiting <= 0:
+        if _retry["attempt"]:
+            _retry["attempt"] = 0
+            agenda.done(RETRY_KEY)
+        return
+    _retry["attempt"] += 1
+    first = scout_settings.get_int(scout_settings.RETRY_FIRST, 5)
+    cap = max(first, scout_settings.get_int(scout_settings.RETRY_MAX, 5))
+    minutes = min(cap, first * 2 ** min(_retry["attempt"] - 1, 10))
+    at = datetime.now(timezone.utc) + timedelta(minutes=minutes)
+    agenda.plan(RETRY_KEY, tr("Read the listing emails again ({0} waiting)", waiting), at,
+                action={"service": "scout", "method": "POST", "path": "/api/scout/cycle",
+                        "body": {"trigger": "retry"}, "timeout_seconds": 30},
+                description="Emails the model could not read yet: Scout reads them again.",
+                params={"waiting": waiting, "attempt": _retry["attempt"]})
+    logger.info("[🔄] event=scout_retry_planned waiting=%d attempt=%d minutes=%d", waiting, _retry["attempt"], minutes)
 
 
 class CycleRequest(BaseModel):
@@ -307,7 +334,7 @@ def list_tools():
     return {
         "tools": [
             {
-                "name": "real_estate.search",
+                "name": "scout_search",
                 "path": "/api/tools/real_estate/search",
                 "description": "Domain retrieval using stored entity geo coordinates and preference constraints",
             }
@@ -426,10 +453,10 @@ if _HAS_MCP:
         return display(tr("Houses"), subtitle=tr("{0} listings", total), footer=tr("Latest arrived on {0}/{1}", when[8:10], when[5:7]) if when else "",
                        items=[item(tr(STATUS_LABELS.get(k, "To check")), [str(v)]) for k, v in sorted(by_status.items(),
                                                                                          key=lambda kv: -kv[1])],
-                       actions=[action(tr("Search houses"), "scout.search", style="primary")])
+                       actions=[action(tr("Search houses"), "scout_search", style="primary")])
 
     mcp_tools = [
-        MCPTool(name="scout.search",
+        MCPTool(name="scout_search",
                 description="Search real estate listings by query, city, price range, surface, rooms.",
                 parameters={
                     "type": "object",

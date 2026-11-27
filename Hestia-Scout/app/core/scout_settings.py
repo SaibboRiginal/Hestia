@@ -28,6 +28,8 @@ LLM_TIMEOUT = "scout.llm.timeout"
 RECONCILE_EVERY_CYCLES = "scout.reconcile.every_cycles"
 ENRICHMENT_ENABLED = "scout.enrichment.enabled"
 NOTIFY_VOICE = "scout.notifications.voice"
+RETRY_FIRST = "scout.retry.first"
+RETRY_MAX = "scout.retry.max"
 
 DEFAULT_SENDERS = ["nonrispondere@idealista.it", "noreply@notifiche.immobiliare.it"]  # external-name: the site's own address
 
@@ -54,6 +56,12 @@ settings.declare([
     setting(LLM_TIMEOUT, "Longest extraction time", "int", 120, group="Listing extraction", min=10, max=900,
             unit="s", order=14, advanced=True,
             help="How long to wait for the model's answer for a group of emails before trying the next."),
+    setting(RETRY_FIRST, "First new try", "int", 30, group="Listing extraction", min=5, max=1440, unit="min",
+            order=15, advanced=True,
+            help="When the model could not read some emails, after how long they are read again (then the time doubles at each try)."),
+    setting(RETRY_MAX, "Longest wait between tries", "int", 360, group="Listing extraction", min=5, max=10080,
+            unit="min", order=16, advanced=True,
+            help="Longest time between two new tries of emails still waiting to be read."),
     setting(RECONCILE_EVERY_CYCLES, "Reconciliation every N cycles", "int", 1, group="Data maintenance",
             min=0, max=100, order=20, advanced=True,
             help="Every how many cycles Scout checks the saved properties again (position, dates, link). 0 = never."),

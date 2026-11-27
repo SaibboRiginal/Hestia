@@ -38,7 +38,7 @@ Telegram never decides domain things: modules own their tools and data, Oracle i
   leaves it.
 - **`/` menu** (10): `today`, `areas`, `now`, `discover`, `notifications`, `settings`, `new`, `voice`, `status`,
   `help` (`/now` and `/discover` are aliases of the tools `metis_now`, `metis_discover`). Old names keep
-  working (`ALIASES`: `/start`, `/clear`, `/settings`, `/commands`, `/scout_list` → `scout.search` since its double `scout_listings` was removed on 2026-11-14…); any tool name typed as `/name k=v free text`
+  working (`ALIASES`: `/start`, `/clear`, `/settings`, `/commands`, `/scout_list` → `scout_search` (named `scout.search` until 2026-11-27) since its double `scout_listings` was removed on 2026-11-14…); any tool name typed as `/name k=v free text`
   starts that action with the values given.
 - **Cards**: Home (greeting, notifications to see), Oggi (agenda + weather + «Now»: up to 4 suggestions read from
   `GET /api/metis/now?client=telegram`, each with its reason and a button; the fixed «Today» actions when Metis has

@@ -443,7 +443,7 @@ class ScoutWorker:
                 url_recheck_count, url_sold_count,
             )
 
-    def run_cycle(self):
+    def run_cycle(self) -> int:
         """Main work cycle for the Scout worker.
 
         Optimized pipeline (mails arrive by push: Iris already stored them in Archive):
@@ -456,7 +456,9 @@ class ScoutWorker:
            → keyword scan → patch listing_status if changed.
         7. LLM extraction path: one representative record per new URL
            (deduplicated) + unclassified records (no detected URLs).
-        8. Mark all email records as parsed.
+        8. Mark all email records as parsed (except the ones the model did not answer for).
+
+        Returns how many emails were left waiting for a model answer (the caller plans a retry).
         """
         logger.info(
             "event=hestia_scout_activating_parser_extractor === Hestia-Scout: Activating Parser & Extractor ===")
@@ -473,7 +475,7 @@ class ScoutWorker:
         if not pending_records:
             logger.info(
                 "event=new_emails_found_going_back [*] No new emails found. Going back to sleep.")
-            return
+            return 0
 
         if len(pending_records) < max(1, self.min_batch_size):
             logger.info(
@@ -481,7 +483,7 @@ class ScoutWorker:
                 len(pending_records),
                 self.min_batch_size,
             )
-            return
+            return 0
 
         if self.batch_debounce_seconds > 0:
             logger.info(
@@ -494,7 +496,7 @@ class ScoutWorker:
             if not pending_records:
                 logger.info(
                     "event=pending_records_after_debounce [*] No pending records after debounce.")
-                return
+                return 0
 
         logger.info(
             "event=found_unread_emails_process Found unread emails to process | count=%s",
@@ -657,9 +659,10 @@ class ScoutWorker:
                 self.vault.save_evaluation(record_id, {"status": "parsed"})
 
         logger.info(
-            "event=cycle_complete ms=%d \n[✓] Cycle complete.",
-            int((time.perf_counter() - t_cycle) * 1000),
+            "event=cycle_complete ms=%d waiting=%d \n[✓] Cycle complete.",
+            int((time.perf_counter() - t_cycle) * 1000), len(keep_waiting),
         )
+        return len(keep_waiting)
 
     # ─────────────────────────────────────────────────────────────────
     #  Private helpers

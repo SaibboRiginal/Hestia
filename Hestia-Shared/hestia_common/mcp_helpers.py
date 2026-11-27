@@ -7,7 +7,7 @@ Usage:
     from hestia_common.mcp_helpers import MCPTool, create_mcp_router
 
     tools = [
-        MCPTool(name="scout.search", description="Search listings", ...),
+        MCPTool(name="scout_search", description="Search listings", ...),
         MCPTool(name="scout.reconcile", description="Reconcile data", ...),
     ]
     app.include_router(create_mcp_router(tools, service_name="scout"))

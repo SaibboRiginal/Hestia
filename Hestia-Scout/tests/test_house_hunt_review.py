@@ -135,3 +135,24 @@ def test_emails_are_not_marked_read_when_the_model_is_unavailable(monkeypatch):
     worker.status_updater = None
     worker.run_cycle()
     assert worker.vault.evaluations == {}          # still waiting for the next cycle
+
+
+# ── emails left waiting get a planned new try (2026-11-27 v1.1) ──────────────
+def test_waiting_emails_plan_a_retry_and_close_it(monkeypatch):
+    import main
+    calls = []
+
+    class Agenda:
+        def plan(self, key, title, at, **kw):
+            calls.append(("plan", key, kw["params"]["attempt"]))
+
+        def done(self, key):
+            calls.append(("done", key))
+
+    monkeypatch.setattr(main, "agenda", Agenda())
+    monkeypatch.setattr(main.scout_settings, "get_int", lambda key, floor=None: 30)
+    main._retry["attempt"] = 0
+    main._plan_retry(2)
+    main._plan_retry(2)
+    main._plan_retry(0)
+    assert calls == [("plan", main.RETRY_KEY, 1), ("plan", main.RETRY_KEY, 2), ("done", main.RETRY_KEY)]

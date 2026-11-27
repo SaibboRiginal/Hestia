@@ -61,7 +61,7 @@ TEMPLATES: list[dict] = [
      "help": "When there are new listings, the best ones with the reason.",
      "fields": {"query": {"label": "alt2::Area", "required": False}},
      "recurrence": "FREQ=DAILY;BYHOUR=19;BYMINUTE=0", "deliver": "hermes",
-     "precheck": {"tool": "scout.search", "args": {"query": "{query}", "limit": 10}},
+     "precheck": {"tool": "scout_search", "args": {"query": "{query}", "limit": 10}},
      "instruction": "Among the listings below tell me the 3 best suited to me and why, briefly."},
     {"id": "expenses", "label": "Expenses to review", "icon": "wallet",
      "help": "Every Sunday the expenses of the week to fix.",
@@ -346,6 +346,25 @@ def on_mail(key: str, reference_ids: list[str]) -> dict:
 
 
 # ── recap piece ──────────────────────────────────────────────────────────────
+# Tools renamed after routines were saved with the old name (old → new): their stored pre-check follows once at boot.
+RENAMED_TOOLS = {"scout.search": "scout_search"}   # 2026-11-27, Scout follows <domain>_<verb>
+
+
+def rename_stored_tools() -> int:
+    """Stored routines whose pre-check names a renamed tool get the new name (stored data follows the code)."""
+    changed = 0
+    for item in agenda.list_items(owner=OWNER, include_cancelled=True):
+        r = routine_of(item)
+        tool = (r.get("precheck") or {}).get("tool")
+        if tool in RENAMED_TOOLS:
+            r["precheck"] = {**r["precheck"], "tool": RENAMED_TOOLS[tool]}
+            agenda.update(item["id"], {"params": {**(item.get("params") or {}), "routine": r}}, by=OWNER)
+            changed += 1
+    if changed:
+        logger.info("event=routine_tools_renamed count=%d", changed)
+    return changed
+
+
 def load_results() -> int:
     """Reload the last day's results kept for the recap (Archive ``chronos-store``) after a restart."""
     rows = life_store.load("routine_result", at_from=(_now() - timedelta(hours=36)).isoformat())

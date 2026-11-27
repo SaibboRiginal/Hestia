@@ -39,7 +39,7 @@ _ollama_ask, _ollama_ask_tools = live_llm.ask_fns()
 # ── Realistic mock responses per tool ──────────────────────────────────────
 
 _MOCK_DATA = {
-    "scout.search": {
+    "scout_search": {
         "domain": "real_estate",
         "items": [
             {"title": "Trilocale Milano Centro", "price": 280000, "city": "Milano",
@@ -241,7 +241,7 @@ def _run_test(user_message: str, domain_tools: list[dict], label: str = "",
 # ═══════════════════════════════════════════════════════════════════════════════
 
 SCOUT_TOOLS = [
-    {"name": "scout.search", "description": "Search real estate listings by query, city, price range. Use for any house/apartment search.", "parameters": {"type": "object", "properties": {"query": {"type": "string"}, "filters": {"type": "object"}, "filters_gt": {"type": "object"}, "filters_lt": {"type": "object"}, "sort_by": {"type": "string"}, "sort_order": {"type": "string", "enum": ["asc", "desc"]}}}},
+    {"name": "scout_search", "description": "Search real estate listings by query, city, price range. Use for any house/apartment search.", "parameters": {"type": "object", "properties": {"query": {"type": "string"}, "filters": {"type": "object"}, "filters_gt": {"type": "object"}, "filters_lt": {"type": "object"}, "sort_by": {"type": "string"}, "sort_order": {"type": "string", "enum": ["asc", "desc"]}}}},
     {"name": "scout_listings", "description": "Show available real estate listings. Use when user wants to browse or see listings.", "parameters": {"type": "object", "properties": {"query": {"type": "string"}, "limit": {"type": "integer"}}}},
     {"name": "scout_reconcile", "description": "Clean up and reconcile Scout real estate data. Use when user asks to sync/clean data.", "parameters": {"type": "object", "properties": {"dry_run": {"type": "boolean"}}}},
 ]
@@ -305,19 +305,19 @@ MISC_TOOLS = [
 
 @pytest.mark.llm_live
 class TestScoutRealEstate:
-    """scout.search, scout_listings, scout_reconcile"""
+    """scout_search, scout_listings, scout_reconcile"""
 
     def test_search_houses(self):
         _, _, errors = _run_test(
             "Cerco trilocali a Milano sotto i 300000 euro", SCOUT_TOOLS,
-            must_call="scout.search",
+            must_call="scout_search",
         )
         assert not errors, f"VALIDATION FAILED: {'; '.join(errors)}"
 
     def test_show_listings(self):
         _, _, errors = _run_test(
             "Mostrami le case disponibili a Roma", SCOUT_TOOLS,
-            must_call=["scout.search", "scout_listings"],
+            must_call=["scout_search", "scout_listings"],
         )
         assert not errors, f"VALIDATION FAILED: {'; '.join(errors)}"
 
@@ -532,7 +532,7 @@ class TestToolCoverage:
             for t in manifest:
                 all_names.add(t["name"])
         expected = {
-            "scout.search", "scout_listings", "scout_reconcile",
+            "scout_search", "scout_listings", "scout_reconcile",
             "agenda", "agenda_today", "create_event", "calendar_delete_event",
             "calendar_update_event", "calendar_list_events", "chronos_reconcile",
             "email_search", "email_send", "email_thread", "iris_reconcile",

@@ -857,7 +857,7 @@
  "deadlines_update": {
   "summary": "Modifica una scadenza."
  },
- "scout.search": {
+ "scout_search": {
   "summary": "Cerca tra le case trovate nelle email degli annunci: città, prezzo, locali, superficie.",
   "params": {
    "query": "Parole libere",
