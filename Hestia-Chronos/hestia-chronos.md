@@ -557,3 +557,7 @@ app keep «Hestia».
 
 ## Module agent (Oracle operating mode «agents», 2026-11-17)
 The Hub registration declares `when_to_use`, `manual` and `title`: in Oracle's operating mode `agents` they are this module's agent (job area, rules, label in the clients), which works only with this module's tools. Dossier `docs/work/2026-11-06-modules-as-agents`.
+
+**2026-11-27 (dossier `docs/work/2026-11-27-scout-house-hunt-review`)**: the «New houses» routine template pre-checks
+with `scout_search` (was `scout.search`); at boot `routines.rename_stored_tools()` gives the stored routines the new
+name of a renamed tool (`RENAMED_TOOLS`). Scout plans its one-off `scout.retry_waiting` tasks in the agenda.

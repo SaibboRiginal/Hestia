@@ -373,7 +373,8 @@ Real-estate domain module.
 - **Status update path:** keyword regex scan updates `listing_status` for known entities without LLM, on the part
   of the alert about that house only.
 - **LLM path:** only the minimal representative email set per new URL is sent to the LLM extractor. Emails whose
-  extraction got no answer from the model stay unread in Archive and come back at the next cycle (never lost).
+  extraction got no answer from the model stay unread in Archive and come back at the next cycle (never lost);
+  a one-off agenda task `scout.retry_waiting` reads them again (`scout.retry.first`/`scout.retry.max`, doubling).
 - Listing links of every supported portal (Idealista, Immobiliare), also behind tracking redirects.
 - Persists entities in Archive under `real_estate` with `listing_status` field (`available`, `in_negotiation`, `investment_occupied`, `sold`, `unknown`).
 - If any downstream step is unavailable (content enrichment, dispatch, etc.), entities are persisted with a generic pending-step marker and retried automatically on later cycles.

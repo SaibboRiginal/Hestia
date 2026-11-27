@@ -291,7 +291,7 @@ class ScoutRetrievalService:
         return display(tr("Available houses"), subtitle=tr("{0} found", len(items)) if items else "", items=rows,
                        lines=[] if rows else [tr("No house found.")],
                        footer=tr("alt::and {0} more", len(items) - 20) if len(items) > 20 else "",
-                       actions=[action(tr("Search"), "scout.search", style="primary"), action(tr("Check emails"), "scout_fetch")])
+                       actions=[action(tr("Search"), "scout_search", style="primary"), action(tr("Check emails"), "scout_fetch")])
 
     def search_formatted(self, req: RealEstateSearchRequest, items: list[dict] | None = None) -> str:
         """Return pre-formatted markdown with one [title](url) bullet per listing.

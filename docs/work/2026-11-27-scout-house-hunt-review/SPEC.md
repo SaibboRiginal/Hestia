@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Version** | 1.0 |
+| **Version** | 1.1 |
 | **Source** | user via external chat (project thread «Rendere Scout pronto per cercare casa», 2026-11-27) |
 | **Status** | Done (bug fixes); design proposals waiting for Marko |
 
@@ -48,3 +48,10 @@ summaries; words lists in `words.json`.
 - `scout.search` with city/price/rooms filters; bounds inclusive; discarded houses out.
 - A subscription `{city, max_price}` matches a new house of that city.
 - Regression tests in `Hestia-Scout/tests/test_house_hunt_review.py` (run by CI).
+
+## 6. v1.1 — Marko's go on the three proposals («tutte», 2026-11-27)
+1. Waiting emails get a new try planned in the agenda (`scout.retry_waiting`, settings `scout.retry.first` 30 min,
+   `scout.retry.max` 360 min, doubling), closed when nothing waits.
+2. Real Immobiliare email: needs one of Marko's alerts (link format, sender address) — asked in the thread.
+3. `scout.search` → `scout_search` (same `scout_` prefix as the other Scout tools, rule `<domain>_<verb>`); Telegram
+   alias, Chronos routine template and the stored routines follow.

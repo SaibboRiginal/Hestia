@@ -857,7 +857,7 @@
  "deadlines_update": {
   "summary": "Changes a deadline."
  },
- "scout.search": {
+ "scout_search": {
   "summary": "Search the houses found in the listing emails: city, price, rooms, surface.",
   "params": {
    "query": "Free words",
