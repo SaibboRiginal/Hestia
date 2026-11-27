@@ -40,4 +40,5 @@
 - [x] v2.26 (Marko 2026-11-27): installer busy ports name their holder (container or program); another Hestia's containers stopped on «S» (install.ps1 + install.sh, Italian catalog); shellcheck, bash dry run with a held port
 - [x] v2.27 (Marko 2026-11-27): module download progress (install.ps1 `Invoke-ComposePull`, install.sh `pull_with_progress`), line parsing checked on sample compose output; shellcheck
 - [x] v2.28 (Marko 2026-11-27): no default model pull in install.ps1/install.sh (setup pulls the chosen one); shellcheck
+- [x] v2.29 (Marko 2026-11-27): install.ps1 HESTIA_VERSION from `[string]$script:VersionTag` (null when git describe gives nothing)
 - Left to Marko: real Windows install, real Linux run (Actions → Installer → real_run), two-machine run, real tunnel, .NET build
