@@ -311,7 +311,8 @@ Every call becomes a usage row in Archive (`llm-usage`, panel Cervello → Uso).
 2. Telegram/WebUI: a chat message Oracle does not accept → Archive `/api/chat-queue` + fixed «in coda» reply.
 3. Oracle healthy → Argus clears the signal and closes the notice; Chronos sees `chat.reply` back to `live` and calls each
    client's `capabilities.chat_queue_drain` via Hub; each client sends each chat's queue to Oracle in one turn
-   (`queued`, the model answers each, merges or asks), then Chronos runs the «While I was away» catch-up.
+   (`queued`, the model answers each, merges or asks), then Chronos runs the «While I was away» catch-up. A message
+   Archive gives up on (`failed` after 5 drains) → the client sends one Hermes notice with its text to the owner.
 4. Only fallback models left (Oracle `/health` `models=limited`) → signal `oracle.limited`, overlay «Limited»;
    `models=none` → same as down.
 5. Any module down past `argus.repair.restart_after` → Argus → Hub → Hephaestus `/api/hephaestus/restart` (Docker),
@@ -487,6 +488,7 @@ SPEC `docs/work/2026-10-20-layered-reflection`.
 ### Core review 2026-11-27 (dossier `docs/work/2026-11-27-core-modules-review`)
 1. Listing batch: Scout `entity.upserted` → Hermes row `batch/queued` (+ audience, filters) → settling window →
    one notification → row `delivered`; gave up → `failed`; Hermes restart → `queued` rows back in their batch.
+   Same listing again: deduped, unless its price is below the last one told → new row with `previous_price`.
 2. Agenda: Chronos worker → Archive `GET /api/calendar/items?source=hestia&exclude_statuses=cancelled,completed`
    (live rules only) → due jobs fired through Hub; one item → `external_ids=<key>`.
 3. Tool call: client → Hestia-MCP `/mcp` (worker thread) → Hub → module REST path or `/mcp` (sync handler in a
