@@ -389,7 +389,7 @@ function Test-Ollama { try { return ((Invoke-WebRequest -ErrorAction Stop 'http:
 
 function Install-OllamaIfMissing {
     Update-PathFromRegistry
-    if ((Test-Command 'ollama') -or (Test-Ollama)) { if (-not (Test-Ollama)) { Start-OllamaApp }; Get-DefaultModels; return }
+    if ((Test-Command 'ollama') -or (Test-Ollama)) { if (-not (Test-Ollama)) { Start-OllamaApp }; return }
     Say (T 'Installing Ollama (the models on your computer)...')
     $ok = Invoke-Retry (T 'Installing Ollama') { Install-Winget 'Ollama.Ollama' }
     if (-not $ok) {
@@ -400,7 +400,6 @@ function Install-OllamaIfMissing {
     if (-not $ok) { Note (T 'Ollama did not install: Hestia will use cloud models. You can install it later from https://ollama.com.'); return }
     Start-OllamaApp
     if ($script:Role -eq 'satellite') { Set-OllamaOnLan }
-    Get-DefaultModels
 }
 
 # On a satellite the central one's brain uses this graphics card: Ollama must listen on the home network too.
@@ -416,22 +415,8 @@ function Set-OllamaOnLan {
     Note (T 'Ollama now listens on the home network (port 11434): if Windows asks to allow it on private networks, answer Allow. Do not open that port on the router.')
 }
 
-# Oracle's default chains (llm_chains.py): the embedding model is needed for memory, the chat one for local answers.
-$DefaultModels = @('qwen3-embedding:0.6b', 'gemma4:e4b')
-
-function Get-DefaultModels {
-    Update-PathFromRegistry
-    if (-not (Test-Command 'ollama')) { return }
-    $have = @()
-    if (-not $DryRun) { $have = @(& ollama list 2>$null | ForEach-Object { ($_ -split '\s+')[0] }) }
-    foreach ($model in $DefaultModels) {
-        if ($have -contains $model) { continue }
-        Say (T 'Downloading the model {0} (only once)...' $model)
-        if (-not (Invoke-Retry (T 'Downloading {0}' $model) { Invoke-Step 'ollama' @('pull', $model) })) {
-            Note (T 'The model {0} did not download: run again later, meanwhile Hestia uses the cloud if you have a key.' $model)
-        }
-    }
-}
+# No model is downloaded here: the guided setup shows what is already on the computer and downloads only what the
+# owner picks, with its progress (Oracle /api/llm/setup/pull).
 
 function Start-OllamaApp {
     if ($DryRun -or (Test-Ollama)) { return }

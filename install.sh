@@ -392,23 +392,11 @@ ensure_ollama() {
   fi
   [ "$OS" = linux ] && ollama_reachable_from_docker
   [ "$ROLE" = satellite ] && ollama_bind_all   # the central one's brain uses this graphics card
-  pull_default_models
   return 0
 }
 
-# Oracle's default chains (llm_chains.py): the embedding model is needed for memory, the chat one for local answers.
-DEFAULT_MODELS="qwen3-embedding:0.6b gemma4:e4b"
-
-pull_default_models() {
-  has ollama || return 0
-  local model
-  for model in $DEFAULT_MODELS; do
-    if [ "$DRY_RUN" = 0 ] && ollama list 2>/dev/null | awk '{print $1}' | grep -qx "$model"; then continue; fi
-    say "$(t "Downloading the model {0} (only once)…" "$model")"
-    retry "$(t "Downloading {0}" "$model")" run ollama pull "$model" \
-      || note "$(t "The model {0} did not download: run again later, meanwhile Hestia uses the cloud if you have a key." "$model")"
-  done
-}
+# No model is downloaded here: the guided setup shows what is already on the computer and downloads only what the
+# owner picks, with its progress (Oracle /api/llm/setup/pull).
 
 ollama_reachable_from_docker() {
   # Containers reach Ollama at host.docker.internal = the Docker bridge; Ollama listens only on 127.0.0.1 by default.

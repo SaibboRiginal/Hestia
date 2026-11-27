@@ -4,6 +4,7 @@ One line per finished task (details in `docs/work/<task>/`).
 
 ## 2026-11-27
 
+- Installer: no model is downloaded before the setup, you pick in the setup and only that is downloaded → `docs/work/2026-10-30-one-click-setup/` [ext-chat]
 - Installer: while it downloads the ready-made modules it shows each one as it arrives, with how many are done → `docs/work/2026-10-30-one-click-setup/` [ext-chat]
 - Installer: when a port is busy it says what holds it, and if it is another Hestia already on it offers to stop it and goes on → `docs/work/2026-10-30-one-click-setup/` [ext-chat]
 - After the core review, your answers: a message written while I was offline that I could never answer now reaches you as a notice with its text, a house already told is told again when its price falls below the last one, and a write is never sent twice to two copies of a module → `docs/work/2026-11-27-core-modules-review/` [ext-chat]
