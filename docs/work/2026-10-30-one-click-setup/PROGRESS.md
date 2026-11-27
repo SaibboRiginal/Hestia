@@ -38,4 +38,5 @@
 - [x] Connected services as one list of N (Marko 2026-11-07): Hecate `connections.py` (Google, Garmin, phone connectors, `/api/gateway/connections*`), `<hecate-connections>` in Dispositivi + setup, old cards removed; Hecate 119 tests, Hecate tsc, ng build
 - [x] v2.25 (Marko 2026-11-07): voice `lang`/`lang_label` from Echo, `setup-pick` language selector; Echo 48, ng build, screenshot
 - [x] v2.26 (Marko 2026-11-27): installer busy ports name their holder (container or program); another Hestia's containers stopped on «S» (install.ps1 + install.sh, Italian catalog); shellcheck, bash dry run with a held port
+- [x] v2.27 (Marko 2026-11-27): module download progress (install.ps1 `Invoke-ComposePull`, install.sh `pull_with_progress`), line parsing checked on sample compose output; shellcheck
 - Left to Marko: real Windows install, real Linux run (Actions → Installer → real_run), two-machine run, real tunnel, .NET build

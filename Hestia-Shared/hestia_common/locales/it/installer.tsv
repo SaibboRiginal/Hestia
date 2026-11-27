@@ -171,3 +171,5 @@ Stop it and go on? [Y/n]	La fermo e vado avanti? [S/n]
 stop the other Hestia first (Docker Desktop, Containers, Stop), then run again.	prima ferma l'altra Hestia (Docker Desktop, Containers, Stop), poi rilancia.
 stop the other Hestia first (docker stop on its containers), then run again.	prima ferma l'altra Hestia (docker stop sui suoi container), poi rilancia.
 Other Hestia stopped: its data stays where it was.	Altra Hestia fermata: i suoi dati restano dove erano.
+ready	pronto
+not downloaded	non scaricato

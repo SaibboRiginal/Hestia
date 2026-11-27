@@ -222,6 +222,35 @@ function Invoke-Compose {
     } finally { Pop-Location }
 }
 
+# The download of the ready-made modules takes minutes: every module that arrives is shown (name, done/total), so a
+# slow line never looks frozen. The full compose output still goes to the log.
+function Invoke-ComposePull {
+    $files = @('-f', 'docker-compose.global.yml')
+    if ($script:VersionTag -and (Test-Path (Join-Path $Dir 'docker-compose.images.yml'))) { $files += @('-f', 'docker-compose.images.yml') }
+    if ($DryRun) { Write-Host "  [dry-run] docker compose pull $($args -join ' ')"; return $true }
+    $env:HESTIA_VERSION = $script:VersionTag.TrimStart('v')
+    $script:PullSeen = @{}; $script:PullDone = @{}
+    Push-Location $Dir
+    try {
+        Write-Log "compose args=`"pull $($args -join ' ')`""
+        & docker compose -p $Project @files pull @args 2>&1 | ForEach-Object {
+            $line = [string]$_
+            Write-Log "  | $line"
+            if ($line -match '(\S+)\s+(Pulling|Pulled|Error)\b' -and $Matches[1] -notmatch '^[0-9a-f]{12}$') {
+                $raw = $Matches[1]; $what = $Matches[2]     # an image (ghcr.io/x/hestia:hub-1.0.0, postgres:16) or a service
+                $name = if ($raw -match ':([a-z0-9]+)-\d+\.\d+\.\d+') { $Matches[1] } else { ($raw -replace ':.*$', '') -replace '^.*/', '' }
+                $script:PullSeen[$name] = $true
+                if ($what -ne 'Pulling' -and -not $script:PullDone.ContainsKey($name)) {
+                    $script:PullDone[$name] = $true
+                    $mark = if ($what -eq 'Pulled') { T 'ready' } else { T 'not downloaded' }
+                    Write-Host ("         {0} {1} ({2}/{3})" -f $name, $mark, $script:PullDone.Count, $script:PullSeen.Count)
+                }
+            }
+        }
+        return ($LASTEXITCODE -eq 0)
+    } finally { Pop-Location }
+}
+
 # -- 0. preflight -------------------------------------------------------------------------------------------------
 function Test-Preflight {
     Say (T 'Checking the computer...')
@@ -590,7 +619,7 @@ function Start-Stack {
     $roleServices = @(Get-RoleServices)
     if ($script:VersionTag) {
         Say (T 'Downloading the ready-made modules of version {0}...' ($script:VersionTag))
-        if (-not (Invoke-Retry (T 'Downloading the modules') { Invoke-Compose pull --ignore-pull-failures @roleServices })) { Note (T 'Some modules did not download: I build them here.') }
+        if (-not (Invoke-Retry (T 'Downloading the modules') { Invoke-ComposePull --ignore-pull-failures @roleServices })) { Note (T 'Some modules did not download: I build them here.') }
     } else {
         Say (T 'Building the modules (the first time takes a while, then it is quick)...')
         if (-not (Invoke-Retry (T 'Building the modules') { Invoke-Compose build @roleServices })) {

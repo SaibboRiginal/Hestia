@@ -637,7 +637,7 @@ start_stack() {
   while IFS= read -r svc; do [ -n "$svc" ] && services+=("$svc"); done < <(role_services)
   if [ -n "$VERSION_TAG" ]; then
     say "$(t "Downloading the ready-made modules of version {0}…" "${VERSION_TAG}")"
-    retry "$(t "Downloading the modules")" run_quiet_compose pull --ignore-pull-failures ${services[@]+"${services[@]}"} \
+    retry "$(t "Downloading the modules")" pull_with_progress --ignore-pull-failures ${services[@]+"${services[@]}"} \
       || note "$(t "Some modules did not download: I build them here.")"
   else
     say "$(t "Building the modules (the first time takes a while, then it is quick)…")"
@@ -670,6 +670,32 @@ start_stack() {
 
 telegram_configured() {  # the value is never read into a variable or printed
   grep -Eq '^TELEGRAM_BOT_TOKEN=.+' "$HESTIA_DIR/Hestia-Telegram/app/.env" 2>/dev/null
+}
+
+# The download of the ready-made modules takes minutes: every module that arrives is shown (name, done/total), so a
+# slow line never looks frozen. The full compose output still goes to the log.
+pull_with_progress() {
+  if [ "$DRY_RUN" = 1 ]; then printf '  [dry-run] docker compose pull %s\n' "$*"; return 0; fi
+  log "compose args=\"pull $*\""
+  local seen=" " got=" " nseen=0 ndone=0 line raw what name mark rc_file
+  rc_file="$(mktemp)"
+  { compose pull "$@" 2>&1; echo $? > "$rc_file"; } | while IFS= read -r line; do
+    printf '%s\n' "$line" >> "$LOG_FILE"
+    raw="$(printf '%s' "$line" | sed -nE 's/.*[[:space:]]([^[:space:]]+)[[:space:]]+(Pulling|Pulled|Error)([[:space:]].*)?$/\1 \2/p')"
+    [ -n "$raw" ] || continue
+    what="${raw##* }"; raw="${raw% *}"
+    case "$raw" in [0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]) continue ;; esac
+    name="$(printf '%s' "$raw" | sed -nE 's/.*:([a-z0-9]+)-[0-9]+\.[0-9]+\.[0-9]+.*/\1/p')"
+    [ -n "$name" ] || { name="${raw%%:*}"; name="${name##*/}"; }
+    case "$seen" in *" $name "*) ;; *) seen="$seen$name "; nseen=$((nseen + 1)) ;; esac
+    [ "$what" = Pulling ] && continue
+    case "$got" in *" $name "*) continue ;; esac
+    got="$got$name "; ndone=$((ndone + 1))
+    if [ "$what" = Pulled ]; then mark="$(t "ready")"; else mark="$(t "not downloaded")"; fi
+    printf '         %s %s (%s/%s)\n' "$name" "$mark" "$ndone" "$nseen"
+  done
+  local rc; rc="$(cat "$rc_file" 2>/dev/null)"; rm -f "$rc_file"
+  [ "${rc:-1}" = 0 ]
 }
 
 run_quiet_compose() {
