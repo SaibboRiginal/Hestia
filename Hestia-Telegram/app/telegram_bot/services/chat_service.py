@@ -172,7 +172,7 @@ def ask_oracle(chat_id, session_id: str, user_text: str, status_message_id: int,
         if res.status_code in _DOWN_STATUSES:
             raise OracleUnavailable(tr("HTTP {0}", res.status_code))
         res.raise_for_status()
-        turn_id = str(res.headers.get("X-Hestia-Turn") or "")
+        turn_id = str((getattr(res, "headers", None) or {}).get("X-Hestia-Turn") or "")
         progress: dict = {"lines": 0}
         try:
             consume_oracle_stream(res, renderer, signals, questions, progress)
