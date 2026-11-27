@@ -5,6 +5,7 @@ One line per finished task (details in `docs/work/<task>/`).
 ## 2026-11-27
 
 - Chat: leaving the page (or reloading) while I think no longer loses anything: your message is saved at once, the answer is always finished and saved, and when you come back you see it go on live with its reasoning; reopened chats show the reasoning of every answer too; only «Stop» stops an answer; Telegram continues a broken answer in the same message → `docs/work/2026-11-27-chat-turn-survives/` [ext-chat]
+- Google: linking is one button and Google's login, the release brings Hestia's own Google app (your own one still works) → `docs/work/2026-10-30-one-click-setup/` [ext-chat]
 - Installer on Windows: no more crash when it has to build the modules itself (folder with local changes) → `docs/work/2026-10-30-one-click-setup/` [ext-chat]
 - Installer: no model is downloaded before the setup, you pick in the setup and only that is downloaded → `docs/work/2026-10-30-one-click-setup/` [ext-chat]
 - Installer: while it downloads the ready-made modules it shows each one as it arrives, with how many are done → `docs/work/2026-10-30-one-click-setup/` [ext-chat]

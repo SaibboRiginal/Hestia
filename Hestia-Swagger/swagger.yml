@@ -3255,7 +3255,7 @@ paths:
       servers:
         - url: http://localhost:19003
       responses:
-        "200": {description: "{status, client_set, linked, pending, auth_url, redirect_uri, public_redirect, error} (never the secret)"}
+        "200": {description: "{status, client_set, builtin (the Google app that comes with Hestia is used), linked, pending, auth_url, redirect_uri, public_redirect, error} (never the secret)"}
 
   /api/gateway/auth/google/client:
     post:

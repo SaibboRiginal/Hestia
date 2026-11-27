@@ -222,8 +222,8 @@ class GoogleCalendarProvider(AbstractCalendarProvider):
         Duplicates (same refresh token) are dropped.  Missing client id/secret
         are filled from the canonical env vars.
         """
-        env_id = os.getenv("HECATE_KEY_GOOGLE_CLIENT_ID", "").strip()
-        env_secret = os.getenv("HECATE_KEY_GOOGLE_CLIENT_SECRET", "").strip()
+        from core import google_oauth   # own client typed in the card, else the one that comes with Hestia
+        env_id, env_secret = google_oauth.client_credentials()
         raw: list[tuple[str, dict]] = []
 
         file_data = GoogleCalendarProvider._read_token_file()
