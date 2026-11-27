@@ -174,7 +174,8 @@ export class McpAccesses extends HestiaElement {
   private renderOutbound() {
     const o = this.outbound; if (!o) return nothing;
     const label: Record<string, string> = { configured: tr('configured'), invalid_url: tr('invalid address') };
-    return html`<h2>${tr("External services")}</h2><p class="sub">${tr("Third-party MCP servers {assistant} can use. The keys stay in the .env (Hecate).")}</p>
+    return html`<h2>${tr("External services")}</h2><p class="sub">${tr("Third-party MCP servers {assistant} can use: add and remove them in Connections.")}
+        <hxk-button variant="ghost" icon="external" @click=${() => this.host.openConnection('hecate.external_mcp')}>${tr("Open in Connections")}</hxk-button></p>
       ${o.servers.length ? html`<div class="card">${o.servers.map(s => html`<div class="acc"><div class="grow">
           <div><b>${s.name}</b> <span class="pill ${s.status === 'configured' ? '' : 'off'}">${label[s.status] || s.status}</span></div>
           <div class="small muted">${s.host || '–'} · ${s.auth === 'key' ? tr('with key') : tr('without key')}</div></div></div>`)}</div>`

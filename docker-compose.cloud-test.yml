@@ -43,4 +43,3 @@ services:
     environment:
       - HECATE_KEY_GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID:-}           # temporary Google OAuth client, type "Desktop app"
       - HECATE_KEY_GOOGLE_CLIENT_SECRET=${GOOGLE_CLIENT_SECRET:-}
-      - HECATE_ENABLE_PROVIDER_GOOGLE=${HESTIA_BENCH_GOOGLE:-false}   # set by tools/cloud_test.py when the id is there

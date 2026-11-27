@@ -2,8 +2,9 @@
 
 Garmin has no official API for personal use: the ``garminconnect`` library logs in like the Garmin Connect app and
 keeps its tokens (``garmin_tokens.json``, garminconnect ≥ 0.3) in ``HECATE_GARMIN_TOKENS`` (default ``/code/data/garmin``, a data folder, never in
-git). The password is used once and never stored: Marko types it in the secret form (Hermes «Link Garmin») or
-sets ``GARMIN_EMAIL``/``GARMIN_PASSWORD`` in Hecate's ``.env``; a two-step code (MFA) is asked with a second form.
+git). The password is used once and never stored: Marko types it in the Garmin card (Connections) or the secret form
+(Hermes «Link Garmin»); a two-step code (MFA) is asked right after. An old ``GARMIN_EMAIL``/``GARMIN_PASSWORD`` pair
+written by hand in ``.env`` is still used once, only to get the tokens when there are none (nothing breaks).
 
 ``day(date)`` returns one normalised day: sleep, steps, resting heart rate, body battery, HRV, training readiness,
 stress and the activities of the day. The daily agenda job pushes it as the ``wearable.daily`` feed
@@ -105,8 +106,7 @@ class GarminService:
         return (self.dir / TOKEN_FILE).is_file()
 
     def status(self) -> dict:
-        env_creds = bool(self.env("GARMIN_EMAIL") and self.env("GARMIN_PASSWORD"))
-        return {"connected": self.has_tokens() or env_creds, "tokens": self.has_tokens(), "env_credentials": env_creds,
+        return {"connected": self.has_tokens(), "tokens": self.has_tokens(),
                 "waiting_code": self._pending is not None, "last_sync": self.last_sync, "last_error": self.last_error}
 
     def _save(self, client) -> None:
@@ -175,7 +175,8 @@ class GarminService:
                 self._client = c
                 return c
         email, password = self.env("GARMIN_EMAIL"), self.env("GARMIN_PASSWORD")
-        if email and password:
+        if email and password:   # written by hand before the card: used once to get the tokens
+            logger.info("[🔄] event=garmin_login_from_env reason=no_tokens")
             out = self.login(email, password)
             if out["status"] == "connected":
                 return self._client

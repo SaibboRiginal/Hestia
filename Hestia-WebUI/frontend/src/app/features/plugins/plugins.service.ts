@@ -356,7 +356,7 @@ export class PluginsService {
       openSetting: (key?: string) =>
         void svc.router.navigate(['/settings'], { queryParams: key ? { key } : { tab: 'system', module } }),
       openConnection: (id?: string) =>
-        void svc.router.navigate(['/connections'], { queryParams: id ? { open: `${module}.${id}` } : {} }),
+        void svc.router.navigate(['/connections'], { queryParams: id ? { open: id.includes('.') ? id : `${module}.${id}` } : {} }),
       toast: (text: string, t?: string, action?: { label: string; run: () => void }) => svc.toasts.show(text, tone(t), action, action ? 6000 : 4500),
       confirm: (title: string, text: string, o?: { label?: string; danger?: boolean }) => svc.dialogs.confirm(title, text, o?.label ?? tr('Confirm'), !!o?.danger),
       assistant: (o: { label: string; hints?: Record<string, string | number>; prompt?: string; suggestions?: string[] }) =>

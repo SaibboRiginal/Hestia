@@ -267,8 +267,7 @@ def env_value(rel: str, key: str) -> str:
 def cmd_up() -> None:
     ensure_docker()
     names = services()
-    env = {**os.environ, "COMPOSE_PARALLEL_LIMIT": os.getenv("COMPOSE_PARALLEL_LIMIT", "4"),
-           "HESTIA_BENCH_GOOGLE": "true" if os.getenv("GOOGLE_CLIENT_ID") and os.getenv("GOOGLE_CLIENT_SECRET") else "false"}
+    env = {**os.environ, "COMPOSE_PARALLEL_LIMIT": os.getenv("COMPOSE_PARALLEL_LIMIT", "4")}
     run(COMPOSE + ["build"] + names, env=env)
     run(COMPOSE + ["up", "-d", "--no-build"] + names, env=env)
     wait_healthy(names)

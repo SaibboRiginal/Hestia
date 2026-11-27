@@ -446,7 +446,9 @@ telegram/token|code|claim, backup) are called by the WebUI through the Hub (`/ap
   Only `<MODULE>_KEY_<NAME>` of that same module, for the modules in `secrets.CONNECTION_MODULES` (apollo, lares,
   hecate → `app/.env`, hermes → `src/.env`); an empty value clears the key. Then the module re-reads them live
   (`POST /api/connections/reload-keys`, in `service.LIVE`), else its container is re-created once →
-  `{keys, applied, reloaded, detail}`; values are never logged or returned.
+  `{keys, applied, reloaded, detail}`; values are never logged or returned. Old lines written by hand before a card
+  existed (`secrets.LEGACY_CLEARABLE`: Hecate's `HECATE_MCP_<NAME>_URL/_KEY`, `GARMIN_EMAIL/PASSWORD`) can only be
+  emptied, once their value moved into the card (2026-11-27).
 - Keys in seconds (round 6): for Oracle and Echo provider keys (`ORACLE_KEY_*`, `ECHO_KEY_*`, `service.LIVE`),
   `set_secrets` writes the `.env` and then asks the module to re-read it (`POST /api/llm/setup/reload-keys`,
   `/api/voice/setup/reload-keys` through the Hub); only when that fails or the key name does not come back the

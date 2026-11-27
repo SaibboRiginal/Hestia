@@ -25,16 +25,19 @@ class TestProviderDetection:
             "GOOGLE_TOKEN_JSON", "GOOGLE_CREDENTIALS_JSON", "HECATE_KEY_GOOGLE_CLIENT_ID",
             "HECATE_KEY_GOOGLE_CLIENT_SECRET", "GOOGLE_REFRESH_TOKEN",
             "HECATE_KEY_OUTLOOK_CLIENT_ID", "HECATE_KEY_OUTLOOK_CLIENT_SECRET", "HECATE_KEY_OUTLOOK_TENANT",
-            "HECATE_ENABLE_PROVIDER_GOOGLE", "HECATE_ENABLE_PROVIDER_MICROSOFT",
         ]:
             monkeypatch.delenv(key, raising=False)
         assert hecate_main.detect_gateway_providers() == []
 
-    def test_google_enabled_via_force_env(self, monkeypatch):
-        monkeypatch.setenv("HECATE_ENABLE_PROVIDER_GOOGLE", "1")
-        providers = hecate_main.detect_gateway_providers()
-        assert any(p["provider"] == "google" for p in providers)
-        monkeypatch.setenv("HECATE_ENABLE_PROVIDER_GOOGLE", "0")
+    def test_google_listed_once_its_app_is_typed(self, monkeypatch):
+        """No on/off switch (2026-11-27): the client typed in Connections lists Google, sign-in makes it configured."""
+        monkeypatch.setenv("HECATE_KEY_GOOGLE_CLIENT_ID", "id")
+        monkeypatch.setenv("HECATE_KEY_GOOGLE_CLIENT_SECRET", "secret")
+        for key in ("GOOGLE_REFRESH_TOKEN", "GOOGLE_TOKEN_JSON", "GOOGLE_CREDENTIALS_JSON"):
+            monkeypatch.delenv(key, raising=False)
+        monkeypatch.setattr("providers.google.has_stored_token", lambda: False)
+        rows = {p["provider"]: p for p in hecate_main.detect_gateway_providers()}
+        assert rows["google"]["auth_status"] == "enabled_without_credentials"
 
 
 # ─────────────────────────────────────────────────────────────────────────────

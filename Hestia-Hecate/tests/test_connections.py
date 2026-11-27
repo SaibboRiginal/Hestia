@@ -67,6 +67,13 @@ def world(tmp_path, monkeypatch):
                 monkeypatch.delenv(env, raising=False)
 
     monkeypatch.setattr(hub, "save_secrets", save_secrets)
+
+    def send(envs):          # clear_legacy: old hand-written lines emptied
+        for env, value in envs.items():
+            saved[env] = value
+            monkeypatch.delenv(env, raising=False)
+
+    monkeypatch.setattr(hub, "_send", send)
     monkeypatch.setattr(connections, "hub", hub)
     g = FakeGoogle()
     hub.register(connections.GoogleConnector(state=lambda: dict(g.s), save_client=g.save, initiate=g.initiate,
@@ -186,3 +193,39 @@ def test_gmail_instant_notices_card_saves_settings_and_the_account(world, monkey
     assert row["state"] == "connected" and row["in_setup"] is False
     c.delete(url)
     assert settings.values["hecate.gmail.push_topic"] == "" and world["saved"]["HECATE_KEY_GMAIL_PUBSUB_ACCOUNT"] == ""
+
+
+class FakeMcpHTTP:
+    def __init__(self):
+        self.calls = []
+
+    def post(self, url, json=None, headers=None, timeout=8):
+        self.calls.append((url, (headers or {}).get("Authorization")))
+        code = 401 if "locked" in url and headers.get("Authorization") != "Bearer ok" else 200
+        return type("R", (), {"status_code": code})()
+
+
+def test_external_mcp_servers_add_test_remove_and_adopt_old_env(world, monkeypatch):
+    """2026-11-27: N external MCP servers on one card; old HECATE_MCP_<NAME>_URL/_KEY lines are moved in once."""
+    st, http = FakeSettings(), FakeMcpHTTP()
+    monkeypatch.setenv("HECATE_MCP_NOTION_URL", "https://mcp.notion.example/mcp")
+    monkeypatch.setenv("HECATE_MCP_NOTION_KEY", "old-key")
+    card = world["hub"].register(connections.ExternalMcpConnector(settings=st, connections=world["hub"], http=http))
+    card.adopt()
+    assert st.values["hecate.mcp.servers"] == [{"name": "notion", "url": "https://mcp.notion.example/mcp"}]
+    assert world["saved"]["HECATE_KEY_MCP_NOTION"] == "old-key"
+    assert world["saved"]["HECATE_MCP_NOTION_URL"] == "" and "HECATE_MCP_NOTION_URL" not in os.environ
+    c = world["c"]
+    assert c.post("/api/gateway/connections/external_mcp", json={"values": {"name": "my server", "url": "ftp://x"}}).status_code == 422
+    out = c.post("/api/gateway/connections/external_mcp",
+                 json={"values": {"name": "Locked", "url": "https://locked.example/mcp", "key": "ok"}}).json()
+    assert out["item"]["state"] == "connected" and "locked" in out["item"]["detail"]
+    assert world["saved"]["HECATE_KEY_MCP_LOCKED"] == "ok" and ("https://locked.example/mcp", "Bearer ok") in http.calls
+    result = c.post("/api/gateway/connections/external_mcp/test").json()["result"]
+    assert result["ok"] and len(result["facts"]) == 2
+    ids = [a["id"] for a in out["item"]["actions"]]
+    assert "remove-locked" in ids and "add" in ids
+    c.post("/api/gateway/connections/external_mcp/remove-locked")
+    assert [r["name"] for r in st.values["hecate.mcp.servers"]] == ["notion"] and world["saved"]["HECATE_KEY_MCP_LOCKED"] == ""
+    listed = str(c.get("/api/gateway/connections").json())
+    assert "old-key" not in listed and "Bearer" not in listed
