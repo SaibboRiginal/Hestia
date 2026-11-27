@@ -580,6 +580,10 @@ modules by it). A failure, or a finished download over 200 MB, goes to Notifiche
   `buttons`.
 - `hestia_common.mcp_helpers.undo(tool, label="Annulla", **args)` (Cindy 13): what a write tool puts in its result as
   `"undo"`, so clients can show «Cancel» under «I did it».
+- `create_mcp_router` / `mount_missing_rest_routes` (2026-11-27, dossier `docs/work/2026-11-27-core-modules-review`):
+  a sync tool handler runs in a worker thread and an `async def` one is awaited, never on the event loop (before, one
+  slow tool froze the whole service and its health check).
+- `reminders.reminder_settings` / `voice_setting` declare plain English labels and help (translated by Themis).
 
 **2026-11-15 (WebUI page in the owner's language, dossier `docs/work/2026-11-14-english-backend`)**: the texts of this module's WebUI page and widgets go through `tr` of `@hestia/webui-sdk` and follow «Language»; source texts in English, Italian in `Hestia-Shared/hestia_common/locales/it/messages.json`.
 

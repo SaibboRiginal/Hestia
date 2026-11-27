@@ -232,7 +232,7 @@ def normalize_question(raw: Any) -> dict[str, Any] | None:
             options.append({"value": value[:80], "label": label[:60]})
     options = options[:8]
     if kind == "confirm" and not options:
-        options = [{"value": "si", "label": "Yes"}, {"value": "no", "label": "No"}]
+        options = [{"value": "yes", "label": tr("Yes")}, {"value": "no", "label": tr("No")}]
     if kind in ("single_choice", "multi_choice") and len(options) < 2:
         return None
     if kind == "free_text":
@@ -513,7 +513,8 @@ class NotificationCenter:
         if not state or state in ("superseded", "dead"):
             self.voice.forget(notification_id=notification_id)
             return
-        code, current = self.archive.patch_outbound_event(notification_id, state, payload_merge={"voice": voice})
+        code, current = self.archive.patch_outbound_event(notification_id, state, only_if_states=[state],
+                                                          payload_merge={"voice": voice})
         if code != 200 or not isinstance(current, dict):
             return
         self._broadcast(current, {"voice": {**voice, "audio_b64": base64.b64encode(spoken["audio"]).decode()}})
@@ -781,8 +782,9 @@ class NotificationCenter:
                 due.append((row, v))
         if not due:
             return {"reminded": 0}
-        for row, _ in due:
+        for row, _ in due:   # compare-and-set: an answer arriving meanwhile is never reopened
             self.archive.patch_outbound_event(str(row["outbound_event_id"]), str(row.get("lifecycle_state")),
+                                              only_if_states=[str(row.get("lifecycle_state"))],
                                               payload_merge={"reminded_at": now.isoformat()})
         import html
         lines = [f"• {html.escape(digest_line(v))}" for _, v in due[:8]]
@@ -976,6 +978,7 @@ class NotificationCenter:
             return {"released": 0}
         for row in released:
             self.archive.patch_outbound_event(str(row["outbound_event_id"]), str(row.get("lifecycle_state")),
+                                              only_if_states=[str(row.get("lifecycle_state"))],
                                               payload_merge={"held_released": _now()})
         unread = [r for r in released if r.get("lifecycle_state") in UNREAD_STATES]
         if unread:
@@ -1030,7 +1033,7 @@ class NotificationCenter:
             if changed:
                 self.archive.patch_outbound_event(
                     str(row["outbound_event_id"]), str(row.get("lifecycle_state")),
-                    payload_merge={"deliveries": deliveries})
+                    only_if_states=[str(row.get("lifecycle_state"))], payload_merge={"deliveries": deliveries})
         if retracted:
             logger.info("event=notification_retract_pass retracted=%d", retracted)
         return {"retracted": retracted}

@@ -20,7 +20,8 @@ Hub is **fully generic**: no domain, no DB, no user/business logic.
 ## Core Features
 
 ### Registry
-- `register` / `deregister` service instances.
+- `register` / `deregister` service instances. The only entry point is `src/main.py` (the old `main_old.py` /
+  `main_new.py` copies were removed on 2026-11-27).
 - Keep metadata: name, base URL, health endpoint, tags, capabilities.
 
 ### Persistent registry (snapshot)

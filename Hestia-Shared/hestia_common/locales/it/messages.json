@@ -823,7 +823,6 @@
   "Athena sends code improvement ideas to Forge. Forge follows the permissions you chose; the merge always asks you.": "Athena manda a Forge le idee di miglioramento del codice. Forge segue i permessi che hai scelto; il merge chiede sempre a te.",
   "Athena state: ": "Stato Athena: ",
   "Athena suggestions kept": "Suggerimenti di Athena tenuti",
-  "Athena thinks": "Athena pensa",
   "Athena thought: nothing to say now": "Athena ha pensato: niente da dire ora",
   "Athena thought: {0} {1}": "Athena ha pensato: {0} {1}",
   "Athena uses the model to turn what she observes into ideas and proposals.": "Athena usa il modello per trasformare ciò che osserva in idee e proposte.",
@@ -7493,7 +7492,6 @@
   "⏳ to approve": "⏳ da approvare",
   "⏸ Claude limit reached. The job <code>{0}</code> resumes from where it was at {1}.": "⏸ Limite di Claude raggiunto. Il lavoro <code>{0}</code> riprende da dove era alle {1}.",
   "⏸ waiting for Claude's limit": "⏸ attende il limite di Claude",
-  "⚙️ {0} proposes to change «{1}» ({2}): {3} → {4}.": "⚙️ {0} propone di cambiare «{1}» ({2}): {3} → {4}.",
   "⚠️ <b>Gmail</b> is not accessible.\n\n{0}\n\nUse the button below to sign in again with the gmail.readonly scope.": "⚠️ <b>Gmail</b> non è accessibile.\n\n{0}\n\nUsa il pulsante qui sotto per riautenticarti con lo scope gmail.readonly.",
   "⚠️ <b>Gmail</b> not accessible: {0}.": "⚠️ <b>Gmail</b> non accessibile: {0}.",
   "⚠️ <b>Google Calendar</b> is not signed in.\n\n{0}\n\nUse the button below to sign in again.": "⚠️ <b>Google Calendar</b> non è autenticato.\n\n{0}\n\nUsa il pulsante qui sotto per riautenticarti.",
@@ -8059,5 +8057,8 @@
   "Other MCP servers {assistant} can use (address and, if it asks for one, its key).": "Altri server MCP che {assistant} può usare (indirizzo e, se la chiede, la chiave).",
   "Third-party MCP servers {assistant} can use: name and address of each one.": "Server MCP di terzi che {assistant} può usare: nome e indirizzo di ciascuno.",
   "Link them in Connections → External MCP servers: name, address and, if it needs one, its key.": "Collegali in Collegamenti → Server MCP esterni: nome, indirizzo e, se serve, la chiave.",
-  "{0}: {1}": "{0}: {1}"
+  "{0}: {1}": "{0}: {1}",
+  "⚙️ {0} proposes to change «{1}»: {2} → {3}.": "⚙️ {0} propone di cambiare «{1}»: {2} → {3}.",
+  "{assistant} thinks": "{assistant} pensa",
+  "No": "No"
 }

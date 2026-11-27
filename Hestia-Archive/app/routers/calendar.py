@@ -49,13 +49,27 @@ def list_calendar_items(
     nag_enabled: Optional[bool] = None,
     from_time: Optional[str] = None,
     to_time: Optional[str] = None,
+    exclude_statuses: Optional[str] = None,
+    external_ids: Optional[str] = None,
     limit: int = 100,
     db: Session = Depends(database.get_db),
 ):
-    """List calendar items; supports time-window, source, kind, and nag filters."""
+    """List calendar items; supports time-window, source, kind, and nag filters.
+
+    ``exclude_statuses`` (comma list, e.g. ``cancelled,completed``) leaves out finished items and ``external_ids``
+    (comma list) asks for given items only: the assistant agenda reads its live rules without the history of
+    finished one-offs pushing them past ``limit``."""
     q = db.query(models.CalendarItem)
     if source:
         q = q.filter(models.CalendarItem.source == source)
+    if exclude_statuses:
+        skip = [s.strip() for s in exclude_statuses.split(",") if s.strip()]
+        if skip:
+            q = q.filter(models.CalendarItem.status.notin_(skip))
+    if external_ids:
+        wanted = [s.strip() for s in external_ids.split(",") if s.strip()]
+        if wanted:
+            q = q.filter(models.CalendarItem.external_id.in_(wanted))
     if kind:
         q = q.filter(models.CalendarItem.kind == kind)
     if status_filter:
@@ -76,7 +90,7 @@ def list_calendar_items(
         except ValueError:
             raise HTTPException(
                 status_code=400, detail=f"Invalid to_time: {to_time}")
-    return q.order_by(models.CalendarItem.start_at.asc()).limit(max(1, min(limit, 1000))).all()
+    return q.order_by(models.CalendarItem.start_at.asc()).limit(max(1, min(limit, 5000))).all()
 
 
 @router.get("/items/{item_id}", response_model=schemas.CalendarItemRead)

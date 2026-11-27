@@ -214,6 +214,8 @@ It stores and serves all persistent state through generic APIs.
   filtering) and parsed leniently (`"350.000 €"`); unparsable values exclude the row instead of failing the search.
 - `calendar_items.meta` (JSONB, auto-migrated with `ALTER TABLE … ADD COLUMN IF NOT EXISTS`) holds assistant-agenda
   metadata (type, owner, action, skips, rules). Upserts without `meta` keep the stored value.
+- `GET /api/calendar/items` (2026-11-27): `exclude_statuses` (comma list) and `external_ids` (comma list) filters,
+  limit up to 5000 — the agenda reads its live rules without the finished one-offs pushing them past the limit.
 - New `GET /api/chat/sessions?since=` → `{sessions: [...]}` distinct session ids (Athena consolidator).
 - 2026-10-29 (Cindy 26, dossier `docs/work/2026-10-24-whole-cindy-brainstorm` W7): table `chat_session_meta`
   (`session_id` PK, `title`, `tags` JSONB `[{name, color}]`, `pinned`, `client`, `updated_at`; created by

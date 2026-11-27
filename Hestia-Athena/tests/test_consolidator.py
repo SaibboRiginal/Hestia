@@ -271,3 +271,45 @@ class TestQuoteAndSkip:
         assert quote_found("Preferisco Roma!", ["in realtà preferisco roma, non Milano"])
         assert not quote_found("odio Roma", ["preferisco roma"])
         assert not quote_found("", ["qualsiasi"])
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# Core review 2026-11-27: conflicts and patterns never lose or duplicate memories
+# ═══════════════════════════════════════════════════════════════════════════════
+
+
+@pytest.mark.unit
+class TestConflictsAndPatternsSafe:
+    def test_conflict_with_unknown_id_retires_nothing(self, consolidator):
+        assert consolidator._resolve_conflict({"old_id": 99, "new_fact": "Roma"}, {"5"}, ["Roma"]) is False
+        from core import consolidator as mod
+        mod.requests.patch.assert_not_called()
+
+    def test_conflict_without_saved_new_fact_keeps_old(self, consolidator):
+        """The new fact was dropped (no exact quote): the old memory must stay."""
+        assert consolidator._resolve_conflict({"old_id": 5, "new_fact": "Prefers Rome"}, {"5"}, []) is False
+        from core import consolidator as mod
+        mod.requests.patch.assert_not_called()
+
+    def test_conflict_with_saved_new_fact_retires_old(self, consolidator):
+        from core import consolidator as mod
+        mod.requests.patch.return_value.content = b""
+        assert consolidator._resolve_conflict({"old_id": 5, "new_fact": "Prefers Rome"}, {"5"},
+                                              ["Prefers Rome"]) is True
+        mod.requests.patch.assert_called_once()
+
+    def test_pattern_raises_weight_of_existing_memory_no_new_memory(self, consolidator):
+        from core import consolidator as mod
+        mod.requests.patch.return_value.content = b""
+        mod.requests.post.reset_mock()
+        mems = [{"id": 7, "fact": "Budget 300k", "weight": 0.5}]
+        assert consolidator._reinforce_pattern({"fact": "budget 300k", "occurrences": 3}, mems) is True
+        assert mod.requests.patch.call_args.kwargs["json"] == {"weight": 0.8}
+        mod.requests.post.assert_not_called()      # no «[REINFORCED x3] …» copy
+
+    def test_pattern_without_memory_does_nothing(self, consolidator):
+        from core import consolidator as mod
+        mod.requests.post.reset_mock()
+        assert consolidator._reinforce_pattern({"fact": "Budget 300k", "occurrences": 5}, []) is False
+        mod.requests.post.assert_not_called()
+        mod.requests.patch.assert_not_called()

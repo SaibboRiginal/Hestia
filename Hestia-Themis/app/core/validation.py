@@ -3,12 +3,12 @@ from __future__ import annotations
 
 import re
 from typing import Any
-from hestia_common.i18n import is_yes, t as tr  # fixed texts in the owner's language
+from hestia_common.i18n import is_yes, t as tr, word_set  # fixed texts in the owner's language
 
 _TIME = re.compile(r"^([01]\d|2[0-3]):[0-5]\d$")
 _DURATION = re.compile(r"^\d+(\.\d+)?\s*(ms|s|m|h|d)?$")
 _TRUE = {"on"}          # plus is_yes(): 1, true and the yes words of every language
-_FALSE = {"false", "0", "no", "off"}
+_FALSE = {"false", "0", "no", "off"}   # plus the no words of every language (common.no_word)
 
 
 class SettingValueError(ValueError):
@@ -42,7 +42,7 @@ def validate(defn: dict, value: Any) -> Any:
         text = str(value).strip().lower()
         if text in _TRUE or is_yes(text):
             return True
-        if text in _FALSE:
+        if text in _FALSE or text in word_set("common.no_word"):
             return False
         raise SettingValueError(tr("yes/no expected"))
     if kind == "int":

@@ -53,7 +53,7 @@ def build_question(prompt: str = "", kind: str = "confirm", options: list | None
     if kind in ("single_choice", "multi_choice") and len(labels) < 2:
         return False, "single_choice / multi_choice need at least 2 options"
     if kind == "confirm":
-        opts = [{"value": "si", "label": tr("Yes")}, {"value": "no", "label": "No"}]
+        opts = [{"value": "yes", "label": tr("Yes")}, {"value": "no", "label": tr("No")}]
     else:
         opts = [{"value": label, "label": label} for label in labels]
     ask = {"question_id": f"ask_{uuid.uuid4().hex[:12]}", "header": _HEADERS[kind], "prompt": prompt,
@@ -66,7 +66,7 @@ def resume_message(entry: dict, answer: str) -> str:
     prompt = str(entry.get("prompt") or "").strip()
     answer = str(answer or "").strip()
     if entry.get("kind") == "confirm":
-        answer = {"si": "Yes", "no": "No"}.get(answer.lower(), answer)
+        answer = {"yes": "Yes", "no": "No"}.get(answer.lower(), answer)
     if entry.get("kind") == "multi_choice":
         parts = [p.strip() for p in answer.split("\n") if p.strip()]
         answer = ", ".join(parts) if parts else answer

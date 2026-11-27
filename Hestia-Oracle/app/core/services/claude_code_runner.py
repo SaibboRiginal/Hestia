@@ -59,7 +59,8 @@ def status() -> dict[str, Any]:
         return {"available": False,
                 "detail": "Claude Code not installed in Oracle (build with --build-arg INSTALL_CLAUDE_CODE=1)"}
     creds = Path(os.path.expanduser("~/.claude/.credentials.json"))
-    if not (os.getenv("CLAUDE_CODE_OAUTH_TOKEN") or os.getenv("ANTHROPIC_API_KEY") or creds.exists()):
+    # An API key never reaches Claude Code (agents.llm_config.cli_env strips it): only the subscription logs in.
+    if not (os.getenv("CLAUDE_CODE_OAUTH_TOKEN") or creds.exists()):
         return {"available": False,
                 "detail": "no auth: set CLAUDE_CODE_OAUTH_TOKEN in Oracle .env (run `claude setup-token`)"}
     if not _workdir_root().is_dir():

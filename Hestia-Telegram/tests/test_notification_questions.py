@@ -103,7 +103,7 @@ def test_already_handled_elsewhere(env, monkeypatch):
     core, _ = env
     from telegram_bot.services import notifications
     monkeypatch.setattr(notifications, "_hermes", lambda *a, **k: (409, {"status": "already_handled"}))
-    _deliver({"kind": "confirm", "options": [{"value": "si", "label": "Sì"}, {"value": "no", "label": "No"}]})
+    _deliver({"kind": "confirm", "options": [{"value": "yes", "label": "Sì"}, {"value": "no", "label": "No"}]})
     from telegram_bot.services import assistant_questions as aq
     aq.handle_callback(_call(f"ask:{_token()}:0"))
     assert "già stata gestita" in core.bot.send_message.call_args.args[1]

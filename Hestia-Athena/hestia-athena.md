@@ -150,7 +150,7 @@ from every client. All `live` (read at use time) except `athena.tasks.store_max`
 | `athena.memory.lookback_hours` | int h | 24 | min time between consolidations of one session |
 | `athena.memory.oracle_timeout` | int s | 30 | consolidation LLM timeout |
 | `athena.memory.preference_decay_days` | int giorni | 90 | preference decay |
-| `athena.memory.reinforce_threshold` | int | 3 | occurrences to reinforce a pattern |
+| `athena.memory.reinforce_threshold` | int | 3 | occurrences to reinforce a pattern (the weight of the memory that already says it goes up; never a new copy) |
 | `athena.skills.min_sessions` | int | 3 | sessions per cluster to create a skill |
 | `athena.skills.sim_threshold` | float | 0.90 | clustering similarity |
 | `athena.skills.dedup_threshold` | float | 0.95 | duplicate-skill merge similarity |
@@ -405,6 +405,10 @@ Tool titles are plain Italian without emoji; each tool says where it goes on Tel
 - **Only quoted facts** (Cindy 8): the nightly consolidation saves a new memory only with `quote`, the owner's exact
   words found in their messages (normalized); others are dropped (`facts_unquoted`). No user message newer than the
   lookback → no model call (`skipped: no_new_user_turns`).
+- **Conflicts and patterns never lose or copy a memory** (core review 2026-11-27): a conflict retires the old memory
+  only if its id is one the model was shown and the new fact was really saved in the same run (quoted); a repeated
+  pattern raises the weight of the memory that already says it (learning log `reinforce`, undoable) instead of adding
+  a new «[REINFORCED xN] …» memory at every run.
 - **Learning log + undo** (Cindy 18, `app/core/learning.py`): every change to memory (add, retire, reinforce, decay,
   merge) is a row of Archive `/api/athena-store` (kind `learning`, `before`/`after`, `quote`). «Cancel» restores
   `before` only while the memory is still as the assistant left it (an owner edit wins → 409 `changed_since`).

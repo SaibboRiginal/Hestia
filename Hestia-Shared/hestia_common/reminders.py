@@ -19,17 +19,17 @@ from __future__ import annotations
 from typing import Any
 
 from .settings_client import setting
-from hestia_common.i18n import t as tr  # fixed texts in the owner's language
 
 
 def reminder_settings(module: str, *, group: str = "Reminders", help: str = "", max_per_week: int = 2,
                       order: int = 0) -> list[dict]:
     """``<module>.reminder.enabled`` (off) and ``<module>.reminder.max_per_week``: the same two settings
-    everywhere. Per-item choices (e.g. which routine) stay in the module's own data."""
+    everywhere. Per-item choices (e.g. which routine) stay in the module's own data. Labels and help are plain
+    English (declared at import): Themis translates them for each client."""
     key = f"{module}.reminder.enabled"
     return [
         setting(key, "Reminders", "bool", False, group=group, order=order,
-                help=help or tr("One at a time: the new one replaces the previous one and counts how many times you skipped it.")),
+                help=help or "One at a time: the new one replaces the previous one and counts how many times you skipped it."),
         setting(f"{module}.reminder.max_per_week", "Most reminders per week", "int", max_per_week,
                 group=group, min=1, max=7, order=order + 1, depends_on={"key": key, "equals": True}),
     ]
@@ -41,7 +41,7 @@ def voice_setting(module: str, default: bool, *, group: str = "Reminders", help:
     reads well aloud (reminders, recaps), off where it is a list or numbers. Pass the value to
     ``reminder_event(voice=...)``; the written notification never changes."""
     return setting(f"{module}.notifications.voice", "Notifications by voice too", "bool", bool(default), group=group,
-                   order=order, help=help or tr("Besides the text you get a voice message (Telegram) or a play button (site)."))
+                   order=order, help=help or "Besides the text you get a voice message (Telegram) or a play button (site).")
 
 
 def reminder_event(*, module: str, domain: str, key: str, title: str, text: str, actions: list[dict],

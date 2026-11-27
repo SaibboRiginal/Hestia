@@ -8,6 +8,7 @@ from .entity_batch_dispatcher import (
     BATCHED_DOMAINS,
     BATCHED_EVENT_TYPES,
     enqueue_entity,
+    restore_queued,
     set_publisher as set_batch_publisher,
 )
 from .matcher import subscription_matches
@@ -116,7 +117,18 @@ class HermesService:
     def __init__(self):
         self.archive = ArchiveClient()
         self.notifications = NotificationCenter(self.archive)
-        set_batch_publisher(self._publish_batch)
+        set_batch_publisher(self._publish_batch, self._close_batch_row)
+
+    def _close_batch_row(self, row_id: str, state: str, detail: str) -> None:
+        self.archive.update_outbound_event_state(outbound_event_id=row_id, lifecycle_state=state, detail=detail)
+
+    def restore_batches(self) -> int:
+        """Startup: entities queued before a restart are batched again (nothing waits forever as «queued»)."""
+        rows = self.archive._route_archive("GET", "api/outbound-events",
+                                           query={"channel": "batch", "lifecycle_state": "queued", "limit": 500})
+        if not isinstance(rows, list):
+            raise RuntimeError("archive not reachable")
+        return restore_queued(rows)
 
     def _publish_batch(self, subscription_id, audience_key: str, domain: str, text: str,
                        link: dict | None = None, voice: bool = False) -> bool:
@@ -172,19 +184,21 @@ class HermesService:
                 dedupe_key = f"{anchor}:{sub_id}"
                 if self.archive.find_active_outbound_event(dedupe_key, max_age_seconds=max_age):
                     continue
-                self.archive.upsert_outbound_event({
-                    "outbound_event_id": str(uuid4()), "dedupe_key": dedupe_key,
-                    "lifecycle_state": "queued", "event_type": event_type, "domain": domain,
-                    "entity_id": entity_id, "subscription_id": str(sub_id), "channel": "batch",
-                    "target": "*", "source_service": "hermes", "detail": "queued in entity batch",
-                    "payload": {"event_payload": payload},
-                })
                 audience, origin = subscription_audience(subscription.get("channels") or [])
                 audience_key = (f"client:{origin['client']}:{origin['session_id']}"
                                 if audience == "origin" and origin else "all")
+                row_id = str(uuid4())
+                self.archive.upsert_outbound_event({
+                    "outbound_event_id": row_id, "dedupe_key": dedupe_key,
+                    "lifecycle_state": "queued", "event_type": event_type, "domain": domain,
+                    "entity_id": entity_id, "subscription_id": str(sub_id), "channel": "batch",
+                    "target": "*", "source_service": "hermes", "detail": "queued in entity batch",
+                    "payload": {"event_payload": payload, "audience_key": audience_key,
+                                "filters": subscription.get("filters") or {}},
+                })
                 enqueue_entity(subscription_id=sub_id, channel_type=audience_key, channel_target="",
                                domain=domain, entity_id=entity_id, payload=payload,
-                               filters=subscription.get("filters") or {})
+                               filters=subscription.get("filters") or {}, row_id=row_id)
                 queued += 1
             return {"subscriptions_checked": len(subscriptions),
                     "subscriptions_matched": len(matched_subs), "deliveries": queued}

@@ -75,9 +75,25 @@ class AgendaError(Exception):
 # ── persistence (Archive calendar_items, source=hestia) ────────────────────
 
 
-def _raw_items() -> list[dict]:
-    rows = archive_client._route_archive(
-        "GET", "api/calendar/items", query={"source": SOURCE, "limit": 1000}, timeout=10)
+_FINISHED = ("cancelled", "completed")
+_RAW_LIMIT = 5000
+
+
+def _raw_items(include_done: bool = True, keys: list[str] | None = None) -> list[dict]:
+    """Agenda rows from Archive. ``include_done=False`` leaves out finished items in the query itself: finished
+    one-offs pile up (history) and, ordered by start, used to push new tasks past the row limit, so they never
+    fired. ``keys``: only those items (whatever their state)."""
+    query: dict[str, Any] = {"source": SOURCE, "limit": _RAW_LIMIT}
+    if not include_done:
+        query["exclude_statuses"] = ",".join(_FINISHED)
+    if keys is not None:
+        wanted = sorted({str(k) for k in keys if str(k or "").strip()})
+        if not wanted:
+            return []
+        query["external_ids"] = ",".join(wanted)
+    rows = archive_client._route_archive("GET", "api/calendar/items", query=query, timeout=10)
+    if isinstance(rows, list) and len(rows) >= _RAW_LIMIT:
+        logger.warning("[🔄] event=agenda_rows_at_limit limit=%d include_done=%s", _RAW_LIMIT, include_done)
     return rows if isinstance(rows, list) else []
 
 
@@ -133,9 +149,9 @@ def _save(item: dict) -> dict:
 
 def list_items(owner: str | None = None, type_: str | None = None,
                include_cancelled: bool = False) -> list[dict]:
-    items = [_to_item(r) for r in _raw_items()]
+    items = [_to_item(r) for r in _raw_items(include_done=include_cancelled)]
     if not include_cancelled:
-        items = [i for i in items if i["status"] not in {"cancelled", "completed"}]
+        items = [i for i in items if i["status"] not in _FINISHED]
     if owner:
         items = [i for i in items if i["owner"] == owner]
     if type_:
@@ -144,10 +160,15 @@ def list_items(owner: str | None = None, type_: str | None = None,
 
 
 def get(ref: str | int) -> dict:
+    """One item by key (or Archive id), finished ones included."""
     ref = str(ref).strip()
-    for item in (_to_item(r) for r in _raw_items()):
-        if str(item["id"]) == ref or item["key"] == ref:
+    for item in (_to_item(r) for r in _raw_items(keys=[ref])):
+        if item["key"] == ref:
             return item
+    if ref.isdigit():
+        row = archive_client._route_archive("GET", f"api/calendar/items/{ref}", timeout=10)
+        if isinstance(row, dict) and row.get("source") == SOURCE:
+            return _to_item(row)
     raise AgendaError(f"agenda item '{ref}' not found", 404)
 
 
@@ -311,9 +332,20 @@ def create(*, title: str, type_: str = "event", owner: str = "user", start_at: s
 _DECLARED: dict[str, dict[str, dict]] = {}
 
 
+def _same(field: str, a: Any, b: Any, tz: str) -> bool:
+    """Two values of a rule field are the same (times compared as instants: Archive answers them in UTC)."""
+    if field in ("start_at", "end_at") and a and b:
+        try:
+            return _parse(a, tz) == _parse(b, tz)
+        except (TypeError, ValueError):
+            return False
+    return a == b
+
+
 def register_rules(owner: str, rules: list[dict]) -> list[dict]:
     """Module defaults, idempotent by key. User-edited rules are left untouched."""
-    existing = {i["key"]: i for i in list_items(include_cancelled=True)}
+    wanted = [str(r.get("key") or "").strip() for r in rules]
+    existing = {i["key"]: i for i in (_to_item(r) for r in _raw_items(keys=wanted))} if any(wanted) else {}
     saved: list[dict] = []
     with _lock:
         _DECLARED.setdefault(owner, {}).update(
@@ -329,14 +361,26 @@ def register_rules(owner: str, rules: list[dict]) -> list[dict]:
         if current:
             changed = {f: rule[f] for f in ("title", "description", "start_at", "end_at", "recurrence",
                                             "action", "params") if f in rule}
-            item = dict(current)
-            item.update(changed)
-            if "start_at" in changed:
-                item["start_at"] = _parse(changed["start_at"], item["tz"]).isoformat()
-            if changed.get("end_at"):
-                item["end_at"] = _parse(changed["end_at"], item["tz"]).isoformat()
-            item["recurrence"] = _norm_rrule(item.get("recurrence"))
             with _lock:
+                # Re-read under the lock: a tick may have fired the job meanwhile, and saving the copy read above
+                # would put back its old last_fired/runs (the job fired twice). The user may have edited it too.
+                try:
+                    current = get(key)
+                except AgendaError:
+                    pass
+                if current["user_modified"] or current["status"] == "cancelled":
+                    saved.append(current)
+                    continue
+                item = dict(current)
+                item.update(changed)
+                if "start_at" in changed:
+                    item["start_at"] = _parse(changed["start_at"], item["tz"]).isoformat()
+                if changed.get("end_at"):
+                    item["end_at"] = _parse(changed["end_at"], item["tz"]).isoformat()
+                item["recurrence"] = _norm_rrule(item.get("recurrence"))
+                if all(_same(f, item.get(f), current.get(f), item["tz"]) for f in changed):
+                    saved.append(current)      # hourly re-assert of an unchanged rule: nothing to write
+                    continue
                 saved.append(_save(item))
         else:
             saved.append(create(title=rule.get("title") or key, type_=rule.get("type", "job"), owner=owner,
@@ -409,7 +453,7 @@ def retire_rules(owner: str, keys: list[str]) -> list[str]:
     Only rules the module itself created are cancelled (``params.retired_by_module``); user items stay."""
     wanted = {str(k).strip() for k in keys if str(k).strip()}
     retired: list[str] = []
-    for item in list_items(include_cancelled=True):
+    for item in (_to_item(r) for r in _raw_items(keys=sorted(wanted))):
         if item["key"] not in wanted or item["owner"] != owner or item["created_by"] != owner:
             continue
         if item["status"] == "cancelled":
@@ -451,7 +495,8 @@ _TERMINAL = {"cancelled", "completed", "failed"}
 
 
 def children(key: str) -> list[dict]:
-    return [i for i in (_to_item(r) for r in _raw_items()) if i.get("parent") == key]
+    """Live children of ``key`` (finished ones are left alone by every caller)."""
+    return [i for i in (_to_item(r) for r in _raw_items(include_done=False)) if i.get("parent") == key]
 
 
 def cancel(ref: str | int, by: str = "user") -> dict:
@@ -703,7 +748,7 @@ def tick(now: datetime | None = None) -> dict:
             ok, detail = _fire(item["action"])
             ms = int((time.perf_counter() - t0) * 1000)
             with _lock:
-                fresh = get(item["id"])
+                fresh = get(item["key"])
                 fresh["last_result"] = {"ok": ok, "detail": detail, "at": now.isoformat()}
                 _record_run(fresh, str(due[-1].get("occurrence") or ""), ok, detail, now.isoformat(), "agenda", ms,
                             flex=flex_info)
@@ -893,7 +938,7 @@ def failed_jobs(since: datetime | None = None, now: datetime | None = None) -> l
     now = now or datetime.now(timezone.utc)
     since = since or now - timedelta(days=1)
     out = []
-    for item in (_to_item(r) for r in _raw_items()):
+    for item in (_to_item(r) for r in _raw_items(include_done=False)):
         if item["type"] not in {"job", "task"} or not item.get("action") or item["status"] in {"cancelled", "completed"}:
             continue
         last = item.get("last_result") if isinstance(item.get("last_result"), dict) else None

@@ -483,3 +483,11 @@ SPEC `docs/work/2026-10-20-layered-reflection`.
    `/api/webui/i18n.js` → Hub → Themis `/api/settings/i18n` → `globalThis.__hestiaI18n` → Angular `tr`/`| tr`
    and the SDK `tr` in every plugin; labels declared in English by the modules (manifests, capabilities, settings) are
    translated at the edge (`i18n.localize`, WebUI HTTP interceptor, Telegram); saving «Language» reloads the page.
+
+### Core review 2026-11-27 (dossier `docs/work/2026-11-27-core-modules-review`)
+1. Listing batch: Scout `entity.upserted` → Hermes row `batch/queued` (+ audience, filters) → settling window →
+   one notification → row `delivered`; gave up → `failed`; Hermes restart → `queued` rows back in their batch.
+2. Agenda: Chronos worker → Archive `GET /api/calendar/items?source=hestia&exclude_statuses=cancelled,completed`
+   (live rules only) → due jobs fired through Hub; one item → `external_ids=<key>`.
+3. Tool call: client → Hestia-MCP `/mcp` (worker thread) → Hub → module REST path or `/mcp` (sync handler in a
+   worker thread) — a slow tool never blocks another call nor the health check.

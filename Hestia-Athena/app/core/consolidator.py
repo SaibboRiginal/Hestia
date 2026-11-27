@@ -23,7 +23,7 @@ import requests
 
 from . import athena_settings as S
 from .athena_settings import get_int
-from .learning import Learning, quote_found
+from .learning import Learning, _norm, quote_found
 from hestia_common.i18n import t as tr  # fixed texts in the owner's language
 
 logger = logging.getLogger("hestia_athena.consolidator")
@@ -118,25 +118,30 @@ class MemoryConsolidator:
 
             # 4. Process extracted facts
             facts = analysis.get("facts", [])
+            saved_facts: list[str] = []
             for fact in facts:
+                if not isinstance(fact, dict):
+                    continue
                 if not quote_found(str(fact.get("quote") or ""), user_texts):
                     logger.info("event=consolidator_fact_dropped reason=no_exact_quote session=%s", session_id)
                     result["facts_unquoted"] = result.get("facts_unquoted", 0) + 1
                     continue
                 if self._save_memory(session_id, fact):
                     result["facts_extracted"] += 1
+                    saved_facts.append(str(fact.get("fact") or ""))
 
-            # 5. Detect and resolve conflicts
+            # 5. Detect and resolve conflicts (only real memories, only for a new fact really saved)
             conflicts = analysis.get("conflicts", [])
+            existing_ids = {str(m.get("id")) for m in existing_memories if m.get("id") is not None}
             for conflict in conflicts:
-                self._resolve_conflict(conflict)
-                result["conflicts_detected"] += 1
+                if isinstance(conflict, dict) and self._resolve_conflict(conflict, existing_ids, saved_facts):
+                    result["conflicts_detected"] += 1
 
-            # 6. Reinforce repeated patterns
+            # 6. Reinforce repeated patterns (weight of the memory that already says it)
             patterns = analysis.get("patterns", [])
             for pattern in patterns:
-                self._reinforce_pattern(pattern)
-                result["patterns_reinforced"] += 1
+                if isinstance(pattern, dict) and self._reinforce_pattern(pattern, existing_memories):
+                    result["patterns_reinforced"] += 1
 
             # 7. Decay old unused preferences
             decayed = self._decay_old_preferences(existing_memories)
@@ -263,38 +268,65 @@ class MemoryConsolidator:
             logger.warning("[🔄] event=consolidator_save_memory_failed error=%s", exc)
             return False
 
-    def _resolve_conflict(self, conflict: dict) -> None:
+    def _resolve_conflict(self, conflict: dict, existing_ids: set[str], saved_facts: list[str]) -> bool:
+        """Retire the old memory a new fact replaces. Only an id the model was shown (a made-up id never retires
+        another memory) and only when the new fact was saved in this run (it passed the exact-quote check):
+        otherwise the old memory was lost with nothing in its place."""
         old_id = conflict.get("old_id")
-        resolution = conflict.get("resolution", "replace_new")
-        if resolution == "replace_new" and old_id:
-            try:
-                requests.patch(
-                    f"{self._archive_route}/memory/{old_id}",
-                    json={"is_active": False},
-                    timeout=8,
-                )
-                self.learning.record("retire", old_id, before={"is_active": True}, after={"is_active": False},
-                                     session_id=self._session, fact=tr("replaced by: {0}", conflict.get('new_fact', '')))
-            except Exception:
-                pass
-
-    def _reinforce_pattern(self, pattern: dict) -> None:
-        occurrences = int(pattern.get("occurrences", 0))
-        if occurrences < get_int(S.MEMORY_REINFORCE_THRESHOLD):
-            return
+        if conflict.get("resolution", "replace_new") != "replace_new" or old_id is None:
+            return False
+        if str(old_id) not in existing_ids:
+            logger.info("event=consolidator_conflict_skipped reason=unknown_id old_id=%s", old_id)
+            return False
+        new_fact = _norm(conflict.get("new_fact"))
+        if not new_fact or not any(new_fact == _norm(f) or new_fact in _norm(f) or _norm(f) in new_fact
+                                   for f in saved_facts if _norm(f)):
+            logger.info("event=consolidator_conflict_skipped reason=new_fact_not_saved old_id=%s", old_id)
+            return False
         try:
-            requests.post(
-                f"{self._archive_route}/memory",
-                json={
-                    "fact": f"[REINFORCED x{occurrences}] {pattern.get('fact', '')}",
-                    "domain": pattern.get("domains", ["general"])[0] if pattern.get("domains") else "general",
-                    "weight": min(1.0, 0.5 + (occurrences * 0.1)),
-                    "memory_class": "durable_user_preference",
-                },
-                timeout=8,
-            )
-        except Exception:
-            pass
+            resp = requests.patch(f"{self._archive_route}/memory/{old_id}", json={"is_active": False}, timeout=8)
+            routed = resp.json() if resp.content else {}
+            if resp.status_code >= 400 or int((routed or {}).get("status_code", 200)) >= 400:
+                return False
+        except Exception as exc:  # noqa: BLE001
+            logger.warning("[🔄] event=consolidator_conflict_failed old_id=%s error=%s", old_id, exc)
+            return False
+        self.learning.record("retire", old_id, before={"is_active": True}, after={"is_active": False},
+                             session_id=self._session, fact=tr("replaced by: {0}", conflict.get('new_fact', '')))
+        return True
+
+    def _reinforce_pattern(self, pattern: dict, existing_memories: list[dict]) -> bool:
+        """A fact the owner keeps repeating weighs more: the weight of the memory that already says it goes up
+        (learning log, so it can be undone). It used to add a new «[REINFORCED xN] …» memory at every run, with no
+        quote and no undo: the memory filled up with copies."""
+        try:
+            occurrences = int(pattern.get("occurrences", 0))
+        except (TypeError, ValueError):
+            return False
+        if occurrences < get_int(S.MEMORY_REINFORCE_THRESHOLD):
+            return False
+        wanted = _norm(pattern.get("fact"))
+        if not wanted:
+            return False
+        mem = next((m for m in existing_memories if _norm(m.get("fact")) == wanted), None)
+        if not mem or mem.get("id") is None:
+            return False
+        before = float(mem.get("weight") or 0.5)
+        after = round(min(1.0, max(before, 0.5 + occurrences * 0.1)), 2)
+        if after <= before:
+            return False
+        try:
+            resp = requests.patch(f"{self._archive_route}/memory/{mem['id']}", json={"weight": after}, timeout=8)
+            routed = resp.json() if resp.content else {}
+            if resp.status_code >= 400 or int((routed or {}).get("status_code", 200)) >= 400:
+                return False
+        except Exception as exc:  # noqa: BLE001
+            logger.warning("[🔄] event=consolidator_reinforce_failed id=%s error=%s", mem.get("id"), exc)
+            return False
+        self.learning.record("reinforce", mem["id"], before={"weight": before}, after={"weight": after},
+                             session_id=self._session, fact=str(mem.get("fact") or ""))
+        mem["weight"] = after
+        return True
 
     def _decay_old_preferences(self, existing_memories: list[dict]) -> int:
         """Reduce weight of preferences not mentioned in >90 days. Returns count decayed."""
