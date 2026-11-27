@@ -11,7 +11,7 @@ import os
 import re
 import logging
 from typing import Optional
-from urllib.parse import urlparse, urlunparse
+from urllib.parse import parse_qs, unquote, urlparse, urlunparse
 
 from bs4 import BeautifulSoup
 
@@ -29,6 +29,36 @@ logger = logging.getLogger("hestia_scout.extractor")
 #  Email sanitization
 # ─────────────────────────────────────────────────────────────────────
 
+# Path pieces that make a portal link a listing (not a search, a newsletter or the unsubscribe page).
+_LISTING_PATHS = {
+    "idealista.it": ("immobile", "prodotto", "rapprochement"),  # external-name: the site's own address
+    "immobiliare.it": ("/annunci/",),                              # external-name: the site's own address
+}
+_REDIRECT_PARAMS = ("url", "u", "target", "redirect", "dest", "destination", "link")
+
+
+def listing_link(href: str, _depth: int = 0) -> str:
+    """The listing URL behind an email link, or ``""``: a direct portal link, or one wrapped in a tracking
+    redirect (``...?url=https%3A%2F%2Fwww.immobiliare.it%2Fannunci%2F...``). Before 2026-11-27 only Idealista
+    links survived, so the Immobiliare alerts gave no house at all."""
+    url = str(href or "").strip()
+    if not url.lower().startswith(("http://", "https://")):
+        return ""
+    parsed = urlparse(url)
+    host = parsed.netloc.lower()
+    for site, pieces in _LISTING_PATHS.items():
+        if (host == site or host.endswith("." + site)) and any(p in url.lower() for p in pieces):
+            return url
+    if _depth < 2:
+        for key, values in parse_qs(parsed.query).items():
+            if key.lower() in _REDIRECT_PARAMS:
+                for value in values:
+                    found = listing_link(unquote(value), _depth + 1)
+                    if found:
+                        return found
+    return ""
+
+
 def sanitize_email_for_ai(raw_html: str) -> str:
     """Strip email HTML down to clean text with ``[PROPERTY_LINK: url]`` markers."""
     if not raw_html or "Could not extract text body" in raw_html:
@@ -40,10 +70,8 @@ def sanitize_email_for_ai(raw_html: str) -> str:
         element.extract()
 
     for a_tag in soup.find_all("a", href=True):
-        url = a_tag["href"]
-        if "idealista.it" in url and any(
-            x in url for x in ("immobile", "prodotto", "rapprochement")  # external-name: the site's own address
-        ):
+        url = listing_link(a_tag["href"])
+        if url:
             clean_text = a_tag.get_text(strip=True)
             a_tag.replace_with(f" {clean_text} [PROPERTY_LINK: {url}] ")
         else:
@@ -295,13 +323,22 @@ def enrich_payload_from_listing(payload: dict, timeout_seconds: int = 30) -> dic
                        _http, normalized_url)
         return _set_pending_step(enriched, "listing_content_enrichment", True)
 
+    if result.blocked:
+        # A bot check page instead of the listing: nothing to read (and no sign of a sale), try again later.
+        logger.warning("[🔄] event=listing_fetch_blocked url=%s", normalized_url)
+        return _set_pending_step(enriched, "listing_content_enrichment", True)
+
     soup = BeautifulSoup(result.html, "html.parser")
     result_payload = handler.enrich(soup, enriched)
 
     # ── Content-based availability check ─────────────────────────────
-    _html_lower = result.html.lower()
-    _sold_signals = [tr("no longer available").lower(), *words("scout.page.sold")]
-    if any(s in _html_lower for s in _sold_signals):
+    # On the words a person reads, not the raw HTML: scripts and menus of the portals carry words like
+    # «sold» on every page, which marked live listings as sold and took them off the list.
+    for tag in soup(["script", "style", "noscript", "head", "nav", "footer"]):
+        tag.decompose()
+    _text_lower = soup.get_text(" ", strip=True).lower()
+    _sold_signals = [s.lower() for s in words("scout.page.sold")]
+    if any(s in _text_lower for s in _sold_signals):
         logger.info("event=listing_sold_detected_in_content Marking as sold from page content | url=%s",
                     normalized_url)
         result_payload["listing_status"] = "sold"

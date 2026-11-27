@@ -21,6 +21,19 @@ from worker.status_updater import StatusUpdater
 
 logger = logging.getLogger("hestia_scout.runner")
 
+MAX_UNREADABLE_ATTEMPTS = 3   # an email whose extraction is never valid JSON is marked read after this many tries
+
+
+def match_fields(payload: dict) -> dict:
+    """Flat fields for the alert filters of Hermes (``city``, ``max_price``, ``min_rooms``, ``min_surface_m2``…
+    compare top-level keys). The listing keeps rooms and surface under ``specs`` and has no city field, so an
+    alert «houses in <city>» or «at least 3 rooms» never matched a single house."""
+    from ui_api import city_of   # lazy: ui_api builds the plugin manifest at import
+    specs = payload.get("specs") if isinstance(payload.get("specs"), dict) else {}
+    fields = {"city": city_of(payload) or None, "rooms": specs.get("rooms"), "surface_m2": specs.get("surface_m2"),
+              "bedrooms": specs.get("bedrooms"), "bathrooms": specs.get("bathrooms")}
+    return {k: v for k, v in fields.items() if v is not None and k not in payload}
+
 
 class ScoutWorker:
     def __init__(self, target_domain: str):
@@ -40,6 +53,7 @@ class ScoutWorker:
             vault=self.vault, target_domain=target_domain
         )
         self._cycle_counter = 0
+        self._llm_failures: dict[int, int] = {}     # email record id → failed extraction attempts
 
     # ── central settings (Themis, live: read at use time) ─────────────────
     @property
@@ -92,7 +106,7 @@ class ScoutWorker:
             "event_type": "entity.upserted",
             "domain": self.target_domain,
             "entity_id": str(entity_id),
-            "payload": {**(payload or {}), "_link": link,
+            "payload": {**(payload or {}), **match_fields(payload or {}), "_link": link,
                         **({"_voice": True} if scout_settings.settings.get(scout_settings.NOTIFY_VOICE, False) else {})},
         }
         route_body = {
@@ -318,7 +332,9 @@ class ScoutWorker:
 
         cleanup_result = self.vault.cleanup_entities(
             domain=self.target_domain,
-            required_fields=["url", "location.lat", "location.lon"],
+            # Only rows without a link are junk. Coordinates used to be required too: every house the map
+            # service could not place was deleted at each cycle (favourites included).
+            required_fields=["url"],
             require_created_at=True,
             dry_run=False,
         )
@@ -366,6 +382,7 @@ class ScoutWorker:
         # that weren't caught by keyword scanning at ingestion time.
         url_recheck_count = 0
         url_sold_count = 0
+        recheck_failed = 0
         for record in (records or []):
             entity_id = record.get("entity_id")
             payload = record.get("payload") if isinstance(
@@ -389,6 +406,13 @@ class ScoutWorker:
 
             enriched = enrich_payload_from_listing(payload, timeout_seconds=15)
             url_recheck_count += 1
+            if self._is_step_pending(enriched, "listing_content_enrichment"):
+                recheck_failed += 1
+                if recheck_failed >= 3:     # the page service is down or blocked: try again next cycle
+                    logger.warning("[🔄] event=url_recheck_circuit_breaker failed=%s", recheck_failed)
+                    break
+            else:
+                recheck_failed = 0
             new_status = str(enriched.get("listing_status", "") or "").strip().lower()
             if new_status in prune_statuses and _status not in prune_statuses:
                 self.vault.upsert_entity({
@@ -402,8 +426,9 @@ class ScoutWorker:
                     "event=url_recheck_found_sold entity_id=%s old_status=%s url=%s",
                     entity_id, _status, _url[:100],
                 )
-            elif enriched != payload:
-                # URL still valid but content changed — update payload
+            else:
+                # Remember the check even when nothing changed: without it every listing page was opened
+                # again at every cycle (one per arriving mail).
                 enriched["_last_url_check_ts"] = time.time()
                 self.vault.upsert_entity({
                     "entity_id": str(entity_id),
@@ -499,8 +524,8 @@ class ScoutWorker:
         # ── 3. Load all known entity IDs from Archive ────────────────
         logger.info(
             "event=dedup_loading_known_entity_ids [DEDUP] Loading known entity IDs from Archive...")
-        known_entity_ids = self.vault.get_all_entity_ids(
-            domain=self.target_domain)
+        known_entities = self.vault.get_entity_map(domain=self.target_domain)
+        known_entity_ids = set(known_entities)
         logger.info(
             "event=dedup_entities_already_archive Existing entities loaded from Archive | count=%s",
             len(known_entity_ids),
@@ -546,12 +571,12 @@ class ScoutWorker:
                 # The LLM path will refresh this entity — skip.
                 continue
 
+            # Only the part of each email about this house: an alert lists many of them.
             combined_text = "\n\n".join(
-                parsed.record_id_to_clean_text[rid]
+                parsed.url_text.get((rid, url)) or parsed.record_id_to_clean_text.get(rid, "")
                 for rid in covering_record_ids
-                if rid in parsed.record_id_to_clean_text
             )
-            existing_entity = self.vault.get_entity_by_id(url) or {}
+            existing_entity = known_entities.get(url) or {}
             updated = self.status_updater.check_and_update(
                 entity_id=url,
                 combined_email_text=combined_text,
@@ -566,6 +591,7 @@ class ScoutWorker:
         )
 
         # ── 6. LLM extraction path ────────────────────────────────────
+        keep_waiting: set[int] = set()
         if not representative_ids:
             logger.info(
                 "event=llm_records_require_llm_extraction [LLM] No records require LLM extraction.")
@@ -583,7 +609,6 @@ class ScoutWorker:
                 for i in range(0, len(llm_records), batch_size)
             ]
 
-            quota_exhausted = False
             for batch_index, batch in enumerate(batches):
                 logger.info(
                     "event=llm_batch LLM batch start | batch_index=%s batch_total=%s batch_size=%s",
@@ -591,11 +616,25 @@ class ScoutWorker:
                     len(batches),
                     len(batch),
                 )
-                quota_exhausted = self._process_llm_batch(
+                outcome = self._process_llm_batch(
                     batch_index, batch, parsed.record_id_to_clean_text
                 )
-                if quota_exhausted:
+                if outcome != "ok":
+                    for record in batch:
+                        failures = self._llm_failures.get(record["id"], 0) + 1
+                        self._llm_failures[record["id"]] = failures
+                        if outcome == "unreadable" and failures >= MAX_UNREADABLE_ATTEMPTS:
+                            continue        # the model never gives a readable answer for it: stop retrying
+                        keep_waiting.add(record["id"])
+                if outcome == "model_unavailable":
+                    # The model did not answer (out of quota, offline, too slow): the remaining emails wait
+                    # in Archive for the next cycle instead of being marked read with no house taken out.
+                    for later in batches[batch_index + 1:]:
+                        keep_waiting.update(r["id"] for r in later)
+                    logger.warning("[🔄] event=scout_llm_unavailable_emails_kept waiting=%d", len(keep_waiting))
                     break
+                for record in batch:
+                    self._llm_failures.pop(record["id"], None)
 
                 logger.info(
                     "event=cooling_down Cooling down for RPM limits | seconds=%s",
@@ -608,6 +647,8 @@ class ScoutWorker:
         # are marked skipped_empty so they don't accumulate.
         for record in pending_records:
             record_id = record["id"]
+            if record_id in keep_waiting:
+                continue                    # back in the next cycle (next mail, «Check emails» or restart)
             clean_text = parsed.record_id_to_clean_text.get(record_id, "")
             if len(clean_text) <= 20:
                 self.vault.save_evaluation(
@@ -632,7 +673,8 @@ class ScoutWorker:
     ) -> bool:
         """Run LLM extraction on one batch of email records.
 
-        Returns ``True`` if the quota was exhausted (caller should stop).
+        Returns ``"ok"``, ``"model_unavailable"`` (no answer: the caller stops and the emails wait) or
+        ``"unreadable"`` (an answer that is not the JSON asked: the emails are retried a few times).
         """
         t_batch = time.perf_counter()
         combined_text_to_read = ""
@@ -654,7 +696,7 @@ class ScoutWorker:
                 int((time.perf_counter() - t_batch) * 1000),
                 batch_index + 1,
             )
-            return False
+            return "ok"
 
         ai_response = self.brain.evaluate(combined_text_to_read)
         raw_text = ai_response.get("raw_response", "").strip()
@@ -664,21 +706,12 @@ class ScoutWorker:
                 "event=ai_evaluate_error AI evaluate error | error=%s",
                 ai_response.get("error"),
             )
-            if "All models exhausted" in ai_response["error"]:
-                logger.info(
-                    "event=global_quota_hit_shutting_down [🛑] Global Quota hit. Shutting down for the day.")
-                logger.info(
-                    "event=llm_batch_done ms=%d batch=%s quota_exhausted=true",
-                    int((time.perf_counter() - t_batch) * 1000),
-                    batch_index + 1,
-                )
-                return True
             logger.info(
                 "event=llm_batch_done ms=%d batch=%s error=true",
                 int((time.perf_counter() - t_batch) * 1000),
                 batch_index + 1,
             )
-            return False
+            return "model_unavailable"
 
         try:
             extracted_data = parse_ai_entities(raw_text)
@@ -810,16 +843,16 @@ class ScoutWorker:
             )
 
         except Exception as error:
+            # (It used to write debug_broken_batch_<n>.txt in the working folder, i.e. inside the repo.)
             logger.warning(
-                "event=failed_parse_ai_json Failed to parse AI JSON | error=%s",
-                error,
+                "[🔄] event=failed_parse_ai_json error=%s answer_start=%r",
+                error, raw_text[:300],
             )
-            with open(f"debug_broken_batch_{batch_index}.txt", "w", encoding="utf-8") as handle:
-                handle.write(raw_text)
             logger.info(
                 "event=llm_batch_done ms=%d batch=%s error=true",
                 int((time.perf_counter() - t_batch) * 1000),
                 batch_index + 1,
             )
+            return "unreadable"
 
-        return False
+        return "ok"

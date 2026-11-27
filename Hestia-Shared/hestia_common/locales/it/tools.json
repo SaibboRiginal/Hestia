@@ -858,16 +858,27 @@
   "summary": "Modifica una scadenza."
  },
  "scout.search": {
-  "summary": "Search real estate listings by query, city, price range, surface, rooms."
+  "summary": "Cerca tra le case trovate nelle email degli annunci: città, prezzo, locali, superficie.",
+  "params": {
+   "query": "Parole libere",
+   "city": "Città o zona",
+   "nearby": "Anche i dintorni",
+   "radius_km": "Distanza in km",
+   "price_min": "Prezzo minimo",
+   "price_max": "Prezzo massimo",
+   "rooms_min": "Almeno questi locali",
+   "surface_min": "Almeno questi m²",
+   "limit": "Quante"
+  }
  },
  "scout_fetch": {
-  "summary": "Check listing emails now: Iris passes the last day's listing mails again and Scout parses and extracts them."
+  "summary": "Controlla subito le email degli annunci: quelle dell'ultimo giorno vengono rilette e le case estratte."
  },
  "scout_reconcile": {
-  "summary": "Run Scout data reconciliation maintenance."
+  "summary": "Ricontrolla le case salvate: posizione, link, annunci venduti o tolti."
  },
  "scout_stats": {
-  "summary": "Return real_estate domain statistics: total entities, breakdown by listing status, and date range of when listings were added."
+  "summary": "Quante case segui, per stato, e quando è arrivata l'ultima."
  },
  "selfcare_check": {
   "summary": "Compatibilità degli attivi: di una routine, o di un prodotto / lista di attivi rispetto a quelli in uso."
