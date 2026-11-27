@@ -28,7 +28,7 @@ inside a throwaway `python:3.12-slim` container: random `HESTIA_DB_PASSWORD` on 
 
 Every step retries (2/4/8 s) and has a fallback (e.g. winget → direct installer; get.docker.com → distro package;
 git → zip download; pull → local build); a stop always says the one thing to do, and running the same line again
-resumes. Log (no secrets): `%LOCALAPPDATA%\Hestia\install\install.log` / `~/.local/state/hestia-install/install.log`.
+resumes. Long steps show their progress (the module download prints each module as it arrives). Log (no secrets): `%LOCALAPPDATA%\Hestia\install\install.log` / `~/.local/state/hestia-install/install.log`.
 The installer writes what it detected (RAM, video card, free disk) in `.hestia-install/hardware.json` (git-ignored)
 and opens the **guided setup** `http://localhost:19015/setup` (below). Without a Telegram token the bot container
 is only created, not started (otherwise it would crash-loop): the guided setup starts it.
