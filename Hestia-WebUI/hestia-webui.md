@@ -691,3 +691,6 @@ guided setup. `?open=<module>.<id>` opens one card: Ctrl+K lists every connectio
 keywords), a plugin calls `host.openConnection(id)`, and a setting declared with `editor="connection:<module>.<id>"`
 shows its value with «Edit in Connections» instead of a field. `/p/hecate/devices` redirects to `/connections`
 (Hecate's old «Dispositivi» page is gone). `PluginCatalog.Types` includes `connection`.
+
+**2026-11-27 (dossier `docs/work/2026-11-27-connections-leftovers`)**: a plugin's `host.openConnection(id)` also takes
+`<module>.<id>` to open another module's card (the AI accesses page opens `hecate.external_mcp`).

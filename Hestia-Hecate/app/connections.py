@@ -383,3 +383,134 @@ class GmailPushConnector(Connector):
             self.connections.save_secret("gmail_pubsub_account", "")
         self.restart()
         return {"message": tr("Gmail instant notices off.")}
+
+
+class ExternalMcpConnector(Connector):
+    """Third-party MCP servers Hestia may use (``core/outbound.py``): one card for all of them, N servers. Name and
+    address go in the Themis setting ``hecate.mcp.servers``, the key (optional) is ``HECATE_KEY_MCP_<NAME>``. Servers
+    written by hand in .env (``HECATE_MCP_<NAME>_URL/_KEY``) keep working and are moved here once (``adopt``)."""
+    id, label, icon, order, group, in_setup = "external_mcp", "External MCP servers", "terminal", 40, "home_service", False
+    what = "Other MCP servers {assistant} can use (address and, if it asks for one, its key)."
+    keywords = ("mcp", "server", "tools", "external", "model context protocol")
+
+    def __init__(self, *, settings: Any, connections: Connections | None = None, http: Any = None):
+        self.settings, self.http = settings, http
+        self.connections = connections or hub
+        self.adding = False
+        self._adopted = False
+
+    # ── helpers ─────────────────────────────────────────────────────────────
+    def _rows(self) -> list[dict]:
+        from core import outbound
+        return outbound.configured(self.settings)
+
+    def _put(self, rows: list[dict]) -> None:
+        from core import outbound
+        if not self.settings.put(outbound.SERVERS, rows, actor="user", reason="connection card"):
+            raise ConnectError(tr("I couldn't save it: try again in a minute."))
+
+    def _form(self) -> dict:
+        return {"kind": "form", "text": tr("Give it a short name (letters, numbers, _), its address and, if it asks for one, its key."),
+                "fields": [field("name", tr("Name"), "text", "github"),
+                           field("url", tr("Address"), "url", "https://mcp.example.com/mcp"),
+                           field("key", tr("Key (only if it asks for one)"), "password")],
+                "submit": tr("Add and test")}
+
+    # ── card ────────────────────────────────────────────────────────────────
+    def state(self) -> dict:
+        from core import outbound
+        servers = outbound.outbound_servers(self.settings)
+        if not servers or self.adding:
+            actions = [{"id": "cancel", "label": tr("Cancel"), "icon": "x"}] if self.adding else []
+            return {"state": "not_connected", "detail": "", "step": self._form(), "actions": actions}
+        actions = [{"id": "add", "label": tr("Add a server"), "icon": "plus"}]
+        actions += [{"id": f"remove-{s['name']}", "label": tr("Remove {0}", s["name"]), "icon": "trash", "danger": True}
+                    for s in servers]
+        names = ", ".join(f"{s['name']} ({s['host'] or tr('wrong address')})" for s in servers)
+        return {"state": "connected", "step": None, "actions": actions, "detail": names}
+
+    def submit(self, values: dict) -> dict:
+        from core import outbound
+        name = str(values.get("name") or "").strip().lower().replace("-", "_").replace(" ", "_")
+        url = str(values.get("url") or "").strip()
+        key = str(values.get("key") or "").strip()
+        if not outbound.NAME_RE.match(name):
+            raise ConnectError(tr("The name: letters, numbers and _, at most 31."))
+        if not outbound.valid_url(url):
+            raise ConnectError(tr("The address starts with http:// or https://, for example {0}.", "https://mcp.example.com/mcp"))
+        if key:
+            self.connections.save_secret(outbound.key_name(name), key)
+        rows = [r for r in self._rows() if r["name"] != name] + [{"name": name, "url": url}]
+        self._put(rows)
+        self.adding = False
+        ok, why = outbound.probe(url, key or outbound.bearer_for(name) or "", http=self.http)
+        logger.info("event=external_mcp_added name=%s ok=%s", name, ok)
+        return {"message": tr("{0} added.", name) if ok else tr("Saved, but: {0}", self._why(why))}
+
+    def action(self, name: str) -> dict:
+        from core import outbound
+        if name in ("add", "cancel"):
+            self.adding = name == "add"
+            return {}
+        if name.startswith("remove-"):
+            server = name[len("remove-"):]
+            self._put([r for r in self._rows() if r["name"] != server])
+            if self.connections.has_key(outbound.key_name(server)):
+                self.connections.save_secret(outbound.key_name(server), "")
+            if any(r["name"] == server for r in outbound.legacy_servers()):   # an old hand-written line too
+                self.connections.clear_legacy(outbound.legacy_envs(server))
+            logger.info("event=external_mcp_removed name=%s", server)
+            return {"message": tr("{0} removed.", server)}
+        raise ConnectError(tr("Unknown action."))
+
+    def forget(self) -> dict:
+        raise ConnectError(tr("Remove the servers one by one."))
+
+    def test(self) -> dict:
+        from core import outbound
+        rows = {r["name"]: r["url"] for r in self._rows()}
+        for r in outbound.legacy_servers():
+            rows.setdefault(r["name"], r["url"])
+        if not rows:
+            return {"ok": False, "detail": tr("No server yet."), "facts": []}
+        facts, ok_all = [], True
+        for name in sorted(rows):
+            ok, why = outbound.probe(rows[name], outbound.bearer_for(name) or "", http=self.http)
+            ok_all = ok_all and ok
+            facts.append(tr("{0}: answers", name) if ok else tr("{0}: {1}", name, self._why(why)))
+        return {"ok": ok_all, "detail": tr("Every server answers.") if ok_all else tr("Some servers do not answer."),
+                "facts": facts}
+
+    @staticmethod
+    def _why(code: str) -> str:
+        if code == "key":
+            return tr("the key is refused")
+        if code == "unreachable":
+            return tr("it does not answer at that address")
+        return tr("it answered {0}", code.removeprefix("http_"))
+
+    def adopt(self) -> None:
+        """Once, when the settings are there: servers written by hand in .env move into the card (address in the
+        setting, key through Hephaestus), then their old lines are emptied. On failure they keep working from .env and
+        the next start tries again."""
+        from core import outbound
+        if self._adopted:
+            return
+        self._adopted = True       # set first: the settings change below calls back here
+        legacy = [r for r in outbound.legacy_servers() if outbound.NAME_RE.match(r["name"])]
+        if not legacy:
+            return
+        mine = {r["name"] for r in self._rows()}
+        todo = [r for r in legacy if r["name"] not in mine]
+        try:
+            for r in todo:
+                if r["key"] and not self.connections.has_key(outbound.key_name(r["name"])):
+                    self.connections.save_secret(outbound.key_name(r["name"]), r["key"])
+            if todo:
+                self._put(self._rows() + [{"name": r["name"], "url": r["url"]} for r in todo])
+            self.connections.clear_legacy([e for r in legacy for e in outbound.legacy_envs(r["name"])])
+            logger.info("[🔄] event=external_mcp_adopted_from_env servers=%d", len(legacy))
+        except Exception as exc:  # noqa: BLE001
+            self._adopted = False
+            logger.warning("[🔄] event=external_mcp_adopt_failed error=%s — they keep working from .env",
+                           type(exc).__name__)

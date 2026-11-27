@@ -349,8 +349,9 @@ Hestia's one MCP server (`POST /mcp`, standard MCP over Streamable HTTP).
   PKCE S256, single-use codes, rotating refresh tokens, replay revokes); the WebUI forwards `/.well-known/oauth-*` and
   `/oauth/*` through Hub; `/oauth/authorize` only parks the request: a code exists only after **Consenti** on the
   consent card of *Accessi AI* (behind the WebUI login). A grant is an access of kind `oauth` in the same list.
-- Outbound (third-party MCP servers Hestia may use): credentials are Hecate's, in its `.env` only
-  (`HECATE_MCP_<NAME>_URL/_KEY`); Hecate lists names and status, never a value.
+- Outbound (third-party MCP servers Hestia may use): credentials are Hecate's, linked from the card
+  «External MCP servers» in Connections (setting `hecate.mcp.servers`, keys `HECATE_KEY_MCP_<NAME>`); Hecate lists
+  names and status, never a value.
 - **Hestia inside another AI** (2026-10-30): the repo is also a Claude Code plugin marketplace
   (`.claude-plugin/marketplace.json` → `claude-plugins/hestia`, `claude-plugins/hestia-dev`). The `hestia` mod is a
   client like Telegram: a band above Claude's prompt with modes *off · strumenti · Hestia* (default off: no network,

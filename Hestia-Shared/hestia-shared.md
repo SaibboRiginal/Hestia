@@ -376,7 +376,8 @@ service declares its connection**, the WebUI page **Connections** draws all of t
 - Where things live: an **address** is a Themis setting (declared with `editor="connection:<module>.<id>"`, so
   Settings shows it with «Edit in Connections»); a typed **secret** is `<MODULE>_KEY_<NAME>`, written by Hephaestus
   (`save_secret(s)` → `POST route/hephaestus/api/setup/connection-secret`) and re-read live (`reload_keys`); a
-  **sign-in token** stays in the module's `data/`. `.env` is never edited by hand.
+  **sign-in token** stays in the module's `data/`. `.env` is never edited by hand. `clear_legacy([ENV…])` empties
+  old hand-written lines once their value moved into a card (only names Hephaestus lists for that module).
 - `AddressConnector` is the ready card for "address + optional key + Test" (ComfyUI, Home Assistant): subclass with
   `address_placeholder`, `key_label`, `key_required`, `key_help`, `guide`, and pass `settings`, `setting_key`,
   `probe(address, key)` and `apply(address, key)`; call `apply_now` on warm.

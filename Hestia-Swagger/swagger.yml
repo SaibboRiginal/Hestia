@@ -3268,7 +3268,7 @@ paths:
   /api/gateway/outbound/mcp:
     get:
       tags: [Hecate]
-      summary: Outbound MCP servers from .env (HECATE_MCP_<NAME>_URL / _KEY) — names, host and status, never a key
+      summary: Outbound MCP servers linked from the card «External MCP servers» (setting hecate.mcp.servers + keys HECATE_KEY_MCP_<NAME>; old HECATE_MCP_<NAME>_URL/_KEY still read) — names, host and status, never a key
       servers:
         - url: http://localhost:19003
       responses:
@@ -3492,7 +3492,7 @@ paths:
   /api/gateway/garmin/status:
     get:
       tags: [Hecate]
-      summary: "Garmin {connected, tokens, env_credentials, waiting_code, last_sync, last_error}"
+      summary: "Garmin {connected, tokens, waiting_code, last_sync, last_error}"
       servers:
         - url: http://localhost:19003
       responses:
@@ -7884,7 +7884,7 @@ paths:
   /api/setup/connection-secret:
     post:
       tags: [Hephaestus]
-      summary: "A connection card's keys {module apollo|lares|hecate|hermes, values{<MODULE>_KEY_<NAME>: value}} → written in that module's .env (empty = cleared), re-read live else container re-created → {keys, applied, reloaded, detail}; values never logged or returned"
+      summary: "A connection card's keys {module apollo|lares|hecate|hermes, values{<MODULE>_KEY_<NAME>: value}} → written in that module's .env (empty = cleared), re-read live else container re-created → {keys, applied, reloaded, detail}; values never logged or returned. Old hand-written lines of that module (Hecate: HECATE_MCP_<NAME>_URL/_KEY, GARMIN_EMAIL/PASSWORD) can only be emptied"
       servers:
         - url: http://localhost:19010
       responses:

@@ -189,5 +189,5 @@ then put `CLOUDFLARE_TUNNEL_NAME=hestia` and `CLOUDFLARE_TUNNEL_HOSTNAME=hestia.
 (never in the repo). `cloudflare-tunnel.bat` then runs the named tunnel and prints the MCP address. On the same PC
 you can always use `http://localhost:19015/mcp` without any tunnel.
 
-**Servizi esterni**: third-party MCP servers Hestia may use are listed on the same page; their address and key live
-only in `Hestia-Hecate/app/.env` (`HECATE_MCP_<NAME>_URL`, `HECATE_MCP_<NAME>_KEY`).
+**Servizi esterni**: third-party MCP servers Hestia may use are listed on the same page; add or remove them in
+WebUI → **Connections** → «External MCP servers» (name, address, optional key, «Test»).

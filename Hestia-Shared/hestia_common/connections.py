@@ -164,7 +164,14 @@ class Connections:
     def save_secrets(self, values: dict[str, str]) -> None:
         """Hephaestus writes each ``<MODULE>_KEY_<NAME>`` into this module's ``.env`` and asks it to re-read them (no
         restart). Empty value = remove. Values are never logged."""
-        envs = {self.key_env(name): str(value or "").strip() for name, value in values.items()}
+        self._send({self.key_env(name): str(value or "").strip() for name, value in values.items()})
+
+    def clear_legacy(self, envs: list[str]) -> None:
+        """Remove old lines written by hand in this module's ``.env`` (e.g. ``HECATE_MCP_<NAME>_URL``) once their value
+        moved into a card. Hephaestus accepts only names it lists as old ones of this module, and only to empty them."""
+        self._send({str(e): "" for e in envs})
+
+    def _send(self, envs: dict[str, str]) -> None:
         try:
             resp = requests.post(f"{self.hub_api_url}/route/hephaestus/api/setup/connection-secret",
                                  json={"method": "POST", "headers": {}, "query": {}, "timeout_seconds": 40,

@@ -361,12 +361,6 @@ def _get_mail_provider():
     return mail_gateway.gmail()
 
 
-def _parse_bool(value: str | None, default: bool = False) -> bool:
-    if value is None:
-        return default
-    return str(value).strip().lower() in {"1", "true", "yes", "on"}
-
-
 def _provider_env_is_configured(provider: str) -> bool:
     if provider == "google":
         from providers.google import has_stored_token
@@ -386,15 +380,22 @@ def _provider_env_is_configured(provider: str) -> bool:
     return False
 
 
+def _provider_client_is_set(provider: str) -> bool:
+    """The app of the account is typed in its Connections card (sign-in may still be missing)."""
+    if provider == "google":
+        return all(google_oauth.client_credentials())
+    if provider == "microsoft":
+        from providers import outlook as _outlook
+        return bool(_outlook.client()[0])
+    return False
+
+
 def detect_gateway_providers() -> list[dict[str, object]]:
     providers: list[dict[str, object]] = []
     for provider in ("google", "microsoft"):
-        force_enabled = _parse_bool(
-            os.getenv(f"HECATE_ENABLE_PROVIDER_{provider.upper()}"),
-            default=False,
-        )
+        # Shown once its card in Connections has the app (client) typed; configured once signed in. No env switch.
         configured = _provider_env_is_configured(provider)
-        enabled = force_enabled or configured
+        enabled = configured or _provider_client_is_set(provider)
         if not enabled:
             continue
         providers.append(
@@ -803,8 +804,8 @@ def gateway_providers():
 
 @app.get("/api/gateway/outbound/mcp")
 def gateway_outbound_mcp():
-    """Third-party MCP servers Hestia may use (credentials in .env, Hecate's): names, host and status only."""
-    return {"status": "ok", "servers": outbound_servers(), "how_to": OUTBOUND_HOW_TO}
+    """Third-party MCP servers Hestia may use (card «External MCP servers» in Connections): names, host and status only."""
+    return {"status": "ok", "servers": outbound_servers(hecate_settings), "how_to": OUTBOUND_HOW_TO}
 
 
 @app.get("/api/gateway/auth/status")
@@ -1938,6 +1939,27 @@ connections.register(connections.GarminConnector(
     first_sync=lambda: threading.Thread(target=lambda: devices_api.garmin_sync({"days": 2}), daemon=True,
                                         name="garmin-first-sync").start()))
 connections.register(connections.PhoneConnector(devices_api.phone_status))
+external_mcp = connections.register(connections.ExternalMcpConnector(settings=hecate_settings))
+
+
+def _adopt_old_env_lines() -> None:
+    """Lines written by hand in .env before the cards: external MCP servers move into their card; an old Garmin
+    email/password pair is emptied once Garmin has its tokens (it was only used to get them)."""
+    external_mcp.adopt()
+    if devices_api.garmin.has_tokens() and (os.getenv("GARMIN_EMAIL") or os.getenv("GARMIN_PASSWORD")):
+        try:
+            connections.hub.clear_legacy(["GARMIN_EMAIL", "GARMIN_PASSWORD"])
+            logger.info("[🔄] event=garmin_env_pair_cleared reason=tokens_present")
+        except Exception as exc:  # noqa: BLE001 — stays there, unused; the next start tries again
+            logger.warning("[🔄] event=garmin_env_pair_clear_failed error=%s", type(exc).__name__)
+
+
+def _on_settings_for_old_env(_changed: dict) -> None:
+    if hecate_settings._loaded and not external_mcp._adopted:
+        threading.Thread(target=_adopt_old_env_lines, daemon=True, name="old-env-adopt").start()
+
+
+hecate_settings.on_change(_on_settings_for_old_env)
 app.include_router(connections.hub.router())
 
 

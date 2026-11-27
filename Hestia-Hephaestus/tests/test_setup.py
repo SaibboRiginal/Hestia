@@ -303,3 +303,17 @@ def test_connection_secrets_reload_live_else_recreate(tmp_path):
     service.hub_call = lambda *a, **k: {"keys": []}
     out = service.set_connection_secrets("lares", {"LARES_KEY_HOME_ASSISTANT": "tok2"})
     assert recreated == ["lares"] and out["applied"] and not out["reloaded"]
+
+
+def test_old_hand_written_lines_can_only_be_emptied(tmp_path):
+    """2026-11-27: HECATE_MCP_<NAME>_URL/_KEY and GARMIN_EMAIL/PASSWORD moved into cards → Hephaestus may empty them."""
+    repo = _repo(tmp_path)
+    (repo / "Hestia-Hecate/app").mkdir(parents=True)
+    (repo / "Hestia-Hecate/app/.env").write_text("HECATE_MCP_NOTION_URL=https://x/mcp\nGARMIN_PASSWORD=pw\n")
+    with pytest.raises(secrets.SecretRefused):
+        secrets.set_connection_secret(repo, "hecate", "HECATE_MCP_NOTION_URL", "https://other")
+    with pytest.raises(secrets.SecretRefused):
+        secrets.set_connection_secret(repo, "apollo", "GARMIN_PASSWORD", "")
+    secrets.set_connection_secret(repo, "hecate", "HECATE_MCP_NOTION_URL", "")
+    secrets.set_connection_secret(repo, "hecate", "GARMIN_PASSWORD", "")
+    assert (repo / "Hestia-Hecate/app/.env").read_text() == "HECATE_MCP_NOTION_URL=\nGARMIN_PASSWORD=\n"
