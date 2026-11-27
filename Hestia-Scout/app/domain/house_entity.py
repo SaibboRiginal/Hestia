@@ -93,6 +93,9 @@ class HousePayload(BaseModel):
     additional_features: list[str] = Field(default_factory=list)
     listing: Optional[HouseListingContext] = None
     extras: dict = Field(default_factory=dict)
+    # Steps still to do (listing_content_enrichment, event_dispatch): retried by the reconcile. Dropped by the
+    # model before 2026-11-27, so a page that could not be read the first time was never read again.
+    pending_steps: dict[str, bool] = Field(default_factory=dict)
 
 
 class HouseEntity(BaseModel):
@@ -360,7 +363,11 @@ def _to_int_or_none(value) -> Optional[int]:
         return None
     if isinstance(value, int):
         return value
-    match = re.search(r"\d+", str(value))
+    if isinstance(value, float):
+        return int(value)
+    # «€ 250.000» / «250 000» / «1'200»: thousands separators first, or the price became 250.
+    text = re.sub(r"(?<=\d)[.\s'’](?=\d{3}(?!\d))", "", str(value))
+    match = re.search(r"\d+", text)
     if not match:
         return None
     try:

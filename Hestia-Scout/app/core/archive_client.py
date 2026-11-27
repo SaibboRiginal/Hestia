@@ -98,22 +98,12 @@ class ArchiveClient:
         Used for pre-parse deduplication: the result is a local cache that
         avoids per-URL round trips to Archive during the classification phase.
         """
-        records = self.get_entity_records(
-            domain=domain, status=status, limit=limit)
-        return {str(r["entity_id"]) for r in records if r.get("entity_id")}
+        return set(self.get_entity_map(domain=domain, status=status, limit=limit))
 
-    def get_entity_by_id(self, entity_id: str) -> dict | None:
-        """Fetch a single entity record by its entity_id."""
-        try:
-            payload = self._route_archive(
-                "GET", f"api/entities/{entity_id}", query={}, timeout=6
-            )
-            if isinstance(payload, dict):
-                return payload
-        except Exception as e:
-            logger.warning(
-                "event=failed_fetch_entity_entity_id_error Failed to fetch entity | entity_id=%s error=%s", entity_id, e)
-        return None
+    def get_entity_map(self, domain: str, status: str = "active", limit: int = 5000) -> dict[str, dict]:
+        """``entity_id → record`` of a domain (one call; Archive has no route to read one entity by id)."""
+        records = self.get_entity_records(domain=domain, status=status, limit=limit, include_embedding=False)
+        return {str(r["entity_id"]): r for r in records if isinstance(r, dict) and r.get("entity_id")}
 
     def cleanup_entities(self, domain: str, required_fields: list[str], require_created_at: bool = True, dry_run: bool = False) -> dict:
         payload = {

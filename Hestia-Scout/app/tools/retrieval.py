@@ -61,21 +61,26 @@ class ScoutRetrievalService:
         search_url = self.archive_api_url.replace(
             "/archive", "/entities/search")
 
+        # Archive compares strictly (> and <): half a unit keeps the bound itself in
+        # («at least 3 rooms» used to drop the 3-room flats, «up to 200000» the house at 200000).
         filters_gt = {}
         filters_lt = {}
         if req.price_min is not None:
-            filters_gt["price"] = req.price_min
+            filters_gt["price"] = req.price_min - 0.5
         if req.rooms_min is not None:
-            filters_gt["rooms"] = req.rooms_min
+            filters_gt["rooms"] = req.rooms_min - 0.5
         if req.surface_min is not None:
-            filters_gt["surface_m2"] = req.surface_min
+            filters_gt["surface_m2"] = req.surface_min - 0.5
         if req.price_max is not None:
-            filters_lt["price"] = req.price_max
+            filters_lt["price"] = req.price_max + 0.5
+        # A city without «nearby» = houses that name it (Archive text match on the listing); with «nearby» the
+        # distance filter below decides, so the towns around it stay in.
+        text_filters = {"city": req.city} if req.city and not req.nearby else {}
 
         payload = {
             "domain": self.target_domain,
             "limit": min(max(req.limit * 5, 30), 100),
-            "filters": {},
+            "filters": text_filters,
             "filters_gt": filters_gt or None,
             "filters_lt": filters_lt or None,
             "sort_by": "price" if req.price_max is not None else None,
@@ -250,12 +255,14 @@ class ScoutRetrievalService:
             return ""
         try:
             n = int(float(value))
-            return tr("{0} rooms", n) if n > 1 else "1 locale"
+            return tr("{0} rooms", n) if n > 1 else tr("1 room")
         except (ValueError, TypeError):
             return ""
 
     def search(self, req: RealEstateSearchRequest) -> list[dict]:
-        entities = self._fetch_archive_entities(req)
+        # The houses the owner discarded stay out of every search (they still are on the page under «Discarded»).
+        entities = [e for e in self._fetch_archive_entities(req)
+                    if str(e.get("user_flag") or "").strip().lower() != "discarded"]
 
         center_geo = None
         if req.city:

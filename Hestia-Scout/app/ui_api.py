@@ -170,7 +170,7 @@ def to_view(record: dict) -> dict:
         "parking": bool(specs.get("garage_or_parking")),
         "image": image,
         "status": status,
-        "status_label": STATUS_LABELS[status],
+        "status_label": tr(STATUS_LABELS[status]),     # shown as is on the badge: owner's language
         "flag": flag if flag in USER_FLAGS else "",
         "source": p.get("source_site") or "",
         "created_at": record.get("created_at"),
@@ -328,7 +328,7 @@ def compute_stats(views: list[dict], city: str = "") -> dict:
         "available": sum(1 for v in active if v["status"] == "available"),
         "avg_price": round(sum(prices) / len(prices)) if prices else None,
         "avg_ppm2": round(sum(ppm2) / len(ppm2)) if ppm2 else None,
-        "by_status": [{"status": s, "label": STATUS_LABELS[s], "count": c}
+        "by_status": [{"status": s, "label": tr(STATUS_LABELS[s]), "count": c}
                       for s, c in Counter(v["status"] for v in active).most_common()],
         "weeks": weeks,
         "price_by_city": price_by_city,
@@ -378,7 +378,7 @@ def build_router(store: ListingStore, run_cycle: Callable[[], dict], cycle_statu
         items.sort(key=key, reverse=reverse)
         cities = sorted({v["city"] for v in views if v["city"]})
         return {"total": len(items), "offset": offset, "items": [_public(v) for v in items[offset:offset + limit]],
-                "cities": cities, "statuses": [{"value": k, "label": l} for k, l in STATUS_LABELS.items()]}
+                "cities": cities, "statuses": [{"value": k, "label": tr(l)} for k, l in STATUS_LABELS.items()]}
 
     @router.get("/listings/{key}")
     def listing(key: str):

@@ -858,16 +858,27 @@
   "summary": "Changes a deadline."
  },
  "scout.search": {
-  "summary": "Search real estate listings by query, city, price range, surface, rooms."
+  "summary": "Search the houses found in the listing emails: city, price, rooms, surface.",
+  "params": {
+   "query": "Free words",
+   "city": "City or area",
+   "nearby": "Also the places around",
+   "radius_km": "Distance in km",
+   "price_min": "Lowest price",
+   "price_max": "Highest price",
+   "rooms_min": "At least these rooms",
+   "surface_min": "At least these m²",
+   "limit": "How many"
+  }
  },
  "scout_fetch": {
-  "summary": "Check listing emails now: Iris passes the last day's listing mails again and Scout parses and extracts them."
+  "summary": "Check the listing emails now: the ones of the last day are read again and their houses taken out."
  },
  "scout_reconcile": {
-  "summary": "Run Scout data reconciliation maintenance."
+  "summary": "Check the saved houses again: position, link, listings sold or removed."
  },
  "scout_stats": {
-  "summary": "Return real_estate domain statistics: total entities, breakdown by listing status, and date range of when listings were added."
+  "summary": "How many houses are followed, by state, and when the latest arrived."
  },
  "selfcare_check": {
   "summary": "Compatibility of the actives: of a routine, or of a product / list of actives against those in use."

@@ -1315,28 +1315,39 @@ components:
 
     RealEstateSearchRequest:
       type: object
+      description: >-
+        Bounds are inclusive. A city without nearby keeps the houses that name it; with nearby the ones within
+        radius_km of it. Discarded houses never come back. The legacy dicts filters {city}, filters_gt
+        {price, rooms, surface_m2} and filters_lt {price} are mapped on the flat fields (a flat field wins).
       properties:
         query:
           type: string
         limit:
           type: integer
-          default: 20
+          default: 12
           minimum: 1
           maximum: 50
         city:
           type: string
         nearby:
-          type: string
+          type: boolean
         radius_km:
           type: number
+          default: 20
         price_max:
           type: number
         price_min:
           type: number
         rooms_min:
-          type: integer
+          type: number
         surface_min:
           type: number
+        filters:
+          type: object
+        filters_gt:
+          type: object
+        filters_lt:
+          type: object
 
 # ─────────────────────────────────────────────────────────────────────────────
 #  Paths
@@ -7144,7 +7155,7 @@ paths:
               $ref: "#/components/schemas/RealEstateSearchRequest"
       responses:
         "200":
-          description: List of real estate entity items
+          description: "{text (one line per house, linked), domain, count, display (Telegram card)}"
 
   # ══════════════════════════════════════════════════════════════════════════
   #  CHRONOS — 19007

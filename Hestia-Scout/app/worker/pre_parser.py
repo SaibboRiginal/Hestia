@@ -48,6 +48,7 @@ class EmailPreParseResult:
         "record_id_to_urls",
         "record_id_to_clean_text",
         "unclassified_record_ids",
+        "url_text",
     )
 
     def __init__(self) -> None:
@@ -55,6 +56,8 @@ class EmailPreParseResult:
         self.record_id_to_urls: dict[int, list[str]] = {}
         self.record_id_to_clean_text: dict[int, str] = {}
         self.unclassified_record_ids: list[int] = []
+        # (record id, url) → the part of that email about this listing only (status scan of known houses).
+        self.url_text: dict[tuple[int, str], str] = {}
 
 
 # ─────────────────────────────────────────────────────────────────────
@@ -91,6 +94,8 @@ def pre_parse_records(records: list[dict]) -> EmailPreParseResult:
         else:
             for url in found_urls:
                 result.url_to_record_ids.setdefault(url, []).append(record_id)
+            for url, text in listing_segments(clean_text).items():
+                result.url_text[(record_id, url)] = text
 
     return result
 
@@ -127,6 +132,28 @@ def select_representative_records(
 # ─────────────────────────────────────────────────────────────────────
 #  Helpers
 # ─────────────────────────────────────────────────────────────────────
+
+def listing_segments(clean_text: str) -> dict[str, str]:
+    """Split an alert email by listing: each URL gets its anchor text and what follows its link up to the next
+    listing's link. An alert lists many houses, and a status word in one description («in trattativa») used to
+    change the status of every known house of the same email."""
+    segments: dict[str, list[str]] = {}
+    matches = list(_PROPERTY_LINK_RE.finditer(clean_text))
+    covered = -1
+    for i, match in enumerate(matches):
+        url = normalize_listing_url(match.group(1).strip())
+        if match.start() < covered:                     # a second link of the same house, already in its part
+            continue
+        start = clean_text.rfind("\n", 0, match.start()) + 1      # the anchor text sits on the link's line
+        end = len(clean_text)
+        for later in matches[i + 1:]:
+            if normalize_listing_url(later.group(1).strip()) != url:
+                end = clean_text.rfind("\n", match.end(), later.start()) + 1 or later.start()
+                break
+        covered = end
+        segments.setdefault(url, []).append(clean_text[start:end])
+    return {url: "\n".join(parts) for url, parts in segments.items()}
+
 
 def _extract_normalized_urls(clean_text: str) -> list[str]:
     raw_urls = _PROPERTY_LINK_RE.findall(clean_text)

@@ -2,6 +2,10 @@
 
 One line per finished task (details in `docs/work/<task>/`).
 
+## 2026-11-27
+
+- Houses: the Immobiliare alert emails give their houses too, no listing is lost when the model is busy or offline (the emails wait), houses are no longer deleted when the map cannot place them nor marked sold by a word in the page menu, the chat search really filters by city, price, rooms and surface (bounds included, discarded houses out), alerts «houses in <city>» match, prices like «€ 250.000» are read right, numbers and states in your language → `docs/work/2026-11-27-scout-house-hunt-review/` [ext-chat]
+
 ## 2026-11-19
 
 - No Italian in the code, wave 1: gate `check_english.py` (ratchet to zero), tool names, areas, dossier folders, Aphrodite, Apollo, ChatHub in English; owner's words in `locales/<lang>/words.json` (`docs/work/2026-11-19-no-italian-in-code`) [ext-chat]

@@ -176,7 +176,7 @@ their own cadence (`scout.reconcile.every_cycles` counts cycles, now one per pus
 - `worker/extractor.py`: email sanitization, LLM extraction, payload enrichment (geocoding, Atlas page scrape).
 - `domain/listing_status.py`: `ListingStatus` enum, `detect_listing_status()` regex scanner, `coerce_listing_status()` safe mapper.
 - `domain/house_entity.py`: `HouseEntity` and `HousePayload` Pydantic models.
-- `core/archive_client.py`: Archive API client including `get_all_entity_ids()` and `get_entity_by_id()`.
+- `core/archive_client.py`: Archive API client including `get_entity_map()` (`entity_id → record`, one call) and `get_all_entity_ids()`.
 - `tools/retrieval.py`: module query translation + scoring/filtering.
 - `tools/geocoding.py`: geocoding + distance calculations.
 - `tools/schemas.py`: Pydantic request contracts.
@@ -257,7 +257,7 @@ mail cycle brings listings back anyway). Settings travel through Themis.
 ## Constraints
 
 - Scout never accesses the database directly — all reads/writes go through Archive.
-- Scout never calls Oracle — it only produces data for Oracle to consume.
+- Scout calls Oracle only for the extraction (`/api/llm/generate`, use case `scout.listings`); it never holds a model key or choice.
 - Scout never processes data that isn't in the `real_estate` domain.
 - LLM evaluator is internal to Scout and not shared with other services.
 - Scout emits generic events only (`event_type`, `domain`, `entity_id`, `payload`) without notification channel logic.
@@ -296,3 +296,33 @@ The Hub registration declares `capabilities.when_to_use` (one line in the assist
 **2026-11-16** (dossier `docs/work/2026-11-16-name-everywhere`): the fixed texts of this module that speak of the assistant
 as a person (pages, help, agenda titles, notes) write `{assistant}` and say the name the owner chose; texts about the
 app keep «Hestia».
+
+## House-hunt review (2026-11-27, dossier `docs/work/2026-11-27-scout-house-hunt-review`)
+- **Links**: `worker/extractor.listing_link()` keeps every portal link that is a listing (Idealista `immobile…`,
+  Immobiliare `/annunci/`), also behind a tracking redirect (`?url=…`). Before, only Idealista links survived the
+  cleaning, so the Immobiliare alerts gave no house.
+- **No mail lost**: when the model does not answer (out of quota, offline, timeout) the emails of that batch and
+  the following ones stay unread in Archive and come back at the next cycle; an answer that is not valid JSON is
+  retried 3 times (`MAX_UNREADABLE_ATTEMPTS`), then the email is marked read. No more `debug_broken_batch_*.txt`
+  in the working folder (the answer start goes to the log).
+- **Status of known houses**: scanned only on the part of the email about that house (`pre_parser.listing_segments`),
+  not on the whole alert; the known records come from one Archive call (`get_entity_map`, the old
+  `GET /api/entities/{id}` does not exist). Status words are narrow (`scout.status.*`, `scout.page.sold`): bare
+  «venduto», «trattativa», «trattativa riservata» (= price on request), «affittato», «investimento immobiliare»
+  are gone; the page check reads the visible text, not scripts and menus; a bot-check page is retried later.
+- **Reconcile**: deletes only rows without `url` (coordinates were required: every house the map service could not
+  place was deleted); each page recheck is stamped (`_last_url_check_ts`) so a page is opened at most once a day,
+  and 3 failed fetches in a row stop the round; `pending_steps` is kept in `HousePayload`, so a page not read the
+  first time is retried.
+- **Prices**: «€ 250.000» → 250000 (`_to_int_or_none` read 250).
+- **Search** (`scout.search` / `POST /api/tools/real_estate/search`): flat parameters `query, city, nearby,
+  radius_km, price_min, price_max, rooms_min, surface_min, limit`; the old `filters`/`filters_gt`/`filters_lt` dicts
+  are mapped on them (they were ignored: nothing was filtered). Bounds inclusive; a city keeps the houses that name
+  it (or, with `nearby`, the ones within `radius_km`); discarded houses never come back. The MCP handler returns the
+  same `{text, count, display}` as the REST path.
+- **Alerts**: the `entity.upserted` payload also carries `city`, `rooms`, `surface_m2`, `bedrooms`, `bathrooms` at top
+  level, so Hermes subscription filters like `city`, `min_rooms`, `max_price`, `min_surface_m2` match.
+- **Texts**: `scout_stats` counts every active listing (not the 100 newest) and names the states with the plugin's
+  labels in the owner's language; status labels of the plugin API go through `tr`; «1 room» translated; tool
+  summaries in `locales/*/tools.json` without module names.
+
