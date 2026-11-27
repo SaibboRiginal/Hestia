@@ -5,4 +5,4 @@
 - [x] Provider switches removed (listed once the app is typed)
 - [x] Garmin env pair: used once, emptied when tokens exist
 - [x] Tests, locales, docs, swagger
-- [ ] precheck, PR, CI, merge
+- [x] precheck; PR, CI, merge
