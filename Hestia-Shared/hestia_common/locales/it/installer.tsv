@@ -164,3 +164,10 @@ You manage it from the central home: System → Machines (also «Use its graphic
 {0}: did not work, retrying in {1}s…	{0}: non è andata, riprovo tra {1}s…
 …still waiting for Docker ({0}s)	…aspetto ancora Docker ({0}s)
 Opening Docker Desktop: if it is the first time, accept the license in its window.	Apro Docker Desktop: se è la prima volta, accetta la licenza nella sua finestra.
+another folder	un'altra cartella
+Another Hestia is already on ({0}) and holds the ports Hestia needs.	C'è già un'altra Hestia accesa ({0}) e tiene occupate le porte che servono.
+[Hestia] Stop it and go on? [Y/n]	[Hestia] La fermo e vado avanti? [S/n]
+Stop it and go on? [Y/n]	La fermo e vado avanti? [S/n]
+stop the other Hestia first (Docker Desktop, Containers, Stop), then run again.	prima ferma l'altra Hestia (Docker Desktop, Containers, Stop), poi rilancia.
+stop the other Hestia first (docker stop on its containers), then run again.	prima ferma l'altra Hestia (docker stop sui suoi container), poi rilancia.
+Other Hestia stopped: its data stays where it was.	Altra Hestia fermata: i suoi dati restano dove erano.

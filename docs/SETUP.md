@@ -9,7 +9,7 @@
 
 `install.ps1` (Windows; `Install-Hestia.cmd` is its double-click launcher) and `install.sh` (Linux; macOS only on the
 simple path, Homebrew + Docker Desktop) do, in order: check the PC (RAM, disk ≥ 20 GB, internet, virtualization,
-free ports) → git → WSL2 + Docker Desktop (Windows) / Docker Engine + compose (Linux) → Ollama on the host and the
+free ports: a busy one is named with what holds it, and another Hestia already on is offered to be stopped) → git → WSL2 + Docker Desktop (Windows) / Docker Engine + compose (Linux) → Ollama on the host and the
 default models → Hestia where you launch it (that folder if it is already Hestia, otherwise a `Hestia` folder inside it;
 from a system folder or a drive root `%USERPROFILE%\Hestia` / `~/Hestia`) → `.env` files (`tools/init_env.py --generate-secrets`
 inside a throwaway `python:3.12-slim` container: random `HESTIA_DB_PASSWORD` on a new database and
