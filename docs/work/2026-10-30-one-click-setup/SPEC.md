@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Version** | 2.26 |
+| **Version** | 2.28 |
 | **Source** | user via Project thread (Marko 2026-10-30: «possiamo fare un setup in one click per windows e linux e mac os? che fa letteralmente tutto con fallback e no fail? magari si puo pensare che hestia si costruisce da sola? si mette su da sola ma essendo su docker magari non so se ha accesso al host?») |
 | **Status** | Approved by Marko 2026-10-30 («principale è Windows e linux. mac os solo se semplice. rendilo facile da configurare tutte le parti importanti e necessarie come oracle ovviamente») — implemented (all phases on main; Marko real run pending) |
 
@@ -118,7 +118,7 @@ sentence). State in `<install dir>/.hestia-install/state.json` + log `install.lo
 | 2 | Docker | WSL2 (`wsl --install`, reboot + resume via RunOnce) → winget `Docker.DockerDesktop` → direct installer | `get.docker.com` → distro package; add user to `docker` group | Homebrew cask (else: «installa Docker Desktop da docker.com e rilancia») |
 | 3 | Start Docker and wait until `docker info` answers (up to 5 min, progress shown) | ✔ | systemd | ✔ |
 | 4 | GPU: detect NVIDIA; Linux installs `nvidia-container-toolkit`; none = CPU + cloud models (said once, not an error) | driver check | ✔ | Metal via native Ollama |
-| 5 | Ollama on the host (native, so Mac uses Metal and Windows the GPU without extra setup) | winget `Ollama.Ollama` | official `install.sh` | Homebrew → app |
+| 5 | Ollama on the host (native, so Mac uses Metal and Windows the GPU without extra setup); no model downloaded here (v2.28): the setup downloads only what the owner picks | winget `Ollama.Ollama` | official `install.sh` | Homebrew → app |
 | 6 | Hestia: clone into `C:\Hestia` / `~/Hestia` (asks only if it exists and is not Hestia) or `git pull` | ✔ | ✔ | ✔ |
 | 7 | `.env` files: `tools/init_env.py` run **inside** a throwaway `python:3.12-slim` container (no Python on the host); random `HESTIA_DB_PASSWORD`, `WEBUI_SECRET_KEY`, `WEBUI_ADMIN_SECRET`, `WEBUI_ICS_KEY` generated only where empty | ✔ | ✔ | ✔ |
 | 8 | `hestia_net`; **pull ready images** from `ghcr.io/saibboriginal/hestia-<svc>` (amd64 + arm64, built by CI for every **release**, §4.4); the installer takes the latest release; local `docker compose build` only as fallback (retry per service, then `--no-cache` for the one that failed) | ✔ | ✔ | ✔ |

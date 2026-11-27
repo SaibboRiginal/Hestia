@@ -222,6 +222,38 @@ function Invoke-Compose {
     } finally { Pop-Location }
 }
 
+# The download of the ready-made modules takes minutes: every module that arrives is shown (name, done/total), so a
+# slow line never looks frozen. The full compose output still goes to the log.
+function Invoke-ComposePull {
+    $files = @('-f', 'docker-compose.global.yml')
+    if ($script:VersionTag -and (Test-Path (Join-Path $Dir 'docker-compose.images.yml'))) { $files += @('-f', 'docker-compose.images.yml') }
+    if ($DryRun) { Write-Host "  [dry-run] docker compose pull $($args -join ' ')"; return $true }
+    $env:HESTIA_VERSION = $script:VersionTag.TrimStart('v')
+    $script:PullSeen = @{}; $script:PullDone = @{}
+    Push-Location $Dir
+    try {
+        Write-Log "compose args=`"pull $($args -join ' ')`""
+        & docker compose -p $Project @files pull @args 2>&1 | ForEach-Object {
+            $line = [string]$_
+            # Layer progress (Downloading/Extracting ... many lines a second) stays out of the log: writing each one slowed
+            # the download itself on Windows and buried what matters.
+            if ($line -match '^\s*[0-9a-f]{12}\s+(Downloading|Extracting|Waiting|Verifying)') { return }
+            Write-Log "  | $line"
+            if ($line -match '(\S+)\s+(Pulling|Pulled|Error)\b' -and $Matches[1] -notmatch '^[0-9a-f]{12}$') {
+                $raw = $Matches[1]; $what = $Matches[2]     # an image (ghcr.io/x/hestia:hub-1.0.0, postgres:16) or a service
+                $name = if ($raw -match ':([a-z0-9]+)-\d+\.\d+\.\d+') { $Matches[1] } else { ($raw -replace ':.*$', '') -replace '^.*/', '' }
+                $script:PullSeen[$name] = $true
+                if ($what -ne 'Pulling' -and -not $script:PullDone.ContainsKey($name)) {
+                    $script:PullDone[$name] = $true
+                    $mark = if ($what -eq 'Pulled') { T 'ready' } else { T 'not downloaded' }
+                    Write-Host ("         {0} {1} ({2}/{3})" -f $name, $mark, $script:PullDone.Count, $script:PullSeen.Count)
+                }
+            }
+        }
+        return ($LASTEXITCODE -eq 0)
+    } finally { Pop-Location }
+}
+
 # -- 0. preflight -------------------------------------------------------------------------------------------------
 function Test-Preflight {
     Say (T 'Checking the computer...')
@@ -357,7 +389,7 @@ function Test-Ollama { try { return ((Invoke-WebRequest -ErrorAction Stop 'http:
 
 function Install-OllamaIfMissing {
     Update-PathFromRegistry
-    if ((Test-Command 'ollama') -or (Test-Ollama)) { if (-not (Test-Ollama)) { Start-OllamaApp }; Get-DefaultModels; return }
+    if ((Test-Command 'ollama') -or (Test-Ollama)) { if (-not (Test-Ollama)) { Start-OllamaApp }; return }
     Say (T 'Installing Ollama (the models on your computer)...')
     $ok = Invoke-Retry (T 'Installing Ollama') { Install-Winget 'Ollama.Ollama' }
     if (-not $ok) {
@@ -368,7 +400,6 @@ function Install-OllamaIfMissing {
     if (-not $ok) { Note (T 'Ollama did not install: Hestia will use cloud models. You can install it later from https://ollama.com.'); return }
     Start-OllamaApp
     if ($script:Role -eq 'satellite') { Set-OllamaOnLan }
-    Get-DefaultModels
 }
 
 # On a satellite the central one's brain uses this graphics card: Ollama must listen on the home network too.
@@ -384,22 +415,8 @@ function Set-OllamaOnLan {
     Note (T 'Ollama now listens on the home network (port 11434): if Windows asks to allow it on private networks, answer Allow. Do not open that port on the router.')
 }
 
-# Oracle's default chains (llm_chains.py): the embedding model is needed for memory, the chat one for local answers.
-$DefaultModels = @('qwen3-embedding:0.6b', 'gemma4:e4b')
-
-function Get-DefaultModels {
-    Update-PathFromRegistry
-    if (-not (Test-Command 'ollama')) { return }
-    $have = @()
-    if (-not $DryRun) { $have = @(& ollama list 2>$null | ForEach-Object { ($_ -split '\s+')[0] }) }
-    foreach ($model in $DefaultModels) {
-        if ($have -contains $model) { continue }
-        Say (T 'Downloading the model {0} (only once)...' $model)
-        if (-not (Invoke-Retry (T 'Downloading {0}' $model) { Invoke-Step 'ollama' @('pull', $model) })) {
-            Note (T 'The model {0} did not download: run again later, meanwhile Hestia uses the cloud if you have a key.' $model)
-        }
-    }
-}
+# No model is downloaded here: the guided setup shows what is already on the computer and downloads only what the
+# owner picks, with its progress (Oracle /api/llm/setup/pull).
 
 function Start-OllamaApp {
     if ($DryRun -or (Test-Ollama)) { return }
@@ -590,7 +607,7 @@ function Start-Stack {
     $roleServices = @(Get-RoleServices)
     if ($script:VersionTag) {
         Say (T 'Downloading the ready-made modules of version {0}...' ($script:VersionTag))
-        if (-not (Invoke-Retry (T 'Downloading the modules') { Invoke-Compose pull --ignore-pull-failures @roleServices })) { Note (T 'Some modules did not download: I build them here.') }
+        if (-not (Invoke-Retry (T 'Downloading the modules') { Invoke-ComposePull --ignore-pull-failures @roleServices })) { Note (T 'Some modules did not download: I build them here.') }
     } else {
         Say (T 'Building the modules (the first time takes a while, then it is quick)...')
         if (-not (Invoke-Retry (T 'Building the modules') { Invoke-Compose build @roleServices })) {

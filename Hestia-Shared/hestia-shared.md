@@ -607,3 +607,5 @@ listing whose price fell. No library change.
 No library change.
 
 **2026-11-27 (installer busy ports, dossier `docs/work/2026-10-30-one-click-setup` v2.26)**: Italian texts of the new installer messages (a busy port named with its holder, «another Hestia is on, stop it?») added to `locales/it/installer.tsv`. No library change.
+
+**2026-11-27 (installer download progress, same dossier v2.27)**: Italian of «ready» / «not downloaded» added to `locales/it/installer.tsv`. No library change.

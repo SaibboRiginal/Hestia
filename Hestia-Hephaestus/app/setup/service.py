@@ -224,7 +224,7 @@ class SetupService:
             if (step.get("provider") or "ollama") == "ollama" and step["model"] not in pulls:
                 pulls.append(step["model"])
         if not emb_steps and local_model and recipe != "cloud":
-            # The memory's model: the installer already pulls the default one, so this is usually «already there».
+            # The memory's model: downloaded here when missing (the installer pulls no model).
             pulls.append(EMBEDDING_MODEL)
         for v in (modes or {}).values():
             for step in ([s for s in v.get("steps") or [] if isinstance(s, dict)] or [v]):
