@@ -11,4 +11,5 @@
 - [x] §4.5 listing told again on price drop (Hermes)
 - [x] §4.6 Hub fails over a write only when never reached
 - [x] Docs (Telegram, WebUI, Hermes, Hub, ARCHITECTURE), root CHANGELOG
-- [ ] precheck 0 failed, PR green and merged (v1.1)
+- [x] precheck 0 failed
+- [ ] PR green and merged (v1.1)
