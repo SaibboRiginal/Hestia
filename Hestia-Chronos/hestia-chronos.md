@@ -224,6 +224,12 @@ Actions are `{service, method, path, body, query, timeout_seconds}` executed **t
 (setting `chronos.agenda.tick_seconds`, 60 s). Recurring jobs fire only their latest due occurrence (no storm after downtime).
 Recurrence is evaluated in local wall time (`tz`, default `TZ`/Europe/Rome), DST-safe.
 
+Reading (2026-11-27): the worker and every live view ask Archive only for unfinished items
+(`exclude_statuses=cancelled,completed`), an item is looked up by its key (`external_ids`), finished ones included.
+Finished one-offs stay as history and used to push new tasks past the 1000-row limit (ordered by start), so those
+tasks never fired. The hourly re-assert of a module rule writes only when the rule really changed, and re-reads the
+item under the lock first: it never puts back an older `last_fired` (a job fired twice).
+
 ### Rules are data
 
 - Modules **register defaults** with `POST /api/agenda/register {owner, rules:[{key, type, title, start_at, end_at,

@@ -87,7 +87,7 @@ def test_oracle_question_frames_route_ask_ids_here(env):
     core, _ = env
     from telegram_bot.services.chat_service import send_oracle_questions
     send_oracle_questions(12345, "s-1", [], [{"question_id": "ask_4", "header": "Confermi?", "kind": "confirm",
-                                               "options": [{"label": "Sì", "value": "si"}, {"label": "No", "value": "no"}]}])
+                                               "options": [{"label": "Sì", "value": "yes"}, {"label": "No", "value": "no"}]}])
     from telegram_bot import store
     entry = store.get_pending(_token(core))
     assert entry["action"] == "assistant_question" and entry["kind"] == "confirm"

@@ -58,6 +58,9 @@ Hub from that module (e.g. `hecate:/api/gateway/weather/places`).
   (contract shared with `docs/work/2026-10-10-hermes-global-notifications/`) → applied (history actor = proposer) → `settings.changed` notice.
   Later answers get `409 {status: already_decided}`. Closing (approved/rejected/expired) emits
   `settings.proposal_closed` with `closes: settings.proposal:<id>`, `decision`, `outcome_text`.
+  An answer looks its proposal up by id (`proposal_id` filter), so a proposal older than the newest 200 is still
+  found (before 2026-11-27 it answered «unknown proposal»). The card text never names a module: who proposes is
+  «{assistant}», «{assistant} (chat)» or «<name> (external AI)», and labels and choices are in the owner's language.
 - **Unknown key** (real-model bench, 2026-10-30): a proposal for a key that does not exist answers 404 «… cerca la
   chiave esatta con settings_search. Chiavi vicine: …» (keys matching the words of the guess, else the personal
   ones, chat first) so the model retries with the right key. Confirm cards and messages show option labels

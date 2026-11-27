@@ -13,14 +13,19 @@ Flow
    channel_target) key and the flush timer is (re)started.
 3. Every new entity resets the timer, so a burst settles into a single dispatch.
 4. When the timer fires, Oracle narrates all queued entities as a single
-   conversational Italian message. If Oracle fails, a compact HTML fallback
+   message in the owner's language. If Oracle fails, a compact HTML fallback
    list is sent instead.
+5. Every queued entity has an Archive row (channel ``batch``, state ``queued``) that blocks a duplicate
+   notification. The row becomes ``delivered`` when the batch is published and ``failed`` when Hermes gives up
+   (so the next upsert of that entity can notify again); rows still ``queued`` at startup are put back in their
+   batch (``restore_queued``): a restart during the settling window loses nothing.
 """
 from __future__ import annotations
 
 import logging
 import threading
 from dataclasses import dataclass, field
+from html import escape
 
 from typing import Callable
 
@@ -44,6 +49,7 @@ class _BatchEntry:
     domain: str
     filters: dict
     entities: list[dict] = field(default_factory=list)
+    row_ids: list[str] = field(default_factory=list)   # Archive rows (channel batch) of the queued entities
     timer: threading.Timer | None = None
     attempts: int = 0
 
@@ -55,11 +61,25 @@ _queues_lock = threading.Lock()
 
 # (subscription_id, audience_key, domain, text) -> published; set by HermesService.
 _publisher: Callable[..., bool] | None = None
+# (row_id, lifecycle_state, detail) -> None: closes the Archive rows of a batch; set by HermesService.
+_state_writer: Callable[[str, str, str], None] | None = None
 
 
-def set_publisher(publisher: Callable[..., bool]) -> None:
-    global _publisher
+def set_publisher(publisher: Callable[..., bool], state_writer: Callable[[str, str, str], None] | None = None) -> None:
+    global _publisher, _state_writer
     _publisher = publisher
+    _state_writer = state_writer
+
+
+def _close_rows(entry: "_BatchEntry", state: str, detail: str) -> None:
+    """Mark the batch rows ``delivered`` (sent) or ``failed`` (given up: no longer blocks a new notification)."""
+    if _state_writer is None:
+        return
+    for row_id in entry.row_ids:
+        try:
+            _state_writer(row_id, state, detail)
+        except Exception as exc:  # noqa: BLE001 — a bookkeeping failure never stops the batch
+            logger.warning("[🔄] event=batch_row_state_failed row=%s state=%s error=%s", row_id, state, exc)
 
 
 # ---------------------------------------------------------------------------
@@ -124,6 +144,7 @@ def _flush(key: tuple) -> None:
         except Exception as exc:
             detail = str(exc)
     if ok:
+        _close_rows(entry, "delivered", "published in entity batch")
         logger.info(
             "event=batch_dispatched_entit_subscription_target [BATCH] Dispatched %d entit%s | subscription=%s target=%s",
             n,
@@ -149,6 +170,7 @@ def _requeue_failed(key: tuple, entry: _BatchEntry) -> None:
     if entry.attempts >= int(settings.get(BATCH_MAX_ATTEMPTS)):
         logger.error("event=batch_dispatch_gave_up subscription=%s entities=%d attempts=%d",
                      entry.subscription_id, len(entry.entities), entry.attempts)
+        _close_rows(entry, "failed", "entity batch gave up")
         return
     with _queues_lock:
         pending = _queues.get(key)
@@ -156,6 +178,7 @@ def _requeue_failed(key: tuple, entry: _BatchEntry) -> None:
             if pending.timer is not None:
                 pending.timer.cancel()
             entry.entities.extend(pending.entities)
+            entry.row_ids.extend(pending.row_ids)
         _queues[key] = entry
         delay = min(1800.0, float(settings.get(BATCH_WINDOW)) * (2 ** entry.attempts))
         timer = threading.Timer(delay, _flush, args=[key])
@@ -240,7 +263,7 @@ def _narrate_entities(entry: _BatchEntry) -> str:
         label = str(e.get("address") or e.get("title") or url).strip()
         price = e.get("price")
         specs = e.get("specs") or {}
-        line = f'<a href="{url}">{label}</a>'
+        line = f'<a href="{escape(url, quote=True)}">{escape(label)}</a>' if url else escape(label)
         details: list[str] = []
         if price:
             try:
@@ -248,7 +271,7 @@ def _narrate_entities(entry: _BatchEntry) -> str:
             except (TypeError, ValueError):
                 pass
         if specs.get("surface_m2"):
-            details.append(f"{specs['surface_m2']} mq")
+            details.append(f"{specs['surface_m2']} m²")
         if details:
             line += f" — {', '.join(details)}"
         fallback_parts.append(line)
@@ -269,6 +292,7 @@ def enqueue_entity(
     entity_id: str,
     payload: dict,
     filters: dict,
+    row_id: str = "",
 ) -> None:
     """Add an entity to the batch for the given subscription + channel.
 
@@ -287,6 +311,8 @@ def enqueue_entity(
             )
         entry = _queues[key]
         entry.entities.append(payload)
+        if row_id:
+            entry.row_ids.append(row_id)
         _schedule_flush(key, entry)
         queued_count = len(entry.entities)
 
@@ -297,3 +323,21 @@ def enqueue_entity(
         queued_count,
         entity_id,
     )
+
+
+def restore_queued(rows: list[dict]) -> int:
+    """Startup: Archive rows still ``queued`` (Hermes stopped during the settling window) go back in their batch."""
+    restored = 0
+    for row in rows or []:
+        stored = row.get("payload") if isinstance(row.get("payload"), dict) else {}
+        payload = stored.get("event_payload") if isinstance(stored.get("event_payload"), dict) else None
+        if not payload or not row.get("outbound_event_id"):
+            continue
+        enqueue_entity(subscription_id=row.get("subscription_id"), channel_type=str(stored.get("audience_key") or "all"),
+                       channel_target="", domain=str(row.get("domain") or ""), entity_id=str(row.get("entity_id") or ""),
+                       payload=payload, filters=stored.get("filters") if isinstance(stored.get("filters"), dict) else {},
+                       row_id=str(row["outbound_event_id"]))
+        restored += 1
+    if restored:
+        logger.info("[🔄] event=batch_restored entities=%d", restored)
+    return restored

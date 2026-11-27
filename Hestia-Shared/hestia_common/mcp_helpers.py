@@ -57,6 +57,21 @@ class MCPTool:
                                   # (hestia_common.areas.for_people)
 
 
+async def _run_handler(handler: Callable[..., Any], params: dict) -> Any:
+    """Call a tool handler without blocking the event loop: a plain function (most do Hub calls, seconds) runs in
+    a worker thread, an ``async def`` one is awaited. Before, every sync handler ran on the loop, so one slow tool
+    stopped the whole service (health check included) until it finished."""
+    import inspect
+    from starlette.concurrency import run_in_threadpool
+
+    if inspect.iscoroutinefunction(handler):
+        return await handler(**params)
+    result = await run_in_threadpool(lambda: handler(**params))
+    if inspect.isawaitable(result):
+        result = await result
+    return result
+
+
 def create_mcp_router(tools: list[MCPTool], service_name: str) -> APIRouter:
     """Create a FastAPI router with a standard MCP JSON-RPC /mcp endpoint.
 
@@ -123,7 +138,7 @@ def create_mcp_router(tools: list[MCPTool], service_name: str) -> APIRouter:
                 })
 
             try:
-                result = tool.handler(**arguments)
+                result = await _run_handler(tool.handler, arguments)
                 logger.info(
                     "event=mcp_tool_called service=%s tool=%s",
                     service_name, tool_name,
@@ -192,7 +207,7 @@ def mount_missing_rest_routes(app, tools: list[MCPTool], service_name: str = "")
                     if isinstance(body, dict):
                         params.update(body)
                 try:
-                    result = t.handler(**params)
+                    result = await _run_handler(t.handler, params)
                 except TypeError as exc:
                     raise HTTPException(status_code=400, detail=f"bad arguments: {exc}")
                 except Exception as exc:

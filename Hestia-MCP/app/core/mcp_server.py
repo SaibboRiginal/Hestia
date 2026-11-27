@@ -14,6 +14,7 @@ from typing import Any
 
 import requests
 from fastapi import APIRouter, Request
+from starlette.concurrency import run_in_threadpool
 from fastapi.responses import JSONResponse, Response
 
 from core.catalog import ToolCatalog, to_mcp_tool, visible_to
@@ -165,10 +166,13 @@ class MCPServer:
                 return JSONResponse({"jsonrpc": "2.0", "id": None, "error": {"code": -32700, "message": "Parse error"}},
                                     status_code=400)
             ctx = {"client": (request.headers.get("x-hestia-client") or "").strip().lower()}
+            # A tool call waits for its module (up to minutes): run it in a worker thread, so one slow tool never
+            # blocks every other call and the health check of this server.
             if isinstance(body, list):
-                out = [r for r in (self.handle(m, ctx) for m in body) if r is not None]
+                out = [r for r in await run_in_threadpool(lambda: [self.handle(m, ctx) for m in body])
+                       if r is not None]
                 return JSONResponse(out) if out else Response(status_code=202)
-            reply = self.handle(body, ctx)
+            reply = await run_in_threadpool(self.handle, body, ctx)
             return JSONResponse(reply) if reply is not None else Response(status_code=202)
 
         @router.get("/mcp")

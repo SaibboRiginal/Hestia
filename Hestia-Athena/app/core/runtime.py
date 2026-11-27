@@ -1044,7 +1044,7 @@ class AthenaRuntime:
         observation.presence = self.presence.context_line()
 
         # Phase 2: Think (LLM via Oracle) — reported as a light activity of the assistant
-        with self.presence.activity("athena.thinking", label=tr("Athena thinks"), load="light", resource="gpu",
+        with self.presence.activity("athena.thinking", label=tr("{assistant} thinks"), load="light", resource="gpu",
                                     ttl_seconds=900):
             scored = self._think_all(observation, retrospective)
         candidates = [c for c in scored if c.accepted]

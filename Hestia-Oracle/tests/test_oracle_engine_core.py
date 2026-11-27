@@ -917,7 +917,7 @@ class TestQuestionProtocol:
     def test_answer_question_resolves(self, engine):
         engine.ask_question(session_id="s1", question_id="q1",
                             header="H", prompt="P?")
-        resolved = engine.answer_question("q1", "si")
+        resolved = engine.answer_question("q1", "yes")
         assert resolved is True
 
     def test_answer_unknown_question(self, engine):
@@ -927,9 +927,9 @@ class TestQuestionProtocol:
     def test_get_question_answer(self, engine):
         engine.ask_question(session_id="s1", question_id="q1",
                             header="H", prompt="P?")
-        engine.answer_question("q1", "si")
+        engine.answer_question("q1", "yes")
         answer = engine.get_question_answer("q1")
-        assert answer == "si"
+        assert answer == "yes"
 
 
 # ═══════════════════════════════════════════════════════════════════════════════

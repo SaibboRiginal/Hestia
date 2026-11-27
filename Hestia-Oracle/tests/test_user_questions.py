@@ -21,7 +21,7 @@ class TestBuildQuestion:
     def test_confirm_has_yes_no(self):
         ok, res = user_questions.build_question("Cancello l'evento di domani?", "confirm")
         assert ok and res["ask"]["kind"] == "confirm"
-        assert [o["value"] for o in res["ask"]["options"]] == ["si", "no"]
+        assert [o["value"] for o in res["ask"]["options"]] == ["yes", "no"]
         assert res["ask"]["question_id"].startswith("ask_")
 
     def test_choice_needs_two_options(self):
@@ -48,7 +48,7 @@ class TestBuildQuestion:
 @pytest.mark.unit
 class TestResumeMessage:
     def test_confirm_answer_readable(self):
-        msg = user_questions.resume_message({"prompt": "Procedo?", "kind": "confirm"}, "si")
+        msg = user_questions.resume_message({"prompt": "Procedo?", "kind": "confirm"}, "yes")
         assert msg == "Answer to your question «Procedo?»: Yes"
 
     def test_multi_choice_joined(self):

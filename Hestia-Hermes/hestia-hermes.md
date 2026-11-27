@@ -258,7 +258,14 @@ cloud test bench; regression test `TestHubKeepalive`).
   `hermes.delivery.max_attempts` (6) per client, then that client is marked `dead` (the row is `dead` only if
   no client got it). Attempts are stored in `payload.deliveries`.
 - **Batches (real_estate):** a failed batch is re-queued with exponential backoff (`hermes.batch.max_attempts`, 6; settling window `hermes.batch.window`, 30 s),
-  merged with entities that arrived meanwhile.
+  merged with entities that arrived meanwhile. Each queued entity has an Archive row (channel `batch`, `queued`, with
+  its audience and filters): `delivered` once the batch is published, `failed` when Hermes gives up (so the next
+  upsert of that entity can notify again), and at startup the rows still `queued` are put back in their batch — a
+  restart during the settling window loses nothing (before 2026-11-27 such a listing was never notified).
+- **Compare-and-set everywhere**: the «to decide» reminder mark, the release of held notifications, the voice copy
+  and the retract pass patch a row only if it is still in the state they read, so an answer that arrives meanwhile is
+  never reopened.
+- Confirm questions without options are `yes` / `no` (values in English, labels translated).
 - **Narration** uses Oracle `/api/llm/generate` (plain generation), not the full `/api/chat` pipeline. The call carries `voice: true`: Oracle writes as the assistant (name, she/he, style) in the personal «Language»; the prompt here holds only what to say, the data and the format, never a language (rule 13 of `docs/ARCHITECTURE.md`).
 
 ## Central settings (Themis)

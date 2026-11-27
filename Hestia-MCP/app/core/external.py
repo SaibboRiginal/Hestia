@@ -17,6 +17,7 @@ import threading
 from typing import Any
 
 import requests
+from starlette.concurrency import run_in_threadpool
 from fastapi import APIRouter, Request
 from fastapi.responses import JSONResponse, Response
 from pydantic import BaseModel, Field
@@ -114,7 +115,7 @@ class ExternalDoor:
             auth = request.headers.get("authorization") or ""
             token = auth[7:].strip() if auth.lower().startswith("bearer ") else ""
             try:
-                access, why = store.verify(token)
+                access, why = await run_in_threadpool(store.verify, token)   # blocking Archive call off the loop
             except AccessError as exc:
                 return _rpc_error(None, -32603, str(exc), 503)
             if access is None:
@@ -134,10 +135,12 @@ class ExternalDoor:
                 return _rpc_error(None, -32029, f"Too many calls: max {limit} per minute", 429,
                                   {"Retry-After": "60"})
             ctx = self._ctx(access)
+            # Tool calls wait for the module (seconds): in a worker thread, never on the event loop.
             if isinstance(body, list):
-                out = [r for r in (self.server.handle(m, ctx) for m in body) if r is not None]
+                out = [r for r in await run_in_threadpool(lambda: [self.server.handle(m, ctx) for m in body])
+                       if r is not None]
                 return JSONResponse(out) if out else Response(status_code=202)
-            reply = self.server.handle(body, ctx)
+            reply = await run_in_threadpool(self.server.handle, body, ctx)
             if reply is None:
                 return Response(status_code=202)
             status = _HTTP_FOR_ERROR.get(((reply.get("error") or {}).get("code")), 200)

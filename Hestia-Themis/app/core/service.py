@@ -54,7 +54,7 @@ def _describe(value: Any, d: dict | None = None) -> str:
     shows its label («Direct», not «direct»)."""
     for option in (d or {}).get("options") or []:
         if isinstance(option, dict) and option.get("value") == value and option.get("label"):
-            return str(option["label"])
+            return tr(str(option["label"]))   # declared labels are plain English, translated at the edge
     if isinstance(value, dict) and len(value) == 1 and isinstance(next(iter(value.values())), list):
         value = next(iter(value.values()))
     if isinstance(value, list) and value and all(isinstance(v, dict) and v.get("title") for v in value):
@@ -459,10 +459,14 @@ class Themis:
         return result
 
     def _proposal_text(self, d: dict, row: dict, current: Any) -> str:
-        who = {"oracle": tr("{assistant} (chat)"), "athena": "Athena"}.get(row.get("proposer"), row.get("proposer") or tr("{assistant}"))
-        if str(who).startswith("external:"):   # an external AI through the Hestia-MCP door
-            who = tr("{0} (external AI)", who[len('external:'):])
-        text = (tr("⚙️ {0} proposes to change «{1}» ({2}): {3} → {4}.", who, d.get('label') or d.get('key'), d.get('module'), _describe(current, d), _describe(row.get('value'), d)))
+        # The owner reads it: never a module name (R5). Athena's own proposals are the assistant's.
+        proposer = str(row.get("proposer") or "")
+        if proposer.startswith("external:"):   # an external AI through the Hestia-MCP door
+            who = tr("{0} (external AI)", proposer[len('external:'):])
+        else:
+            who = tr("{assistant} (chat)") if proposer == "oracle" else tr("{assistant}")
+        text = tr("⚙️ {0} proposes to change «{1}»: {2} → {3}.", who, tr(d.get('label') or d.get('key')),
+                  _describe(current, d), _describe(row.get('value'), d))
         if row.get("reason"):
             text += tr("\nReason: {0}", row['reason'])
         return text
@@ -480,7 +484,7 @@ class Themis:
         """Card for the chat that asked (Oracle ``question`` packet, kind confirm). Answer = one action id,
         routed by Oracle through Hub with ``<client>`` replaced by the answering client."""
         pid = str(row.get("proposal_id") or "")
-        prompt = f"«{d.get('label') or d.get('key')}»: {_describe(current, d)} → {_describe(row.get('value'), d)}"
+        prompt = f"«{tr(d.get('label') or d.get('key'))}»: {_describe(current, d)} → {_describe(row.get('value'), d)}"
         if row.get("reason"):
             prompt += f"\n{row['reason']}"
         actions = self._decision_actions(pid)
@@ -488,8 +492,10 @@ class Themis:
                 "options": [{"label": a["label"], "value": a["id"]} for a in actions],
                 "actions": {a["id"]: {k: a[k] for k in ("service", "method", "path", "body")} for a in actions}}
 
-    def proposals(self, status: str | None = None) -> list[dict]:
-        rows = self.hub.ok("archive", "GET", "api/settings-store/proposals", query={"status": status, "limit": 200})
+    def proposals(self, status: str | None = None, proposal_id: str | None = None) -> list[dict]:
+        """Proposals (newest 200), or the one ``proposal_id`` whatever its age (an answer must always find it)."""
+        rows = self.hub.ok("archive", "GET", "api/settings-store/proposals",
+                           query={"status": status, "proposal_id": proposal_id, "limit": 200})
         rows = rows if isinstance(rows, list) else []
         now = datetime.now(timezone.utc)
         out = []
@@ -525,7 +531,7 @@ class Themis:
         return row or {}
 
     def decide(self, proposal_id: str, approve: bool, *, by: str = "user") -> dict:
-        found = [p for p in self.proposals() if p.get("proposal_id") == proposal_id]
+        found = [p for p in self.proposals(proposal_id=proposal_id) if p.get("proposal_id") == proposal_id]
         if not found:
             raise ThemisError(tr("unknown proposal"), 404)
         proposal = found[0]
@@ -554,7 +560,7 @@ class Themis:
         self._emit("settings.changed", f"settings.changed:{proposal['proposal_id']}",
                    {"key": proposal["key"], "label": d.get("label"), "value": proposal.get("value"),
                     "title": tr("Setting changed"), "level": "success",
-                    "_message": tr("✅ Setting changed: {0} → {1}", d.get('label') or proposal['key'], _describe(proposal.get('value'), d))})
+                    "_message": tr("✅ Setting changed: {0} → {1}", tr(d.get('label') or proposal['key']), _describe(proposal.get('value'), d))})
         return {"key": proposal["key"], "value": proposal.get("value"), "revision": self.revision}
 
     # ── outbound: always through Hermes ─────────────────────────────────────

@@ -25,6 +25,10 @@
   `$session_id` · `$chat_id`/`$owner` · `$arg.x`, rest → query or JSON body) and routes it through Hub with
   `X-Session-Id`, `X-Trace-Id` and `X-Hestia-Client` (= the client the user talks from, given by the caller).
 - Read tools carry `annotations.readOnlyHint: true` (same rule Oracle used for "writes").
+- **Never on the event loop** (2026-11-27): `/mcp` and `/mcp/external` run the JSON-RPC handling (the routed tool
+  call, the token check) in a worker thread. Before, one slow tool stopped every other call and the health check of
+  this server until it finished. The same holds for every module's own `/mcp` and handler-only REST routes
+  (`hestia_common.mcp_helpers`: sync handlers in a thread, `async def` handlers awaited).
 - **Display blocks**: a module answer may carry `display` (`hestia_common.display`, how Telegram draws it without the
   model). `tools/call` keeps it only for client `telegram` and strips it for everyone else (Oracle, WebUI, external
   AIs), so models see the same data as before.

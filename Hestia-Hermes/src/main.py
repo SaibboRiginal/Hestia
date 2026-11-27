@@ -164,6 +164,21 @@ def start_settings():
     hermes_settings.start()
 
 
+@app.on_event("startup")
+def restore_entity_batches():
+    """Entities queued in a batch when Hermes stopped go back in their batch (once Archive answers)."""
+    def _run():
+        for attempt in range(10):
+            time.sleep(20 if attempt else 10)
+            try:
+                service.restore_batches()
+                return
+            except Exception as exc:  # noqa: BLE001 — Archive/Hub still starting
+                logger.warning("[🔄] event=batch_restore_retry attempt=%d error=%s", attempt + 1, exc)
+
+    threading.Thread(target=_run, daemon=True, name="hermes-batch-restore").start()
+
+
 _ENV_FILE = Path(__file__).resolve().parent / ".env"
 
 

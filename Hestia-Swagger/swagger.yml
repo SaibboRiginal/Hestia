@@ -2854,11 +2854,22 @@ paths:
           schema:
             type: string
             format: date-time
+        - name: exclude_statuses
+          in: query
+          description: Comma list of statuses to leave out (the assistant agenda reads its live rules with cancelled,completed).
+          schema:
+            type: string
+        - name: external_ids
+          in: query
+          description: Comma list of external ids (only those items, whatever their status).
+          schema:
+            type: string
         - name: limit
           in: query
           schema:
             type: integer
             default: 100
+            maximum: 5000
       responses:
         "200":
           description: List of calendar items
