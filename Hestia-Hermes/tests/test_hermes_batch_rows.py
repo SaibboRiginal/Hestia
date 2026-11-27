@@ -62,3 +62,48 @@ class TestBatchRows:
         entry = d._queues[d._queue_key("7", "client:webui:s1", "")]
         assert entry.row_ids == ["r3"] and entry.entities == [{"title": "Loft"}]
         assert entry.filters == {"city": "Lugano"}
+
+
+def _price_service(rows):
+    from modules.service import HermesService
+    svc = HermesService.__new__(HermesService)
+    svc.archive = MagicMock()
+    svc.notifications = MagicMock()
+    svc.archive.get_active_subscriptions.return_value = [{"id": "s1", "filters": {}, "channels": [{"type": "all"}]}]
+    svc.archive.find_active_outbound_event.return_value = rows[0] if rows else None
+    svc.archive.get_outbound_events.return_value = rows
+    return svc
+
+
+def _told(price, state="delivered"):
+    return {"lifecycle_state": state, "payload": {"event_payload": {"title": "Loft", "price": price}}}
+
+
+@pytest.mark.unit
+class TestPriceDrop:
+    """Core review 2026-11-27 §4.5: a listing already told is told again only when its price falls."""
+
+    def _run(self, rows, price):
+        svc = _price_service(rows)
+        with patch("modules.service.enqueue_entity") as enqueue:
+            svc.process_event("entity.upserted", "real_estate", "e9", {"title": "Loft", "price": price})
+        return enqueue
+
+    def test_new_listing_is_queued(self):
+        assert self._run([], 300000).call_count == 1
+
+    def test_same_or_higher_price_is_not_told_again(self):
+        assert self._run([_told(300000)], 300000).call_count == 0
+        assert self._run([_told(300000)], 320000).call_count == 0
+
+    def test_lower_price_is_told_with_the_previous_one(self):
+        enqueue = self._run([_told(300000)], 280000)
+        assert enqueue.call_count == 1
+        assert enqueue.call_args.kwargs["payload"]["previous_price"] == 300000
+
+    def test_compares_with_the_last_price_told(self):
+        """After a drop to 280k, 290k is not news: the lowest live row is the last price told."""
+        assert self._run([_told(300000), _told(280000)], 290000).call_count == 0
+
+    def test_still_queued_batch_is_not_doubled(self):
+        assert self._run([_told(300000, state="queued")], 250000).call_count == 0

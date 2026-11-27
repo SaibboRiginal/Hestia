@@ -2,9 +2,9 @@
 
 | | |
 |---|---|
-| **Version** | 1.0 |
+| **Version** | 1.1 |
 | **Source** | user via external chat («Scout had many bugs, can we review Hestia's core modules again?») |
-| **Status** | Done (open proposals in §4 wait for the owner) |
+| **Status** | Done (§4 answered by the owner 2026-11-27: 2, 5, 6 done; 1, 3, 4 kept as they are) |
 
 Versioning: minor = refinement, major = scope/design change. Every bump goes in `CHANGELOG.md` (this folder).
 
@@ -46,20 +46,16 @@ Hub routing envelope and deadline header, LLM bus (priority, deadline, pre-empti
 result keeps Hecate's cursor), Archive outbound compare-and-set, MCP accesses (revoke/rotate, rate limit),
 Telegram offline chat queue (claim/release, back to queued on failure).
 
-## 4. Open — proposals for the owner (not done)
+## 4. Proposals — the owner's answers (2026-11-27, one card each)
 
-1. Hermes retries failed deliveries with its own timer loop (R2 says periodic work = agenda job): move it to an
-   agenda job `hermes.delivery.retry`?
-2. A message queued while the brain is offline becomes `failed` after 5 drains and nobody is told: tell the owner
-   («I could not answer this message») instead of dropping it silently?
-3. Athena's nightly decay lowers and finally retires old memories by itself (logged, undoable). R4 says memory
-   clean-up is a proposal: keep it automatic or turn the final retirement into a «Review» card?
-4. Finished one-off agenda items are kept forever (history). Now harmless for firing, but they grow: purge finished
-   one-offs older than N days (tunable)?
-5. Hermes dedupes a listing per subscription forever: the same house upserted again (price drop) never notifies.
-   Notify again when the price falls?
-6. Hub fails over to another instance also after a timeout, so a slow POST could run twice. Today every module has
-   one instance, so nothing happens; fail over only on connection errors?
+| # | Proposal | Answer | What was done |
+|---|---|---|---|
+| 1 | Hermes delivery retry: own timer loop → agenda job `hermes.delivery.retry`? | **Keep the internal timer** | Nothing: the retry loop stays in Hermes (owner's choice, no polling job in the agenda). |
+| 2 | Message queued while offline, `failed` after 5 drains, nobody told | **Tell me** | Telegram and WebUI drains read the state Archive returns on `done`; `failed` → one Hermes notice for the owner «Message not answered» with the text (key `chat_queue.failed.<client>.<id>`). Test `Hestia-Telegram/tests/test_chat_queue.py::test_given_up_message_is_told_to_the_owner`. |
+| 3 | Athena decay retires old memories by itself | **Keep automatic** | Nothing (logged and undoable, as today). |
+| 4 | Purge finished one-off agenda items | **Keep them all** | Nothing (harmless for firing since fix §2.2). |
+| 5 | Listing deduped forever, price drop never told | **Yes, when it falls** | Hermes lets a listing through again only when its price is below the last price told to that subscription (lowest live row of the dedupe key); the entity carries `previous_price`, the message says it is cheaper now. A batch still `queued` is not doubled. Tests `TestPriceDrop` in `Hestia-Hermes/tests/test_hermes_batch_rows.py`. |
+| 6 | Hub failover after a timeout could run a POST twice | **Only when the connection fails** | `router.may_fail_over`: reads fail over on any network error, writes only when the first instance was never reached (refused, unknown host, connect timeout). Unicast/fan-out and stream paths. Test `Hestia-Hub/tests/test_hub_failover.py`. |
 
 ## 5. Acceptance criteria
 

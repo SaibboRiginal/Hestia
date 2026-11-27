@@ -520,7 +520,9 @@ in Archive (`ChatQueueService`, client `webui`, with mode/model/instructions in 
 when Oracle is back) and startup replay the queue server-side (no browser needed; Oracle saves the history) and
 push `queued_answer` to every tab, which replaces the bubble. The Chat page shows a strip «⏳ Unavailable» while
 the presence effect `chat.reply` is `queued`; the badge popover lists the overlay. The «Create with Hestia» drawer does
-not queue (it answers «riprova appena torna»).
+not queue (it answers «riprova appena torna»). A message Archive gives up on (`failed` after 5 drains) becomes one
+Hermes notice for the owner with its text (key `chat_queue.failed.webui.<id>`), never a silent loss (core review
+2026-11-27 §4.2).
 
 **Writing while the answer runs** (dossier `docs/work/2026-11-18-real-test-problems` B): Enter while an answer
 streams puts the text in a «waiting» list above the box (`ChatService.waiting`); when the stream ends

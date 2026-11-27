@@ -212,6 +212,11 @@ def _narrate_entities(entry: _BatchEntry) -> str:
                 parts.append(f"Price: €{int(float(price)):,}")
             except (TypeError, ValueError):
                 parts.append(f"Price: {price}")
+        if e.get("previous_price"):
+            try:
+                parts.append(f"Price dropped, was: €{int(float(e['previous_price'])):,}")
+            except (TypeError, ValueError):
+                pass
         if specs.get("surface_m2"):
             parts.append(f"Surface: {specs['surface_m2']} m²")
         if specs.get("rooms"):
@@ -244,6 +249,7 @@ def _narrate_entities(entry: _BatchEntry) -> str:
 
     prompt = (
         f"You found {n} new real estate listing{'' if n == 1 else 's'}{filters_desc}. Tell the owner.\n"
+        f"- A listing with 'Price dropped' was already told: say only that it is cheaper now, old and new price.\n"
         f"- Concise but informative: price, location and the most relevant features of each listing.\n"
         f"- Natural flowing text, no bulleted or numbered lists.\n"
         f"- Several listings: group them briefly by area or price range if it makes sense.\n"
@@ -272,6 +278,11 @@ def _narrate_entities(entry: _BatchEntry) -> str:
                 pass
         if specs.get("surface_m2"):
             details.append(f"{specs['surface_m2']} m²")
+        if e.get("previous_price"):
+            try:
+                details.append(tr("was €{0}", f"{int(float(e['previous_price'])):,}"))
+            except (TypeError, ValueError):
+                pass
         if details:
             line += f" — {', '.join(details)}"
         fallback_parts.append(line)
