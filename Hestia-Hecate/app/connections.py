@@ -119,12 +119,15 @@ class GoogleConnector(Connector):
             return {"state": "waiting", "detail": tr("Waiting for Google."), "actions": [{"id": "cancel", "label": tr("Cancel"), "icon": "x"}],
                     "step": {"kind": "wait", "url": s.get("auth_url") or "",
                              "text": tr("On Google's page choose the account and grant access: this updates by itself.")
+                                     + (tr(" If Google says the app is not verified: «Advanced», then «Go to Hestia».")
+                                        if s.get("builtin") else "")
                                      + ("" if s.get("public_redirect") else
                                         tr(" If in the end the page does not open (from the phone), paste its address here.")),
                              "fields": paste, "submit": tr("Confirm") if paste else ""}}
         err = str(s.get("error") or "")
         return {"state": "not_connected", "detail": "" if err.startswith("Google not authorized") else err[:200],
-                "actions": [{"id": "client", "label": "Change Google Cloud access", "icon": "edit"}],
+                "actions": [{"id": "client", "icon": "edit",
+                             "label": "Use your own Google app" if s.get("builtin") else "Change Google Cloud access"}],
                 "step": {"kind": "form", "text": tr("Google's page opens: choose the account and grant access."),
                          "fields": [], "submit": tr("Link Google")}}
 

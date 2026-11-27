@@ -107,6 +107,14 @@ Adding a new data source = implementing this interface and registering the conne
 
 ### Google setup (one-time, ~5 min)
 
+> **With a release (ready-made images) there is nothing to set up** (2026-11-27, Marko «premo, faccio login e basta»):
+> the Hecate image brings Hestia's own Google app (a «Desktop app» OAuth client written at build time into
+> `/opt/hestia/google_client.json` from the repository secrets `HESTIA_GOOGLE_CLIENT_ID` / `HESTIA_GOOGLE_CLIENT_SECRET`;
+> never in the repository). The card is one button, «Link Google», then Google's login; the first time Google may say
+> the app is not verified («Advanced» → «Go to Hestia»). With that client the redirect is always the loopback (a desktop
+> client accepts no other). Your own client typed in the card («Use your own Google app») always wins; a local build has
+> no built-in app and the card asks for your own, as below. Limits of an unverified Google app: at most 100 people.
+
 > History: the old flow used the "out-of-band" redirect (`urn:ietf:wg:oauth:2.0:oob`).
 > Google blocked OOB in January 2023, so the consent page always failed with
 > `Error 400: invalid_request`. The current flow uses a **loopback redirect + PKCE**.
@@ -162,7 +170,7 @@ Garmin tokens).
 
 | Connector | Group | Steps |
 |---|---|---|
-| `google` | account | OAuth client of Google Cloud (id + secret or the JSON → `HECATE_KEY_GOOGLE_CLIENT_ID/SECRET`) → «Link Google» opens Google's page → waits or the pasted address/code → connected; actions «Link again», «Change Google Cloud access» |
+| `google` | account | OAuth client of Google Cloud (id + secret or the JSON → `HECATE_KEY_GOOGLE_CLIENT_ID/SECRET`) → «Link Google» opens Google's page → waits or the pasted address/code → connected; actions «Link again», «Change Google Cloud access»; with the app that comes with Hestia no client form: one button and Google's login, action «Use your own Google app» |
 | `outlook` | account | the Microsoft app (client ID, tenant default `common`, optional secret → `HECATE_KEY_OUTLOOK_CLIENT_ID/_TENANT/_CLIENT_SECRET`, short guide + link) → Microsoft's device code shown in the card, polled → connected (refresh token in `data/outlook_token.json`, kept on rotation); actions «Change the Microsoft app», «Unlink» |
 | `gmail_push` | account | optional Gmail instant notices: topic + subscription (Themis `hecate.gmail.push_topic` / `hecate.gmail.push_subscription`) + the service account JSON (`HECATE_KEY_GMAIL_PUBSUB_ACCOUNT`, base64) → the stream restarts; not in the setup |
 | `garmin` | device | email + password (used once, never stored) → the two-step code when Garmin asks → connected, first read in background; actions «Read now», «Unlink» |

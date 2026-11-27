@@ -92,6 +92,9 @@ def redirect_uri() -> str:
     3. localhost loopback (auto-completes only from the Docker host; elsewhere the
        user pastes the final URL in chat).
     """
+    if builtin_in_use():
+        # A desktop client accepts only the loopback: no tunnel, the phone pastes the last address as usual.
+        return DEFAULT_REDIRECT_URI
     explicit = os.getenv("GOOGLE_OAUTH_REDIRECT_URI", "").strip()
     if explicit and is_public_redirect(explicit):
         return explicit
@@ -134,10 +137,37 @@ def is_public_redirect(uri: str) -> bool:
     return bool(host) and host not in {"localhost", "127.0.0.1", "::1"}
 
 
-def client_credentials() -> tuple[str, str]:
+# The Google app that comes with Hestia (Marko 2026-11-27 «premo, faccio login e basta»): a «Desktop app» OAuth client
+# written into the Hecate image by the release build (GitHub secrets, never in the repository). Outside /code, which
+# compose mounts over. Google says a desktop client's secret is not confidential; the owner's own client always wins.
+BUILTIN_CLIENT_FILE = "/opt/hestia/google_client.json"
+
+
+def own_client() -> tuple[str, str]:
     """The OAuth client typed in the «Google» card (Connections or the guided setup): ``HECATE_KEY_GOOGLE_CLIENT_ID`` /
     ``HECATE_KEY_GOOGLE_CLIENT_SECRET`` in Hecate's own .env, written by Hestia (``hestia_common.connections``)."""
     return (os.getenv("HECATE_KEY_GOOGLE_CLIENT_ID", "").strip(), os.getenv("HECATE_KEY_GOOGLE_CLIENT_SECRET", "").strip())
+
+
+def builtin_client() -> tuple[str, str]:
+    """The client that comes with the release image; empty on a local build or a fork without it."""
+    try:
+        data = json.loads(Path(os.getenv("HECATE_GOOGLE_BUILTIN_FILE", BUILTIN_CLIENT_FILE)).read_text(encoding="utf-8"))
+        cid, secret = str(data.get("client_id") or "").strip(), str(data.get("client_secret") or "").strip()
+        return (cid, secret) if cid.endswith(".apps.googleusercontent.com") and secret else ("", "")
+    except (OSError, ValueError, AttributeError):
+        return "", ""
+
+
+def builtin_in_use() -> bool:
+    """True when no own client is typed and the release one is there: one button and Google's login."""
+    return not all(own_client()) and all(builtin_client())
+
+
+def client_credentials() -> tuple[str, str]:
+    """The owner's own client when typed, else the one that comes with Hestia."""
+    own = own_client()
+    return own if all(own) else builtin_client()
 
 
 def parse_client(client_id: str = "", client_secret: str = "", raw_json: str = "") -> tuple[str, str]:

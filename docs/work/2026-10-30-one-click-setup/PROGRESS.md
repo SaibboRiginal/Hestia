@@ -41,4 +41,6 @@
 - [x] v2.27 (Marko 2026-11-27): module download progress (install.ps1 `Invoke-ComposePull`, install.sh `pull_with_progress`), line parsing checked on sample compose output; shellcheck
 - [x] v2.28 (Marko 2026-11-27): no default model pull in install.ps1/install.sh (setup pulls the chosen one); shellcheck
 - [x] v2.29 (Marko 2026-11-27): install.ps1 HESTIA_VERSION from `[string]$script:VersionTag` (null when git describe gives nothing)
+- [x] v2.30 (Marko 2026-11-27): Hecate `google_oauth.builtin_client` (/opt/hestia/google_client.json, own wins, loopback redirect), Dockerfile BuildKit secret + images.yml build-args/secrets, connector one button; Hecate tests (2 failures already on main in this venv: google-api-python-client missing), BuildKit secret build checked with and without the secret
+- [ ] Marko: create a «Desktop app» OAuth client in his Google app, add repository secrets HESTIA_GOOGLE_CLIENT_ID / HESTIA_GOOGLE_CLIENT_SECRET, publish v1.0.1
 - Left to Marko: real Windows install, real Linux run (Actions → Installer → real_run), two-machine run, real tunnel, .NET build

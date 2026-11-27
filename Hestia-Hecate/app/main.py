@@ -1330,7 +1330,8 @@ def gateway_auth_google_state():
     cid, secret = google_oauth.client_credentials()
     session = google_oauth.pending() or {}
     redirect = google_oauth.redirect_uri()
-    return {"status": "ok", "client_set": bool(cid and secret), "linked": "google" in _calendar_registry.active_names,
+    return {"status": "ok", "client_set": bool(cid and secret), "builtin": google_oauth.builtin_in_use(),
+            "linked": "google" in _calendar_registry.active_names,
             "pending": bool(session), "auth_url": session.get("auth_url") or "", "redirect_uri": redirect,
             "public_redirect": google_oauth.is_public_redirect(redirect),
             "error": "" if "google" in _calendar_registry.active_names

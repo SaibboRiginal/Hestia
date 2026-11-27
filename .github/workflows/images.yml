@@ -78,6 +78,11 @@ jobs:
           labels: |
             org.opencontainers.image.source=https://github.com/${{ github.repository }}
             org.opencontainers.image.version=${{ needs.plan.outputs.version }}
+          # The Google app that comes with Hestia (only the Hecate Dockerfile reads them; empty = none, own client).
+          build-args: |
+            GOOGLE_CLIENT_ID=${{ secrets.HESTIA_GOOGLE_CLIENT_ID }}
+          secrets: |
+            google_client_secret=${{ secrets.HESTIA_GOOGLE_CLIENT_SECRET }}
           cache-from: type=gha,scope=${{ matrix.item.service }}-${{ matrix.arch }}
           cache-to: type=gha,mode=max,scope=${{ matrix.item.service }}-${{ matrix.arch }}
 
