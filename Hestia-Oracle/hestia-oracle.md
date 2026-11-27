@@ -71,6 +71,9 @@ Three object settings (Themis, live; edited in WebUI → Oracle → **Cervello �
 - One-time migration: old `oracle.models.*` values (before 2026-10-19) become chains `<use case>-personale` when neither
   `oracle.chains` nor `oracle.usecases` was ever stored (`core/services/llm_migration.py`).
 - Claude Code for Forge (`/api/llm/code`) uses the first `claude_cli` step of use case `forge.code` (none → CLI default).
+  Its status is «available» only with the subscription login (`CLAUDE_CODE_OAUTH_TOKEN` or `~/.claude` credentials):
+  an API key is never handed to Claude Code (2026-11-27).
+- Confirm questions (`ask_user`) answer `yes` / `no` (English values, labels in the owner's language).
 - `UniversalAgent.ask_with_attachment(file_bytes, mime_type, user_message)` enables multimodal reasoning over images and PDFs (see Multimodal below).
 
 ### Brain mode: interna / esterna (§D)

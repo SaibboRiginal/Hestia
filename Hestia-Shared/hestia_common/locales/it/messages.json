@@ -8059,5 +8059,6 @@
   "Link them in Connections → External MCP servers: name, address and, if it needs one, its key.": "Collegali in Collegamenti → Server MCP esterni: nome, indirizzo e, se serve, la chiave.",
   "{0}: {1}": "{0}: {1}",
   "⚙️ {0} proposes to change «{1}»: {2} → {3}.": "⚙️ {0} propone di cambiare «{1}»: {2} → {3}.",
-  "{assistant} thinks": "{assistant} pensa"
+  "{assistant} thinks": "{assistant} pensa",
+  "No": "No"
 }

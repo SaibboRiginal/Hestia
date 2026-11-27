@@ -521,6 +521,9 @@ Although Hephaestus has core safety responsibilities, it operates as an executio
    and ask. No header from a non-user client = `autonomous`. Write tools return `undo`
    (`hestia_common.mcp_helpers.undo`) when they can be undone; text sent outside the house (cloud model analysis,
    Forge prompts) passes through `hestia_common.redact`. Dated rules from Marko: `docs/MARKO-RULES.md`.
+   A tool call never runs on a service's event loop (`hestia_common.mcp_helpers`, Hestia-MCP: worker thread), and a
+   state written after reading it uses compare-and-set (Archive `only_if_states`), so a concurrent answer wins
+   (dossier `docs/work/2026-11-27-core-modules-review`).
 13. **Routines are agenda rules, secrets never rest (same dossier, W2):** a routine is a Chronos agenda rule with a
    written instruction (by time = job, by event = Iris mail push or a module signal), run as a `routine` turn; no
    module adds its own scheduler for it. A value the owner types in a Hermes secret form goes straight to the module
