@@ -74,7 +74,8 @@ def tags(route: Route) -> dict:
 def messages(route: Route, session_id: str, limit: int = 200) -> dict:
     rows = _need(route("GET", f"/chat/history/{session_id}", query={"limit": max(1, min(int(limit), 500))}))
     return {"session_id": session_id, "items": [
-        {"role": r.get("role"), "content": r.get("content"), "at": r.get("timestamp"), "model": r.get("model") or ""}
+        {"role": r.get("role"), "content": r.get("content"), "at": r.get("timestamp"), "model": r.get("model") or "",
+         **({"steps": r["steps"]} if r.get("steps") else {})}   # the reasoning shown while it answered
         for r in rows or []]}
 
 

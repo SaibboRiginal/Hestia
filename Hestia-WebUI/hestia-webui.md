@@ -401,6 +401,14 @@ The page asks Hestia through the plugin host (`host.assistant(...)`), logs come 
   `needs_input` frames show the missing fields.
 - **Stop / answers during a stream**: SignalR `MaximumParallelInvocationsPerClient = 4` (default 1 queued `cancel`
   and question answers behind the running stream).
+- **Leaving never loses the answer** (dossier `docs/work/2026-11-27-chat-turn-survives`): the answer runs in Oracle
+  on its own. A dropped connection only stops `ChatHub` reading it; `cancel` («Stop») calls Oracle
+  `POST /api/chat/stop`; `detach` (another conversation opened, new chat) stops following without stopping it;
+  `attach {session_id}` answers `{type:"live", running, found, user_message, text, turn_id}` and, when running, the
+  turn's frames from its start then `stream_done`. On page load the chat draws the current conversation again from
+  Archive (each answer with its saved reasoning steps) and attaches; after a SignalR reconnect (or back on the page
+  after the connection gave up) during an answer it does the same. Oracle heartbeats are not forwarded; no 4-minute
+  cap on a stream any more.
 - **Upload**: 📎 next to the input (text in the box = instructions for the file).
 - **Feedback** 👍/👎 sends `interaction_id` + the prompt/answer pair (`payload.instruction/output`, used by Metis);
   🔄 regenerates the last answer.

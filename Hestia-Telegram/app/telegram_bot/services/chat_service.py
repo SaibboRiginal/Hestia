@@ -26,18 +26,29 @@ logger = logging.getLogger("hestia_telegram.chat_service")
 WORKING = "<i>Thinking…</i>"   # shown through tr
 
 
-def consume_oracle_stream(res, renderer: "ReplyRenderer", signals: list, questions: list) -> None:
+def consume_oracle_stream(res, renderer: "ReplyRenderer", signals: list, questions: list,
+                          progress: dict | None = None) -> None:
     """Read Oracle NDJSON frames into the renderer. Standard frames: status, thinking,
-    token, final, notice (system packets), question; legacy `signal` kept for flows."""
+    token, final, notice (system packets), question; legacy `signal` kept for flows.
+    ``progress["lines"]`` counts the frames of the turn read so far (heartbeats are not frames of the turn): where to
+    follow it again if the connection drops (docs/work/2026-11-27-chat-turn-survives)."""
+    progress = progress if progress is not None else {}
+    progress.setdefault("lines", 0)
     for line in res.iter_lines():
         if not line:
             continue
         try:
             data = json.loads(line)
         except ValueError:
+            progress["lines"] += 1
             logger.warning("event=oracle_stream_bad_line len=%d", len(line))
             continue
-        kind = data.get("type")
+        kind = data.get("type") if isinstance(data, dict) else None
+        if kind == "heartbeat":            # Oracle is still working (e.g. a local model in line): keep waiting
+            continue
+        progress["lines"] += 1
+        if kind == "final":
+            progress["final"] = True
         if kind == "status":
             renderer.on_status(str(data.get("content") or ""))
         elif kind == "thinking":
@@ -161,9 +172,46 @@ def ask_oracle(chat_id, session_id: str, user_text: str, status_message_id: int,
         if res.status_code in _DOWN_STATUSES:
             raise OracleUnavailable(tr("HTTP {0}", res.status_code))
         res.raise_for_status()
-        consume_oracle_stream(res, renderer, signals, questions)
+        turn_id = str((getattr(res, "headers", None) or {}).get("X-Hestia-Turn") or "")
+        progress: dict = {"lines": 0}
+        try:
+            consume_oracle_stream(res, renderer, signals, questions, progress)
+        except requests.RequestException as error:
+            # The connection dropped but Oracle goes on with the turn: follow it again where we left it.
+            follow_live_turn(session_id, turn_id, renderer, signals, questions, progress, error)
     renderer.finish()
     return OracleResult(renderer, signals, questions)
+
+
+FOLLOW_ATTEMPTS = 3
+
+
+def follow_live_turn(session_id: str, turn_id: str, renderer: "ReplyRenderer", signals: list, questions: list,
+                     progress: dict, error: Exception) -> None:
+    """The stream of a turn broke (timeout, Oracle restarted its connection, network): Oracle keeps running the turn
+    on its own, so read it again from the last frame seen into the same message. Raises *error* when the turn can
+    not be followed any more (then the answer is still saved in the conversation)."""
+    logger.warning("[🔄] event=oracle_stream_broken session_id=%s turn_id=%s lines=%d error=%s fallback=follow_again",
+                   session_id, turn_id, progress.get("lines", 0), error)
+    url = f"{core.resolve_oracle_chat_url()}/live/stream"
+    for attempt in range(1, FOLLOW_ATTEMPTS + 1):
+        try:
+            with requests.get(url, params={"session_id": session_id, "offset": progress.get("lines", 0),
+                                           "turn_id": turn_id},
+                              stream=True,
+                              timeout=(10, float(core.settings.get(core.tg_settings.ORACLE_STREAM_TIMEOUT)))) as res:
+                if res.status_code == 404:
+                    break                    # the turn is gone (ended long ago or Oracle restarted)
+                res.raise_for_status()
+                consume_oracle_stream(res, renderer, signals, questions, progress)
+            logger.info("event=oracle_stream_followed_again session_id=%s attempt=%d lines=%d",
+                        session_id, attempt, progress.get("lines", 0))
+            return
+        except requests.RequestException as again:
+            logger.warning("[🔄] event=oracle_stream_follow_failed session_id=%s attempt=%d error=%s",
+                           session_id, attempt, again)
+            time.sleep(min(2 * attempt, 5))
+    raise error
 
 
 def is_authorized(message) -> bool:

@@ -49,6 +49,9 @@ public class OracleStreamService
 
     public bool IsReady => _oracleReady;
 
+    /// <summary>Oracle's keep-alive frame while a turn is silent; never forwarded.</summary>
+    public const string HeartbeatType = "heartbeat";
+
     /// <summary>Event type yielded when Oracle never accepted the request (Oracle offline).</summary>
     public const string UnavailableType = "oracle_unavailable";
 
@@ -110,6 +113,27 @@ public class OracleStreamService
     }
 
     /// <summary>
+    /// Follow again the chat turn of this session that is running in Oracle (the page was left or reloaded):
+    /// every NDJSON frame from <paramref name="offset"/> (0 = the whole turn), live until it ends.
+    /// Oracle runs the turn on its own; this only reads it (docs/work/2026-11-27-chat-turn-survives).
+    /// </summary>
+    public IAsyncEnumerable<OracleEvent> StreamLiveAsync(string sessionId, int offset = 0, string turnId = "",
+        CancellationToken ct = default)
+    {
+        var envelope = new
+        {
+            method = "GET",
+            query = new Dictionary<string, string>
+            {
+                ["session_id"] = sessionId, ["offset"] = offset.ToString(), ["turn_id"] = turnId,
+            },
+            timeout_seconds = 180.0,
+            stream = true,
+        };
+        return StreamViaHub("oracle", "/api/chat/live/stream", envelope, ct);
+    }
+
+    /// <summary>
     /// Stream a document analysis request through Hub routing to Oracle.
     /// NDJSON like chat, via Oracle's /api/chat/document/json (base64 body).
     /// </summary>
@@ -157,8 +181,9 @@ public class OracleStreamService
         var content = new StringContent(
             JsonSerializer.Serialize(envelope), Encoding.UTF8, "application/json");
 
+        // No overall time limit: Oracle finishes the turn anyway and sends a heartbeat while it is silent, so a
+        // long answer is never cut (the old 4-minute cap lost long «Thinking» answers).
         using var cts = CancellationTokenSource.CreateLinkedTokenSource(ct);
-        cts.CancelAfter(TimeSpan.FromMinutes(4));
 
         // ── Connect (yield not allowed inside catch, so capture the fatal event) ─
         HttpResponseMessage? resp = null;
@@ -222,6 +247,9 @@ public class OracleStreamService
                 // should not kill the entire response.
                 continue;
             }
+
+            // Keep-alive while the turn is silent (a local model in line): not an event for the browser.
+            if (evt is not null && evt.Type == HeartbeatType) continue;
 
             if (evt is not null)
             {

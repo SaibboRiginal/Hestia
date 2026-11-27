@@ -111,6 +111,10 @@ subscription compile), `rating_paused`.
   Oracle's `trace_id` of the turn (`fb:good:<id>`), saved as the feedback `interaction_id`, so the vote lands on that
   answer in the training dataset (docs/work/2026-10-30-training-dataset).
 - Requests carry `"client": "telegram"`; Oracle adds tone and personal instructions itself.
+- **A broken answer goes on** (dossier `docs/work/2026-11-27-chat-turn-survives`): Oracle runs the turn on its own and
+  sends `heartbeat` frames while silent (ignored). If the stream breaks anyway, `follow_live_turn` reads the same turn
+  again (`/api/chat/live/stream`, offset = frames already read, header `X-Hestia-Turn`) into the same message,
+  3 attempts; the answer is saved in the conversation in any case.
 
 ### Voice (`services/voice_service.py`, dossier `docs/work/2026-10-20-voice-module`)
 - A voice note is transcribed by Echo (use `telegram.voice_note`) and shown as «*testo*», then handled like the same

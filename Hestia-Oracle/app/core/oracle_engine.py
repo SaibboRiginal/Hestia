@@ -970,6 +970,9 @@ class OracleEngine:
             session_id,
             trace_id=trace_id,
         )
+        # His message is saved now, not with the answer: if he leaves or the turn fails half way it is still in the
+        # conversation (docs/work/2026-11-27-chat-turn-survives). After the history load: never twice in the prompt.
+        user_saved = bool(save_history) and self._save_user_message(session_id, user_message, trace_id=trace_id)
 
         # Quick is not a poorer path (Marko 2026-11-12): same persona, memories, tools and routing as every
         # mode; the only difference is that the model does not think (``_think_level`` below stays off).
@@ -1074,7 +1077,7 @@ class OracleEngine:
             )
             if save_history:
                 self._save_history(session_id, user_message,
-                                   answer, trace_id=trace_id)
+                                   answer, trace_id=trace_id, user_saved=user_saved)
 
             sync_signals, sync_attempted = self._sync_memory_if_needed(
                 user_message=user_message,
@@ -1309,6 +1312,10 @@ class OracleEngine:
                     timeout=self._policy_timeout("foreground_chat"),
                     headers=self._trace_headers(_session_id, trace_id),
                 )
+                # His message of this turn is already saved: it is the current message, not a previous one.
+                if (history_data and isinstance(history_data[-1], dict) and history_data[-1].get("role") == "user"
+                        and history_data[-1].get("content") == user_message):
+                    history_data = history_data[:-1]
                 return self._context_builder.compact_history(history_data, _session_id)
             except Exception:
                 return None
@@ -1415,7 +1422,7 @@ class OracleEngine:
         # ── Phase 5: PERSIST ──────────────────────────────────────────────────
         if save_history:
             self._save_history(session_id, user_message,
-                               answer, trace_id=trace_id)
+                               answer, trace_id=trace_id, user_saved=user_saved)
 
         # What this turn already did: the memory extractor never saves it again (bench 2026-10-30: a routine
         # «weigh myself every Monday» also became a memory; one memory.save turn ended with three rows).
@@ -3497,7 +3504,23 @@ class OracleEngine:
 
         return "\n".join(lines)
 
-    def _save_history(self, session_id: str, user_message: str, answer: str, trace_id: str | None = None) -> None:
+    def _save_user_message(self, session_id: str, user_message: str, trace_id: str | None = None) -> bool:
+        """Save the owner's message at the start of the turn; False when it failed (then it goes with the answer)."""
+        if not session_id:
+            return False
+        try:
+            self._hub.post(
+                "/chat/history",
+                {"session_id": session_id, "role": "user", "content": user_message},
+                headers=self._trace_headers(session_id, trace_id),
+            )
+            return True
+        except Exception as exc:
+            logger.warning("[🔄] event=failed_persist_user_message error=%s fallback=saved_with_answer", exc)
+            return False
+
+    def _save_history(self, session_id: str, user_message: str, answer: str, trace_id: str | None = None,
+                      user_saved: bool = False) -> None:
         # A leading reaction marker is not part of the answer text (docs/work/2026-11-06-living-hestia F4).
         from core.services.reaction_marker import strip as _strip_reaction
         emoji, answer = _strip_reaction(answer)
@@ -3505,15 +3528,20 @@ class OracleEngine:
             answer = emoji
         try:
             headers = self._trace_headers(session_id, trace_id)
-            self._hub.post(
-                "/chat/history",
-                {"session_id": session_id, "role": "user", "content": user_message},
-                headers=headers,
-            )
+            if not user_saved:   # normally saved when the turn started (_save_user_message)
+                self._hub.post(
+                    "/chat/history",
+                    {"session_id": session_id, "role": "user", "content": user_message},
+                    headers=headers,
+                )
+            # The reasoning shown while it answered is kept with the answer: it comes back when the chat is reopened.
+            from core.services import live_turns
+            steps = live_turns.steps()
             self._hub.post(
                 "/chat/history",
                 {"session_id": session_id, "role": "assistant", "content": answer,
-                 **({"model": llm_stats.last_model(session_id)} if llm_stats.last_model(session_id) else {})},
+                 **({"model": llm_stats.last_model(session_id)} if llm_stats.last_model(session_id) else {}),
+                 **({"steps": steps} if steps else {})},
                 headers=headers,
             )
         except Exception as exc:
