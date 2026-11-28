@@ -133,7 +133,7 @@ ui = PluginClient("iris", title="Email", icon="mail", color="blue", kind="core",
                   description="Your emails that reached {assistant}: who gets what, the latest deliveries, the mailbox check.",
                   version=os.getenv("IRIS_SERVICE_VERSION", "1.0.0"))
 ui.webui(entry="iris.js", api_prefix="/api/email/",
-         pages=[page("email", "Email", element="iris-email", icon="mail", order=145,
+         pages=[page("email", "Email", element="iris-email", icon="mail", order=145, place="space",
                      help="One mailbox check for all of {assistant}: Iris passes to every module the emails it asked for (Scout the listings, Expenses the PayPal receipts). Here you see subscriptions, latest deliveries and the state of the check, and you can check right away.")],
          quick_actions=[quick_action("check", "Check emails", "POST", "/api/email/check", icon="refresh",
                                      group="System", order=145)])

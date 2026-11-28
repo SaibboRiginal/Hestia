@@ -4,6 +4,7 @@ One line per finished task (details in `docs/work/<task>/`).
 
 ## 2026-11-27
 
+- WebUI rethought, piece 1: icon rail + context panel instead of the long sidebar, each page in its place (your spaces, Agenda, the assistant, notices, Settings › System), sub-pages as tabs, bottom bar on the phone, Aurora + Glass look by default with the new ring logo, no module names in Settings → `docs/work/2026-11-27-webui-rethink/` [ext-chat]
 - Google: linking is one button and Google's login, the release brings Hestia's own Google app (your own one still works) → `docs/work/2026-10-30-one-click-setup/` [ext-chat]
 - Installer on Windows: no more crash when it has to build the modules itself (folder with local changes) → `docs/work/2026-10-30-one-click-setup/` [ext-chat]
 - Installer: no model is downloaded before the setup, you pick in the setup and only that is downloaded → `docs/work/2026-10-30-one-click-setup/` [ext-chat]

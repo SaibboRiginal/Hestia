@@ -67,7 +67,7 @@ MODULE_LABELS = {
     "hub": "System map", "archive": "Archive", "argus": "System health", "athena": "Thoughts",
     "chronos": "Agenda", "hecate": "Accounts and devices", "hephaestus": "Development", "hermes": "Notifications",
     "iris": "Email", "metis": "Improvement", "oracle": "Assistant", "themis": "Settings", "mcp": "Commands",
-    "echo": "Voice", "atlas": "Web search", "scout": "alt::Houses", "hercules": "Training",
+    "echo": "Voice", "atlas": "Web search", "scout": "House hunting", "hercules": "Training",
     "hygieia": "Self care", "wardrobe": "Wardrobe", "plutus": "Expenses", "kairos": "Deadlines", "hera": "People",
     "demeter": "Nutrition", "lares": "Home", "apollo": "Images", "aphrodite": "Look",
     "calliope": "Documents", "psyche": "Mood", "webui": "Site", "telegram": "Telegram", "dummy": "alt::Test",

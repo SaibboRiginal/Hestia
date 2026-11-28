@@ -8,6 +8,7 @@ export * from './diff';
 export * from './markdown';
 export * from './resize';
 export * from './setting-link.component';
+export * from './logo.component';
 
 import { IconComponent } from './icon.component';
 import { ButtonComponent } from './button.component';

@@ -281,7 +281,7 @@ kit.agenda_rules(lambda: [job_rule("kairos.daily", tr("Deadlines: notices"), ser
                                    description="A notice at the advance warning and one on the day of the deadline.")])
 kit.on_warm(lambda: (mail.subscribe_async(_mail_rules), process_pending_mail()))
 kit.webui(icon="clock", color="orange", description="Bills, insurance, car tax, inspection, documents: alerts and tips.",
-          pages=[page("deadlines", "Deadlines", element="kairos-list", icon="clock", order=70,
+          pages=[page("deadlines", "Deadlines", element="kairos-list", icon="clock", order=70, place="agenda",
                       help="The deadlines with the advance warning, those found in emails to confirm, a tip for each. «Done» moves recurring ones to the next date."),
                  page("deadline/:id", "Deadline", element="kairos-detail", detail=True, parent="deadlines")],
           widgets=[widget("upcoming", "Deadlines", element="kairos-widget", sizes=["s", "m", "l"], size="m", auto=True,

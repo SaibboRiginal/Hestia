@@ -134,6 +134,6 @@ transfer = Transfer("calliope", kit.hub, sections=[
 app.include_router(transfer.router())
 kit.capabilities(transfer.capabilities)
 kit.webui(icon="file", color="indigo", description="Real PDF, Word and Excel files, checked before delivery.",
-          pages=[page("documents", "Documents created", element="calliope-docs", icon="file", order=200,
+          pages=[page("documents", "Documents", element="calliope-docs", icon="file", order=200,
                       help="The documents the assistant created for you (PDF, Word, Excel): download them or create a new one. You can also ask in chat: «make me a PDF with…».")])
 kit.finish()

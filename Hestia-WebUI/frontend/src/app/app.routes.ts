@@ -30,6 +30,7 @@ export const routes: Routes = [
       { path: 'machines', loadComponent: () => import('./features/machines/machines-page.component').then(m => m.MachinesPageComponent), title: tr('Machines · {assistant}') },
       { path: 'connections', loadComponent: () => import('./features/connections/connections-page.component').then(m => m.ConnectionsPageComponent), title: tr('Connections · {assistant}') },
       { path: 'p/hecate/devices', redirectTo: 'connections' },
+      { path: 'spaces', loadComponent: () => import('./features/spaces/spaces-page.component').then(m => m.SpacesPageComponent), title: tr('Spaces · {assistant}') },
       { path: 'system', loadComponent: () => import('./features/system/system-page.component').then(m => m.SystemPageComponent), title: tr('System · {assistant}') },
       { path: 'd/:id', loadComponent: () => import('./features/plugins/dashboard-page.component').then(m => m.DashboardPageComponent), title: tr('Dashboard · {assistant}') },
       { matcher: pluginPageMatcher, loadComponent: () => import('./features/plugins/plugin-page.component').then(m => m.PluginPageComponent), title: assistantName() },

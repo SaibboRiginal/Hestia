@@ -48,10 +48,10 @@ export class ChatsService {
 
   async refreshRecent(): Promise<void> {
     if (!this.plugins.modules().has('oracle')) return;
-    const r = await this.list({ limit: 12 });
+    const r = await this.list({ limit: 20 });
     if (!r.ok) return;
-    const pinned = r.items.filter(i => i.pinned);
-    this.recent.set(pinned.length ? pinned.slice(0, 8) : r.items.slice(0, 3));
+    // The Chat panel lists them (docs/work/2026-11-27-webui-rethink): pinned first, then the latest.
+    this.recent.set([...r.items.filter(i => i.pinned), ...r.items.filter(i => !i.pinned)].slice(0, 12));
   }
 
   async loadTags(): Promise<void> {

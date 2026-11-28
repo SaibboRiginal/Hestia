@@ -33,7 +33,7 @@ Word or an Excel file with one of three shared themes, checks it and keeps it
 
 ## WebUI plugin
 
-Page **Documenti creati** (`calliope-docs`: list, download, delete, new document with title, format, theme, HTML and the words it must contain, «Ask the assistant»). Built from `ui/` in the image (`hestia_common.module_kit` `kit.webui`).
+Page **Documents** (`calliope-docs`: list, download, delete, new document with title, format, theme, HTML and the words it must contain, «Ask the assistant»). Built from `ui/` in the image (`hestia_common.module_kit` `kit.webui`).
 
 ## Tests
 

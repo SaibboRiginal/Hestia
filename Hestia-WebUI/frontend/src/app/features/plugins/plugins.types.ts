@@ -29,6 +29,8 @@ export interface PluginPage extends Contribution {
   detail: boolean;       // opened from an item ('case/:id'), no sidebar entry
   help?: string;
   badge?: { source: string; field: string } | null;   // GET under api_prefix → number shown next to the entry
+  /** Where it lives in the navigation: space · agenda · assistant · notifications · system ('' = from the module kind). */
+  place?: string;
 }
 
 export interface ParamSpec { type: string; label: string; default?: unknown; options?: string[]; }

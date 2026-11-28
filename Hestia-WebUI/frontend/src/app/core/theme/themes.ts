@@ -84,6 +84,13 @@ function makeTheme(id: string, label: string, mode: ThemeMode, pair: string | un
   return { id, label, mode, pair, tokens };
 }
 
+/** Aurora: second accent (logo fire, gradients) and sans titles. */
+function aurora(t: ThemeDef, accent2: string): ThemeDef {
+  t.tokens['--accent-2'] = accent2;
+  t.tokens['--font-serif'] = 'var(--font-sans)';
+  return t;
+}
+
 /** Semantic colours, shadows and calendar colours shared by the seed themes (copied from the Claude pair). */
 const THEMES_SEMANTIC: Record<ThemeMode, Record<string, string>> = {
   light: {
@@ -100,11 +107,14 @@ const THEMES_SEMANTIC: Record<ThemeMode, Record<string, string>> = {
 };
 
 export const THEMES: ThemeDef[] = [
+  // Aurora (2026-11-27, default): teal with a blue second accent, sans titles; reads best with the Glass style.
+  aurora(makeTheme('aurora-light', tr('Aurora'), 'light', 'aurora-dark', { bg: '#eef5f7', surface: '#ffffff', text: '#0e1f26', accent: '#0f8f84', chatSans: true }), '#3b6fe0'),
+  aurora(makeTheme('aurora-dark', tr('Aurora night'), 'dark', 'aurora-light', { bg: '#0b161c', surface: '#122028', text: '#e2eef2', accent: '#2fc4b2', chatSans: true }), '#6c95f2'),
   {
-    id: 'claude-light',
-    label: tr('Claude light'),
+    id: 'terracotta-light',
+    label: tr('Terracotta'),
     mode: 'light',
-    pair: 'claude-dark',
+    pair: 'terracotta-dark',
     tokens: {
       '--bg': '#faf9f5',
       '--bg-subtle': '#f5f4ed',
@@ -140,10 +150,10 @@ export const THEMES: ThemeDef[] = [
     },
   },
   {
-    id: 'claude-dark',
-    label: tr('Claude dark'),
+    id: 'terracotta-dark',
+    label: tr('Terracotta night'),
     mode: 'dark',
-    pair: 'claude-light',
+    pair: 'terracotta-light',
     tokens: {
       '--bg': '#262624',
       '--bg-subtle': '#1f1e1d',
@@ -229,6 +239,6 @@ export const THEMES: ThemeDef[] = [
   ],
 ];
 
-export const DEFAULT_LIGHT = 'claude-light';
-export const DEFAULT_DARK = 'claude-dark';
+export const DEFAULT_LIGHT = 'aurora-light';
+export const DEFAULT_DARK = 'aurora-dark';
 

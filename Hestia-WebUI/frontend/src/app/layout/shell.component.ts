@@ -1,18 +1,16 @@
 import { ChangeDetectionStrategy, Component, HostListener, computed, effect, inject, signal, untracked } from '@angular/core';
 import { Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
 import { DatePipe, NgTemplateOutlet } from '@angular/common';
-import { APP_MODULES } from '../app.modules';
 import { AuthService } from '../services/auth.service';
 import { SignalRService } from '../services/signalr.service';
 import { SessionService } from '../services/session.service';
 import { SettingsService } from '../services/settings.service';
-import { ButtonComponent, DialogHostComponent, IconComponent, ResizeHandleComponent, ToastHostComponent, ToastService, savedWidth } from '../ui';
+import { ButtonComponent, DialogHostComponent, IconComponent, LogoComponent, ResizeHandleComponent, ToastHostComponent, ToastService, savedWidth } from '../ui';
 import { AssistantDrawerComponent } from '../features/assistant/assistant-drawer.component';
 import { AssistantService } from '../services/assistant.service';
 import { NotificationsService } from '../services/notifications.service';
 import { PresenceService, PresenceState, ago, reasonLabel } from '../services/presence.service';
 import { PluginsService } from '../features/plugins/plugins.service';
-import { PluginPage } from '../features/plugins/plugins.types';
 import { CommandPaletteComponent } from '../features/plugins/command-palette.component';
 import { MetisService } from '../services/metis.service';
 import { AppearanceService } from '../services/appearance.service';
@@ -23,113 +21,51 @@ import { ChatHistoryComponent } from '../features/chat/chat-history.component';
 import { ChatSummary, ChatsService, TAG_CSS } from '../services/chats.service';
 import { ChatService } from '../services/chat.service';
 import { LiveVoiceService } from '../services/live-voice.service';
+import { NavGroup, NavLink, NavService } from './nav.service';
 import { assistantName, tr, TrPipe } from '../core/i18n';
 
-interface NavEntry { id: string; label: string; icon: string; link: string; online: boolean; child: boolean; parent: string; badge: number;
-  /** Set by the view: has sub-pages · they are shown · the page on screen is one of them. */
-  kids?: boolean; open?: boolean; within?: boolean; }
-interface NavSection { key: 'pinned' | 'app' | 'dashboards' | 'modules' | 'system'; label: string; items: NavEntry[]; }
-interface Crumb { label: string; link?: string; }
-/** Pages of the app that belong to «System» next to the system modules' own pages. */
-const SYSTEM_PAGES = [
-  { id: 'app.system', label: tr('Overview'), icon: 'grid', link: '/system' },
-  { id: 'app.updates', label: tr('Updates'), icon: 'refresh', link: '/updates' },
-  { id: 'app.connections', label: tr('Connections'), icon: 'link', link: '/connections' },
-  { id: 'app.machines', label: tr('Machines'), icon: 'host', link: '/machines' },
-  { id: 'app.download', label: tr('alt::Download'), icon: 'download', link: '/download' },
-];
-/** Sections whose pages show «Section › Page» above the page. */
-const CRUMB_SECTIONS = ['pinned', 'dashboards', 'modules', 'system'];
+interface RailButton { g: NavGroup; label: string; icon: string; }
 
-/** App frame: collapsible, resizable sidebar (APP_MODULES + module pages + dashboards, arranged by the user) + routed page + global overlays.
- *  One rule for the sidebar (docs/work/2026-11-13-sidebar-and-chat): on top the bell, Chat and Search; then sections that
- *  all fold the same way (General, Pinned, Conversations, Dashboards, Modules, System), a module with sub-pages folds
- *  too; the page on screen is marked with its parent, its section opens by itself and «Section › Page» is written
- *  above the page. «Write here» and «Talk» live in the bubble (layout/quick-bubble), not in the sidebar. */
+/**
+ * App frame (docs/work/2026-11-27-webui-rethink, piece 1): an icon rail that is always there (Today, Chat, Agenda,
+ * Spaces, the assistant, the pinned pages; Search, Notifications, Settings and the assistant's state at the bottom),
+ * a context panel next to it that lists what fits where you are (spaces, conversations, the agenda's or the
+ * assistant's pages, Settings and the system pages), resizable and closable, and the routed page. Sub-pages are tabs
+ * of their page (plugin-page), never list entries. On a phone the rail becomes a bottom bar and the panel a drawer.
+ * «Write here» and «Talk» live in the bubble (layout/quick-bubble).
+ */
 @Component({
   selector: 'app-shell',
-  imports: [TrPipe, NgTemplateOutlet, RouterOutlet, RouterLink, RouterLinkActive, DatePipe, ButtonComponent, IconComponent, ResizeHandleComponent, ToastHostComponent, DialogHostComponent, AssistantDrawerComponent, CommandPaletteComponent, AppearanceLayerComponent, LiveOverlayComponent, ChatHistoryComponent, QuickBubbleComponent],
+  imports: [TrPipe, NgTemplateOutlet, RouterOutlet, RouterLink, RouterLinkActive, DatePipe, ButtonComponent, IconComponent, LogoComponent, ResizeHandleComponent, ToastHostComponent, DialogHostComponent, AssistantDrawerComponent, CommandPaletteComponent, AppearanceLayerComponent, LiveOverlayComponent, ChatHistoryComponent, QuickBubbleComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
-    <div class="shell" [class.collapsed]="collapsed()" [class.mobile-open]="mobileOpen()">
-      <aside class="nav hx-glass" [style.width.px]="collapsed() ? null : navWidth()">
-        @if (!collapsed()) { <hx-resize [(width)]="navWidth" [min]="200" [max]="420" [def]="248" key="nav" /> }
-        <div class="brand">
-          <svg class="logo" viewBox="0 0 24 24" width="22" height="22" aria-hidden="true">
-            <path d="M12 2.5 21.5 12 12 21.5 2.5 12Z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" />
-            <path d="M12 7.2 16.8 12 12 16.8 7.2 12Z" fill="currentColor" />
-          </svg>
-          <span class="name">{{ name }}</span>
-          @if (!plugins.online()) { <span class="offline"  [title]="'You are offline: the modules show the last saved data' | tr"><hx-icon name="offline" [size]="14" />{{ "offline" | tr }}</span> }
-          <a class="icon-btn bell" routerLink="/notifications" (click)="mobileOpen.set(false)" [attr.aria-label]="bellLabel()" [attr.title]="bellLabel()">
-            <hx-icon name="bell" [size]="17" />
-            @if (notifications.badge(); as n) { <b class="dot">{{ n > 99 ? '99+' : n }}</b> }
-          </a>
-          <button class="icon-btn collapse" (click)="toggleCollapse()" [attr.aria-label]="collapsed() ? ('Expand' | tr) : ('Collapse' | tr)">
-            <hx-icon name="sidebar" [size]="17" />
-          </button>
-        </div>
-        <div class="quick">
-          <a class="item" routerLink="/chat" routerLinkActive="active" (click)="mobileOpen.set(false)"  [title]="'Chat' | tr">
-            <hx-icon name="chat" [size]="18" /><span>{{ "Chat" | tr }}</span>
-          </a>
-          <button class="item" (click)="openSearch(); mobileOpen.set(false)"  [title]="'Search actions, pages, settings (Ctrl+K)' | tr">
-            <hx-icon name="search" [size]="18" /><span>{{ "Search" | tr }}</span><kbd>{{ "Ctrl K" | tr }}</kbd>
-          </button>
-        </div>
-        <!-- Pinned entries stay where they are (dossier 2026-11-18-real-test-problems D): their own block above the scroll
-             area, scrolling by itself only when it holds many. -->
-        @if (pinnedSection(); as ps) {
-          <div class="pinned-block"><ng-container *ngTemplateOutlet="section; context: { $implicit: ps }" /></div>
+    <div class="shell" [class.panel-closed]="panelClosed()" [class.mobile-open]="mobileOpen()">
+      <nav class="rail hx-glass" [attr.aria-label]="'Main menu' | tr">
+        <a class="logo" routerLink="/home" [title]="name" [attr.aria-label]="name"><hx-logo [size]="30" /></a>
+        @for (b of railTop(); track b.g) {
+          <a class="rb" [routerLink]="nav.linkOf(b.g)" [class.on]="nav.group() === b.g" [attr.aria-current]="nav.group() === b.g ? 'page' : null"
+             (click)="openPanel()" [title]="b.label"><hx-icon [name]="b.icon" [size]="20" /><span>{{ b.label }}</span></a>
         }
-        <!-- One scroll area between the fixed top and bottom (A5): the other sections, collapsible. -->
-        <div class="scroll">
-          @for (sec of view(); track sec.key) {
-            @if (sec.key === 'dashboards') {
-              <button type="button" class="sect" (click)="plugins.toggleNavSection('chats')" [attr.aria-expanded]="!isSectionClosed('chats')">
-                <span>{{ "Conversations" | tr }}</span><hx-icon [name]="isSectionClosed('chats') ? 'chevron-right' : 'chevron-down'" [size]="13" />
-              </button>
-              @if (!isSectionClosed('chats') || collapsed()) {
-                <nav>
-                  @for (c of chats.recent(); track c.session_id) {
-                    @if (renaming() === c.session_id) {
-                      <input #ri class="hx-input ren" [value]="c.title"  [attr.aria-label]="'Conversation title' | tr"
-                             (keydown.enter)="rename(c, ri.value)" (keydown.escape)="renaming.set('')" (blur)="rename(c, ri.value)">
-                    } @else {
-                      <div class="row">
-                        <button class="item chat" [class.active]="c.session_id === session.sessionId() && onChat()" (click)="openChat(c.session_id)" [attr.title]="c.title">
-                          <hx-icon [name]="c.pinned ? 'pin' : 'chat'" [size]="16" /><span>{{ c.title }}</span>
-                          @if (c.tags.length) { <i class="tdot" [style.background]="tagCss(c.tags[0].color)"></i> }
-                        </button>
-                        <button type="button" class="pin" (click)="openChatMenu($event, c)" aria-haspopup="menu"
-                                 [attr.aria-label]="'More: rename, pin, delete' | tr"  [title]="'Other' | tr"><hx-icon name="more" [size]="14" /></button>
-                      </div>
-                    }
-                  }
-                  <button class="item chat all" [class.active]="chats.historyOpen()" (click)="chats.historyOpen.set(!chats.historyOpen()); mobileOpen.set(false)"  [title]="'All conversations, with search and labels' | tr">
-                    <hx-icon name="history" [size]="16" /><span>{{ "All conversations" | tr }}</span>
-                  </button>
-                </nav>
-              }
-            }
-            @if (sec.key !== 'pinned') { <ng-container *ngTemplateOutlet="section; context: { $implicit: sec }" /> }
-          }
-        </div>
-        <nav>
-          @for (m of bottom; track m.path) {
-            <a class="item" [routerLink]="'/' + m.path" routerLinkActive="active" (click)="mobileOpen.set(false)" [attr.title]="m.label">
-              <hx-icon [name]="m.icon" [size]="18" /><span>{{ m.label }}</span>
+        @if (nav.pins().length) {
+          <div class="sep"></div>
+          @for (p of nav.pins(); track p.id) {
+            <a class="rb pinned" [routerLink]="p.link" routerLinkActive="on" [title]="p.label">
+              <span class="tile" [style.--h]="p.color"><hx-icon [name]="p.icon" [size]="16" /></span><span>{{ p.label }}</span>
+              @if (p.badge) { <b class="dot">{{ p.badge > 99 ? '99+' : p.badge }}</b> }
             </a>
           }
-          @if (!auth.local()) {
-            <button class="item" (click)="logout()"  [title]="'Log out' | tr">
-              <hx-icon name="logout" [size]="18" /><span>{{ "Log out" | tr }}</span>
-            </button>
-          }
-        </nav>
+        }
+        <div class="grow"></div>
+        @if (!plugins.online()) { <span class="rb off" [title]="'You are offline: the modules show the last saved data' | tr"><hx-icon name="offline" [size]="18" /><span>{{ "offline" | tr }}</span></span> }
+        <button class="rb" (click)="openSearch()" [title]="'Search actions, pages, settings (Ctrl+K)' | tr"><hx-icon name="search" [size]="20" /><span>{{ "Search" | tr }}</span></button>
+        <a class="rb" [routerLink]="nav.linkOf('notifications')" [class.on]="nav.group() === 'notifications'" [attr.aria-label]="bellLabel()" [title]="bellLabel()">
+          <hx-icon name="bell" [size]="20" /><span>{{ "Notices" | tr }}</span>
+          @if (notifications.badge(); as n) { <b class="dot">{{ n > 99 ? '99+' : n }}</b> }
+        </a>
+        <a class="rb" routerLink="/settings" [class.on]="nav.group() === 'settings'" [title]="'Settings' | tr"><hx-icon name="settings" [size]="20" /><span>{{ "Settings" | tr }}</span></a>
         @if (presence.state(); as p) {
           <div class="presence-wrap">
-            <button class="item presence" [attr.data-tone]="online() ? presence.tone() : 'off'" (click)="togglePresence($event)"
+            <button class="presence" [attr.data-tone]="online() ? presence.tone() : 'off'" (click)="togglePresence($event)"
                     [attr.title]="('Status:' | tr) + ' ' + p.label + ' · ' + connLabel() + (' · last interaction ' | tr) + ago(p.idle_minutes)"
                     [attr.aria-expanded]="presenceOpen()">
               <span class="pdot"></span><span class="plabel">{{ online() ? p.label : connLabel() }}</span>
@@ -180,23 +116,98 @@ const CRUMB_SECTIONS = ['pinned', 'dashboards', 'modules', 'system'];
             <span class="dot"></span><span>{{ connLabel() }}</span>
           </div>
         }
+      </nav>
+      <aside class="panel hx-glass" [style.width.px]="navWidth()" [attr.aria-label]="groupLabel()">
+        <hx-resize [(width)]="navWidth" [min]="200" [max]="380" [def]="236" key="panel" />
+        <div class="p-head">
+          <span class="p-title">{{ groupLabel() }}</span>
+          <button class="icon-btn" (click)="togglePanel()" [attr.aria-label]="'Close the panel' | tr" [title]="'Close the panel' | tr"><hx-icon name="sidebar" [size]="17" /></button>
+        </div>
+        @switch (nav.group()) {
+          @case ('chat') {
+            <a hx-btn variant="primary" size="sm" icon="plus" class="new-chat" routerLink="/chat" (click)="newChat()">{{ "New conversation" | tr }}</a>
+            <div class="p-scroll">
+              @for (c of chats.recent(); track c.session_id) {
+                @if (renaming() === c.session_id) {
+                  <input #ri class="hx-input ren" [value]="c.title" [attr.aria-label]="'Conversation title' | tr"
+                         (keydown.enter)="rename(c, ri.value)" (keydown.escape)="renaming.set('')" (blur)="rename(c, ri.value)">
+                } @else {
+                  <div class="row">
+                    <button class="item" [class.active]="c.session_id === session.sessionId()" (click)="openChat(c.session_id)" [attr.title]="c.title">
+                      <hx-icon [name]="c.pinned ? 'pin' : 'chat'" [size]="16" /><span>{{ c.title }}</span>
+                      @if (c.tags.length) { <i class="tdot" [style.background]="tagCss(c.tags[0].color)"></i> }
+                    </button>
+                    <button type="button" class="more" (click)="openChatMenu($event, c)" aria-haspopup="menu"
+                            [attr.aria-label]="'More: rename, pin, delete' | tr" [title]="'Other' | tr"><hx-icon name="more" [size]="14" /></button>
+                  </div>
+                }
+              } @empty { <p class="p-empty">{{ "Your conversations will appear here." | tr }}</p> }
+              <button class="item dim" [class.active]="chats.historyOpen()" (click)="chats.historyOpen.set(!chats.historyOpen()); mobileOpen.set(false)" [title]="'All conversations, with search and labels' | tr">
+                <hx-icon name="history" [size]="16" /><span>{{ "All conversations" | tr }}</span>
+              </button>
+            </div>
+          }
+          @case ('today') {
+            <div class="p-scroll">
+              @for (l of todayLinks(); track l.id) {
+                <a class="item" [routerLink]="l.link" routerLinkActive="active" [routerLinkActiveOptions]="{ exact: true }" (click)="mobileOpen.set(false)"><hx-icon [name]="l.icon" [size]="17" /><span>{{ l.label }}</span></a>
+              }
+              @if (nav.spaces().length) {
+                <div class="p-sect">{{ "Spaces" | tr }}</div>
+                @for (l of nav.spaces(); track l.id) { <ng-container *ngTemplateOutlet="space; context: { $implicit: l }" /> }
+              }
+            </div>
+          }
+          @case ('settings') {
+            <div class="p-scroll">
+              <a class="item" routerLink="/settings" routerLinkActive="active" (click)="mobileOpen.set(false)"><hx-icon name="settings" [size]="17" /><span>{{ "Settings" | tr }}</span></a>
+              <div class="p-sect">{{ "System" | tr }}</div>
+              @for (l of nav.systemLinks(); track l.id) { <ng-container *ngTemplateOutlet="plain; context: { $implicit: l }" /> }
+              @if (!auth.local()) {
+                <button class="item dim" (click)="logout()" [title]="'Log out' | tr"><hx-icon name="logout" [size]="17" /><span>{{ "Log out" | tr }}</span></button>
+              }
+            </div>
+          }
+          @case ('spaces') {
+            <div class="p-scroll">
+              @for (l of nav.spaces(); track l.id) { <ng-container *ngTemplateOutlet="space; context: { $implicit: l }" /> }
+              @empty { <p class="p-empty">{{ "No space yet: the modules you install add theirs here." | tr }}</p> }
+            </div>
+          }
+          @default {
+            <div class="p-scroll">
+              @for (l of groupLinks(); track l.id) { <ng-container *ngTemplateOutlet="plain; context: { $implicit: l }" /> }
+              @empty { <p class="p-empty">{{ "Nothing here yet." | tr }}</p> }
+            </div>
+          }
+        }
       </aside>
       @if (chats.historyOpen()) { @defer { <hx-chat-history /> } }
       <div class="scrim" (click)="mobileOpen.set(false)"></div>
       <main>
-        <button class="icon-btn burger" (click)="mobileOpen.set(true)" [attr.aria-label]="notifications.badge() ? 'Menu, ' + bellLabel() : ('Menu' | tr)">
-          <hx-icon name="menu" />@if (notifications.badge(); as n) { <b class="dot">{{ n > 99 ? '99+' : n }}</b> }
-        </button>
-        @if (crumbs().length) {
-          <nav class="crumbs"  [attr.aria-label]="'Where you are' | tr">
-            @for (c of crumbs(); track $index) {
-              @if ($index) { <hx-icon name="chevron-right" [size]="12" /> }
-              @if (c.link && !$last) { <a [routerLink]="c.link">{{ c.label }}</a> } @else { <span [class.cur]="$last">{{ c.label }}</span> }
-            }
-          </nav>
-        }
+        <button class="icon-btn opener" (click)="openDrawer()" [attr.aria-label]="'Open the panel' | tr" [title]="'Open the panel' | tr"><hx-icon name="sidebar" [size]="17" /></button>
         <router-outlet />
       </main>
+      <!-- Phone: the rail becomes a bottom bar. -->
+      <nav class="tabbar hx-glass" [attr.aria-label]="'Main menu' | tr">
+        @for (b of phoneBar(); track b.g) {
+          <a [routerLink]="nav.linkOf(b.g)" [class.on]="nav.group() === b.g" (click)="moreOpen.set(false)"><hx-icon [name]="b.icon" [size]="21" /><span>{{ b.label }}</span></a>
+        }
+        <button type="button" [class.on]="moreOpen() || ['assistant', 'notifications', 'settings'].includes(nav.group())" (click)="moreOpen.set(!moreOpen())" [attr.aria-expanded]="moreOpen()">
+          <hx-icon name="more" [size]="21" /><span>{{ "More" | tr }}</span>
+          @if (notifications.badge()) { <b class="dot"></b> }
+        </button>
+      </nav>
+      @if (moreOpen()) {
+        <div class="hx-ctx-scrim" (click)="moreOpen.set(false)"></div>
+        <div class="more-sheet hx-glass hx-fade-in" role="menu">
+          <a role="menuitem" [routerLink]="nav.linkOf('assistant')" (click)="moreOpen.set(false)"><hx-icon name="sparkle" [size]="18" />{{ name }}</a>
+          <a role="menuitem" [routerLink]="nav.linkOf('notifications')" (click)="moreOpen.set(false)"><hx-icon name="bell" [size]="18" />{{ "Notices" | tr }}@if (notifications.badge(); as n) { <b class="count">{{ n }}</b> }</a>
+          <button role="menuitem" (click)="moreOpen.set(false); openSearch()"><hx-icon name="search" [size]="18" />{{ "Search" | tr }}</button>
+          <a role="menuitem" routerLink="/settings" (click)="moreOpen.set(false)"><hx-icon name="settings" [size]="18" />{{ "Settings" | tr }}</a>
+          @if (!auth.local()) { <button role="menuitem" (click)="moreOpen.set(false); logout()"><hx-icon name="logout" [size]="18" />{{ "Log out" | tr }}</button> }
+        </div>
+      }
     </div>
     @if (chatMenu(); as m) {
       <div class="hx-ctx-scrim" (click)="chatMenu.set(null)"></div>
@@ -213,125 +224,101 @@ const CRUMB_SECTIONS = ['pinned', 'dashboards', 'modules', 'system'];
     @defer (when live.on) { <hx-live-overlay /> }
     <hx-toast-host />
     <hx-dialog-host />
-    <ng-template #section let-sec>
-        @if (sec.items.length) {
-          <button type="button" class="sect" (click)="plugins.toggleNavSection(sec.key)"
-                  [attr.aria-expanded]="!sec.closed">
-            <span>{{ sec.label }}</span><hx-icon [name]="sec.closed ? 'chevron-right' : 'chevron-down'" [size]="13" />
-          </button>
-          @if (!sec.closed || collapsed()) {
-            <nav>
-              @for (e of sec.items; track e.id) {
-                <div class="row" [class.child]="e.child" [class.dragging]="dragId() === e.id"
-                     [attr.draggable]="sec.key === 'pinned' && !collapsed()"
-                     (dragstart)="dragStart(e.id, sec.key)" (dragover)="dragOver($event, e.id, sec.key)"
-                     (drop)="drop($event)" (dragend)="dragId.set(null)">
-                  <a class="item" [class.child]="e.child" [class.off]="!e.online" [class.within]="e.within" [class.kids]="e.kids" [routerLink]="e.link" routerLinkActive="active"
-                     (click)="mobileOpen.set(false)" [attr.title]="e.online ? e.label : e.label + (' (not reachable)' | tr)">
-                    <hx-icon [name]="e.icon" [size]="e.child ? 16 : 18" /><span>{{ e.label }}</span>
-                    @if (e.badge) { <b class="count">{{ e.badge > 99 ? '99+' : e.badge }}</b> }
-                  </a>
-                  @if (e.kids) {
-                    <button type="button" class="fold" (click)="plugins.toggleNavSection('m:' + e.id)" [attr.aria-expanded]="e.open"
-                            [attr.aria-label]="(e.open ? ('Close the pages of ' | tr) : ('Open the pages of ' | tr)) + e.label" [attr.title]="e.open ? ('Close' | tr) : ('Open' | tr)">
-                      <hx-icon [name]="e.open ? 'chevron-down' : 'chevron-right'" [size]="13" /></button>
-                  }
-                  <button type="button" class="pin" [class.on]="sec.key === 'pinned'" (click)="plugins.toggleNavPin(e.id)"
-                          [attr.aria-label]="sec.key === 'pinned' ? ('Remove from Pinned' | tr) : ('Pin to the top' | tr)"
-                          [attr.title]="sec.key === 'pinned' ? ('Remove from Pinned' | tr) : ('Pin to the top' | tr)">
-                    <hx-icon name="pin" [size]="14" />
-                  </button>
-                </div>
-              }
-            </nav>
-          }
-        }
+    <ng-template #plain let-l>
+      <a class="item" [class.off]="!l.online" [routerLink]="l.link" routerLinkActive="active" (click)="mobileOpen.set(false)"
+         [attr.title]="l.online ? l.label : l.label + (' (not reachable)' | tr)">
+        <hx-icon [name]="l.icon" [size]="17" /><span>{{ l.label }}</span>
+        @if (l.badge) { <b class="count">{{ l.badge > 99 ? '99+' : l.badge }}</b> }
+      </a>
+    </ng-template>
+    <ng-template #space let-l>
+      <div class="row">
+        <a class="item" [class.off]="!l.online" [routerLink]="l.link" routerLinkActive="active" (click)="mobileOpen.set(false)"
+           [attr.title]="l.online ? l.label : l.label + (' (not reachable)' | tr)">
+          <span class="tile" [style.--h]="l.color"><hx-icon [name]="l.icon" [size]="15" /></span><span>{{ l.label }}</span>
+          @if (l.badge) { <b class="count">{{ l.badge > 99 ? '99+' : l.badge }}</b> }
+        </a>
+        <button type="button" class="more pin" [class.on]="isPinned(l)" (click)="plugins.toggleNavPin(l.id)"
+                [attr.aria-label]="isPinned(l) ? ('Remove from the bar' | tr) : ('Pin to the bar' | tr)"
+                [title]="isPinned(l) ? ('Remove from the bar' | tr) : ('Pin to the bar' | tr)"><hx-icon name="pin" [size]="14" /></button>
+      </div>
     </ng-template>
   `,
   styles: [`
-    .offline { display: inline-flex; align-items: center; gap: 4px; font-size: 11.5px; color: var(--warning, #d9a441); padding: 2px 8px; border-radius: 999px; background: var(--surface-2, transparent); border: 1px solid var(--border); }
-    :host { display: block; height: 100vh; }
+    :host { display: block; height: 100vh; height: 100dvh; }
     .shell { display: flex; height: 100%; }
-    .nav { position: relative; width: var(--nav-width); flex-shrink: 0; background: var(--bg-subtle); border-right: 1px solid var(--border);
-           display: flex; flex-direction: column; padding: 10px 8px; gap: 2px; transition: width var(--dur) var(--ease); overflow: hidden; }
-    .nav hx-resize { right: 0; }
-    .brand { display: flex; align-items: center; gap: 9px; padding: 4px 6px 12px 8px; }
-    .logo { color: var(--accent); flex-shrink: 0; }
-    .quick { display: flex; flex-direction: column; gap: 2px; flex-shrink: 0; margin-bottom: 4px; }
-    .item kbd { margin-left: auto; font: 10.5px var(--font-mono, monospace); color: var(--text-3); }
-    .collapsed .item kbd { display: none; }
-    .icon-btn { position: relative; }
-    .dot { position: absolute; top: 1px; right: 0; min-width: 15px; height: 15px; padding: 0 4px; border-radius: var(--radius-full); background: var(--accent);
+    /* Rail */
+    .rail { width: 76px; flex-shrink: 0; display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 12px 6px 10px;
+            background: var(--bg-subtle); border-right: 1px solid var(--border); overflow-y: auto; overflow-x: hidden; scrollbar-width: none; z-index: 2; }
+    .logo { display: grid; place-items: center; width: 44px; height: 44px; margin-bottom: 8px; border-radius: var(--radius-md); }
+    .logo:hover { background: var(--surface-2); }
+    .rb { position: relative; width: 62px; flex-shrink: 0; display: flex; flex-direction: column; align-items: center; gap: 3px; padding: 7px 2px;
+          border-radius: var(--radius-md); color: var(--text-3); font: 500 10.5px/1.2 var(--font-sans); text-decoration: none !important; background: none; border: 0; cursor: pointer; }
+    .rb span:not(.tile) { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .rb:hover { background: var(--surface-2); color: var(--text); }
+    .rb.on { background: var(--accent-soft); color: var(--accent); }
+    .rb.off { color: var(--warning); cursor: default; }
+    .rb .tile { width: 28px; height: 28px; border-radius: var(--radius-sm); display: grid; place-items: center;
+                background: color-mix(in srgb, var(--h) 16%, transparent); color: var(--h); }
+    .rb.pinned.on { background: color-mix(in srgb, var(--h, var(--accent)) 12%, transparent); color: var(--text); }
+    .sep { width: 32px; height: 1px; background: var(--border); margin: 6px 0; flex-shrink: 0; }
+    .grow { flex: 1; min-height: 8px; }
+    .dot { position: absolute; top: 3px; right: 9px; min-width: 15px; height: 15px; padding: 0 4px; border-radius: var(--radius-full); background: var(--accent);
            color: var(--accent-contrast); font: 600 9.5px/15px var(--font-sans); text-align: center; }
-    .item.within { color: var(--text); } .item.within hx-icon { color: var(--accent); }
-    .item.kids { padding-right: 34px; }
-    .fold { position: absolute; right: 4px; top: 50%; transform: translateY(-50%); width: 26px; height: 26px; border-radius: var(--radius-md);
-            display: inline-grid; place-items: center; background: none; border: 0; color: var(--text-3); cursor: pointer; }
-    .fold:hover { background: var(--surface-3); color: var(--text); }
-    .row:has(.fold) .pin { right: 30px; }
-    .collapsed .fold { display: none; } .collapsed .item.kids { padding-right: 10px; }
-    .ren { height: 32px; font-size: 13.5px; width: 100%; }
-    .crumbs { flex-shrink: 0; display: flex; flex-direction: row; align-items: center; gap: 5px; padding: 8px 24px 0; font-size: 12px; color: var(--text-3); white-space: nowrap; overflow: hidden; }
-    .crumbs a { color: var(--text-3); text-decoration: none; } .crumbs a:hover { color: var(--text); text-decoration: underline; }
-    .crumbs .cur { color: var(--text-2); overflow: hidden; text-overflow: ellipsis; }
-    .item.chat { height: 32px; font-size: 13.5px; padding-right: 32px; } .item.chat.all { padding-right: 10px; } .item.chat span { overflow: hidden; text-overflow: ellipsis; }
-    .item.chat.all { color: var(--text-3); }
-    .tdot { width: 7px; height: 7px; border-radius: 50%; margin-left: auto; flex-shrink: 0; }
-    .name { font-family: var(--font-serif); font-size: 19px; font-weight: 500; flex: 1; white-space: nowrap; }
-    .icon-btn { width: 32px; height: 32px; border-radius: var(--radius-md); display: inline-grid; place-items: center; color: var(--text-3); }
-    .icon-btn:hover { background: var(--surface-2); color: var(--text); }
-    /* Open/close the side bar: a solid button that reads on any page background (it was almost transparent). */
-    .icon-btn.collapse, .icon-btn.burger { background: var(--surface); border: 1px solid var(--border-strong, var(--border)); color: var(--text-2);
-                                           box-shadow: var(--shadow-sm, 0 1px 2px rgba(0,0,0,.18)); }
-    .icon-btn.collapse:hover, .icon-btn.burger:hover { background: var(--surface-2); color: var(--text); }
-    nav { display: flex; flex-direction: column; gap: 2px; }
-    .brand, .nav > nav, .presence-wrap, .conn { flex-shrink: 0; }
-    .pinned-block { flex-shrink: 0; max-height: 34vh; overflow-y: auto; overflow-x: hidden; margin: 0 -8px; padding: 0 8px 6px;
-                    border-bottom: 1px solid var(--border); scrollbar-width: thin; display: flex; flex-direction: column; gap: 2px; }
-    .scroll { flex: 1; min-height: 0; overflow-y: auto; overflow-x: hidden; display: flex; flex-direction: column; gap: 2px;
-              margin: 0 -8px; padding: 0 8px 8px; scrollbar-width: thin; }
-    .sect { display: flex; align-items: center; gap: 4px; width: 100%; background: none; border: 0; cursor: pointer; text-align: left;
-            font: 600 11px var(--font-sans); color: var(--text-3); text-transform: uppercase; letter-spacing: .04em; padding: 12px 12px 4px; white-space: nowrap; }
-    .sect:hover { color: var(--text-2); }
-    .sect hx-icon { opacity: 0; transition: opacity var(--dur) var(--ease); }
-    .sect:hover hx-icon, .sect:focus-visible hx-icon, .sect[aria-expanded=false] hx-icon { opacity: 1; }
-    .collapsed .sect { visibility: hidden; height: 8px; padding: 0; pointer-events: none; }
-    .row { position: relative; }
-    .row.dragging { opacity: .4; }
-    .pin { position: absolute; right: 4px; top: 50%; transform: translateY(-50%); width: 26px; height: 26px; border-radius: var(--radius-md);
-           display: inline-grid; place-items: center; background: none; border: 0; color: var(--text-3); cursor: pointer; opacity: 0; }
-    .row:hover .pin, .pin:focus-visible { opacity: 1; }
-    .row:hover .item .count { visibility: hidden; }
-    .pin:hover { background: var(--surface-3); color: var(--text); }
-    .pin.on { color: var(--accent); }
-    .collapsed .pin { display: none; }
-    @media (hover: none) { .pin { opacity: .6; } .row .item .count { visibility: visible; } }
-    .item.child { padding-left: 30px; height: 32px; font-size: 13.5px; }
-    .collapsed .item.child { padding-left: 10px; }
-    .item.off { opacity: .55; }
-    .item { display: flex; align-items: center; gap: 11px; height: 36px; padding: 0 10px; border-radius: var(--radius-md);
-            color: var(--text-2); font-size: 14px; white-space: nowrap; text-decoration: none !important; width: 100%; text-align: left; }
+    /* Context panel */
+    .panel { position: relative; flex-shrink: 0; display: flex; flex-direction: column; gap: 2px; padding: 12px 8px; min-height: 0;
+             background: color-mix(in srgb, var(--bg-subtle) 70%, transparent); border-right: 1px solid var(--border); overflow: hidden;
+             transition: width var(--dur) var(--ease); }
+    .panel hx-resize { right: 0; }
+    .p-head { display: flex; align-items: center; gap: 8px; padding: 2px 4px 10px 10px; flex-shrink: 0; }
+    .p-title { flex: 1; font: 700 17px/1.2 var(--font-display, var(--font-sans)); letter-spacing: -.01em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .p-scroll { flex: 1; min-height: 0; overflow-y: auto; overflow-x: hidden; display: flex; flex-direction: column; gap: 2px; margin: 0 -8px; padding: 0 8px 8px; scrollbar-width: thin; }
+    .p-sect { font: 600 11px var(--font-sans); color: var(--text-3); text-transform: uppercase; letter-spacing: .05em; padding: 14px 10px 4px; }
+    .p-empty { margin: 0; padding: 8px 10px; font-size: 13px; color: var(--text-3); }
+    .new-chat { margin: 0 2px 8px; justify-content: center; flex-shrink: 0; }
+    .item { position: relative; display: flex; align-items: center; gap: 10px; min-height: 36px; padding: 0 10px; border-radius: var(--radius-md); width: 100%;
+            color: var(--text-2); font-size: 14px; white-space: nowrap; text-decoration: none !important; text-align: left; background: none; border: 0; cursor: pointer; }
+    .item span:not(.tile) { overflow: hidden; text-overflow: ellipsis; }
     .item:hover { background: var(--surface-2); color: var(--text); }
-    .item.active { background: var(--surface-3); color: var(--text); font-weight: 500; }
-    .item hx-icon { color: var(--text-3); }
-    .item.active hx-icon { color: var(--accent); }
-    .item { position: relative; }
+    .item.active { background: var(--accent-soft); color: var(--text); font-weight: 600; }
+    .item hx-icon { color: var(--text-3); flex-shrink: 0; } .item.active hx-icon { color: var(--accent); }
+    .item.off { opacity: .55; } .item.dim { color: var(--text-3); }
+    .item .tile { width: 26px; height: 26px; border-radius: var(--radius-sm); display: grid; place-items: center; flex-shrink: 0;
+                  background: color-mix(in srgb, var(--h) 16%, transparent); }
+    .item .tile hx-icon { color: var(--h); }
+    .row { position: relative; }
+    .row .item { padding-right: 34px; }
+    .more { position: absolute; right: 4px; top: 50%; transform: translateY(-50%); width: 26px; height: 26px; border-radius: var(--radius-md);
+            display: inline-grid; place-items: center; background: none; border: 0; color: var(--text-3); cursor: pointer; opacity: 0; }
+    .row:hover .more, .more:focus-visible, .more.on { opacity: 1; }
+    .more:hover { background: var(--surface-3); color: var(--text); }
+    .more.pin.on { color: var(--accent); }
+    .row:hover .item .count { visibility: hidden; }
+    @media (hover: none) { .more { opacity: .6; } .row .item .count { visibility: visible; } }
     .count { margin-left: auto; min-width: 18px; height: 18px; padding: 0 5px; border-radius: var(--radius-full); background: var(--accent);
              color: var(--accent-contrast); font: 600 11px/18px var(--font-sans); text-align: center; }
-    .collapsed .count { position: absolute; top: 3px; left: 22px; margin: 0; min-width: 15px; height: 15px; line-height: 15px; font-size: 9.5px; padding: 0 3px; }
-    .conn { display: flex; align-items: center; gap: 7px; font-size: 11.5px; color: var(--text-3); padding: 8px 12px 2px; white-space: nowrap; }
-    .conn .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--warning); flex-shrink: 0; }
-    .conn[data-state=connected] .dot { background: var(--success); }
-    .conn[data-state=disconnected] .dot { background: var(--danger); }
-    .presence-wrap { position: relative; }
-    .presence { gap: 9px; font-size: 12.5px; height: 30px; }
+    .tdot { width: 7px; height: 7px; border-radius: 50%; margin-left: auto; flex-shrink: 0; }
+    .ren { height: 34px; font-size: 13.5px; width: 100%; }
+    .icon-btn { width: 32px; height: 32px; border-radius: var(--radius-md); display: inline-grid; place-items: center; color: var(--text-3); background: none; border: 0; cursor: pointer; flex-shrink: 0; }
+    .icon-btn:hover { background: var(--surface-2); color: var(--text); }
+    .panel-closed .panel { display: none; }
+    main { flex: 1; min-width: 0; display: flex; flex-direction: column; position: relative; background: transparent; }
+    .opener { display: none; position: absolute; top: 14px; left: 10px; z-index: 5; background: var(--surface); border: 1px solid var(--border); box-shadow: var(--shadow-1); }
+    .panel-closed .opener { display: inline-grid; }
+    .panel-closed main { --head-inset: 44px; }
+    .scrim, .tabbar { display: none; }
+    .more-sheet { position: fixed; right: 10px; bottom: calc(70px + env(safe-area-inset-bottom, 0px)); z-index: 950; min-width: 220px; padding: 6px;
+                  background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); box-shadow: var(--shadow-3); display: flex; flex-direction: column; }
+    .more-sheet a, .more-sheet button { display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-radius: var(--radius-md); color: var(--text);
+                  text-decoration: none; background: none; border: 0; font: inherit; text-align: left; cursor: pointer; min-height: var(--tap, 0px); }
+    .more-sheet a:hover, .more-sheet button:hover { background: var(--surface-2); }
+    .more-sheet hx-icon { color: var(--text-3); }
     .presence .pdot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; margin: 0 4px; background: var(--text-3); }
     .presence[data-tone=awake] .pdot { background: var(--success); }
     .presence[data-tone=idle] .pdot { background: var(--warning); }
     .presence[data-tone=sleep] .pdot { background: var(--accent); }
     .presence[data-tone=dnd] .pdot { background: var(--danger); }
     .presence[data-tone=off] .pdot { background: var(--warning); animation: hx-pulse 1.4s ease-in-out infinite; }
-    .presence .plabel { overflow: hidden; text-overflow: ellipsis; }
     /* fixed: the sidebar clips its overflow (resizable/collapsible width), so the popover lives in the viewport */
     .presence-pop { position: fixed; width: min(300px, calc(100vw - 16px)); z-index: 900; padding: 12px; overflow-y: auto;
                     background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg, 10px);
@@ -351,247 +338,116 @@ const CRUMB_SECTIONS = ['pinned', 'dashboards', 'modules', 'system'];
     .ht { color: var(--text-3); flex-shrink: 0; font-variant-numeric: tabular-nums; }
     .hl { color: var(--text-2); }
     .hr { color: var(--text-3); }
-    .collapsed .presence .plabel { display: none; }
-    .collapsed .nav { width: var(--nav-width-collapsed); }
-    .collapsed .name, .collapsed .item span, .collapsed .conn span:last-child { display: none; }
-    .collapsed .brand { flex-direction: column; padding-left: 0; padding-right: 0; }
-    main { flex: 1; min-width: 0; display: flex; flex-direction: column; position: relative; background: transparent; }
-    .burger { display: none; position: absolute; top: 12px; left: 10px; z-index: 5; }
-    .scrim { display: none; }
+    .presence-wrap { width: 100%; display: grid; place-items: center; margin-top: 4px; }
+    .presence { width: 44px; height: 30px; justify-content: center; padding: 0; background: none; border: 0; cursor: pointer; border-radius: var(--radius-md); display: flex; align-items: center; }
+    .presence:hover { background: var(--surface-2); }
+    .presence .plabel { display: none; }
+    .conn { display: grid; place-items: center; padding: 8px 0 2px; }
+    .conn span:last-child { display: none; }
+    .conn .dot { position: static; width: 8px; height: 8px; min-width: 0; padding: 0; border-radius: 50%; background: var(--warning); }
+    .conn[data-state=connected] .dot { background: var(--success); }
+    .conn[data-state=disconnected] .dot { background: var(--danger); }
     @media (max-width: 860px) {
-      .nav { position: fixed; inset: 0 auto 0 0; z-index: 800; transform: translateX(-100%); transition: transform var(--dur) var(--ease); width: var(--nav-width) !important; box-shadow: var(--shadow-3); }
-      .collapsed .name, .collapsed .item span, .collapsed .conn span:last-child { display: initial; }
-      .collapsed .count { position: static; margin-left: auto; min-width: 18px; height: 18px; line-height: 18px; font-size: 11px; padding: 0 5px; }
-      .collapse { display: none; }
-      .mobile-open .nav { transform: none; }
-
+      .rail { display: none; }
+      .panel { position: fixed; inset: 0 auto 0 0; z-index: 800; width: min(300px, 86vw) !important; transform: translateX(-100%); display: flex !important;
+               transition: transform var(--dur) var(--ease); box-shadow: var(--shadow-3); background: var(--bg-subtle); padding-top: calc(12px + env(safe-area-inset-top, 0px)); }
+      .panel hx-resize { display: none; }
+      .mobile-open .panel { transform: none; }
       .mobile-open .scrim { display: block; position: fixed; inset: 0; background: var(--overlay); z-index: 790; }
-      .burger { display: inline-grid; }
-      .crumbs { padding: 8px 12px 0 56px; min-height: 30px; }
+      .opener, .panel-closed .opener { display: inline-grid; top: 12px; }
+      main { --head-inset: 44px; padding-bottom: calc(62px + env(safe-area-inset-bottom, 0px)); }
+      .tabbar { display: grid; grid-template-columns: repeat(5, 1fr); position: fixed; left: 0; right: 0; bottom: 0; z-index: 700;
+                padding: 4px 4px calc(6px + env(safe-area-inset-bottom, 0px)); background: var(--bg-subtle); border-top: 1px solid var(--border); }
+      .tabbar a, .tabbar button { position: relative; display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 6px 0; min-height: 52px; justify-content: center;
+                  color: var(--text-3); font: 500 10.5px var(--font-sans); text-decoration: none; background: none; border: 0; cursor: pointer; }
+      .tabbar .on { color: var(--accent); }
+      .tabbar .dot { top: 4px; right: calc(50% - 16px); min-width: 8px; width: 8px; height: 8px; padding: 0; }
     }
   `],
 })
 export class ShellComponent {
   /** The site calls itself with the name the owner chose (docs/work/2026-11-17-client-names). */
   readonly name = assistantName();
-  /** Chat has its own place on top of the sidebar. */
-  readonly top = APP_MODULES.filter(m => !m.bottom && m.path !== 'chat');
-  readonly bottom = APP_MODULES.filter(m => m.bottom);
   auth = inject(AuthService);
   signalR = inject(SignalRService);
   assistant = inject(AssistantService);
   notifications = inject(NotificationsService);
   presence = inject(PresenceService);
   plugins = inject(PluginsService);
+  nav = inject(NavService);
+  session = inject(SessionService);
+  chats = inject(ChatsService);
+  live = inject(LiveVoiceService);
+  private chat = inject(ChatService);
   private toasts = inject(ToastService);
   private metis = inject(MetisService);
   private look = inject(AppearanceService);
-  /** Module pages (client plugins): parents followed by their sub-pages. */
-  readonly pluginNav = computed(() => {
-    const pages = this.plugins.navPages();
-    const top = pages.filter(p => !p.parent || !pages.some(x => x.module === p.module && x.local_id === p.parent));
-    return top.flatMap(p => [p, ...pages.filter(c => c.parent === p.local_id && c.module === p.module)]);
-  });
-  /** The «System status» dashboard opens from the System page, not from a second sidebar entry. */
-  readonly otherDashboards = computed(() => this.plugins.dashboards().filter(d => d.id !== 'home' && d.id !== 'system'));
+  private settings = inject(SettingsService);
+  private router = inject(Router);
 
-  /** Every sidebar entry by section; pinned ones move to «Pinned» (in the user's order) and leave their section. */
-  readonly sections = computed<NavSection[]>(() => {
-    const kinds = this.plugins.modules();
-    const badges = this.plugins.badges();
-    const app: NavEntry[] = this.top.map(m => ({ id: `app.${m.path}`, label: m.label, icon: m.icon, link: '/' + m.path, online: true,
-      child: false, parent: '', badge: 0 }));
-    const dash: NavEntry[] = this.otherDashboards().map(d => ({ id: `dash.${d.id}`, label: d.title, icon: d.icon || 'grid', link: '/d/' + d.id,
-      online: true, child: false, parent: '', badge: 0 }));
-    const page = (p: PluginPage): NavEntry => ({ id: p.id, label: p.label, icon: p.icon || 'puzzle', link: this.plugins.link(p.module, p.local_id),
-      online: p.online, child: !!p.parent, parent: p.parent ? `${p.module}.${p.parent}` : '', badge: badges[p.id] ?? 0 });
-    const nav = this.pluginNav();
-    const mods = nav.filter(p => kinds.get(p.module)?.kind !== 'core').map(page);
-    const sys = nav.filter(p => kinds.get(p.module)?.kind === 'core').map(page);
-    const fixed: NavEntry[] = SYSTEM_PAGES.map(x => ({ ...x, online: true, child: false, parent: '', badge: 0 }));
-    const system = sys.length ? [fixed[0], ...sys, ...fixed.slice(1)] : fixed.slice(1);
-    const all = new Map([...app, ...dash, ...mods, ...system].map(e => [e.id, e] as [string, NavEntry]));
-    const pinnedIds = this.plugins.navPinned().filter(id => all.has(id));
-    const taken = new Set(pinnedIds);
-    // A pinned parent brings its (unpinned) sub-pages; a sub-page pinned alone is shown as a normal entry.
-    const pinned: NavEntry[] = pinnedIds.flatMap(id => {
-      const e = all.get(id)!;
-      const kids = [...all.values()].filter(c => c.parent === id && !taken.has(c.id));
-      kids.forEach(c => taken.add(c.id));
-      return [{ ...e, child: false }, ...kids];
-    });
-    const rest = (list: NavEntry[]) => list.filter(e => !taken.has(e.id));
+  /** Top of the rail: the groups; Agenda only when a module gives it pages. */
+  readonly railTop = computed<RailButton[]>(() => {
+    const has = this.nav.byPlace();
     return [
-      { key: 'app', label: tr('General'), items: rest(app) },
-      { key: 'pinned', label: tr('pl::Pinned'), items: pinned },
-      { key: 'dashboards', label: tr('Dashboard'), items: rest(dash) },
-      { key: 'modules', label: tr('Modules'), items: rest(mods) },
-      { key: 'system', label: tr('System'), items: rest(system) },
+      { g: 'today' as NavGroup, label: tr('Today'), icon: 'home' },
+      { g: 'chat' as NavGroup, label: tr('Chat'), icon: 'chat' },
+      ...(has.agenda.length ? [{ g: 'agenda' as NavGroup, label: tr('Agenda'), icon: 'calendar' }] : []),
+      { g: 'spaces' as NavGroup, label: tr('Spaces'), icon: 'grid' },
+      ...(has.assistant.length ? [{ g: 'assistant' as NavGroup, label: this.name, icon: 'sparkle' }] : []),
     ];
   });
+  /** Phone bar: Today, Chat, Agenda, Spaces + «More». */
+  readonly phoneBar = computed(() => this.railTop().filter(b => b.g !== 'assistant').slice(0, 4));
 
-  /** Id of the sidebar entry of the page on screen: the longest link that starts the address; a page opened from
-   *  an item (no entry of its own) marks its module's first page. */
-  readonly activeId = computed(() => {
-    const path = this.url().split(/[?#]/)[0];
-    const entries = this.sections().flatMap(sec => sec.items);
-    const at = (e: NavEntry) => { const l = e.link.split('?')[0]; return path === l || path.startsWith(l + '/'); };
-    const hit = entries.filter(at).sort((a, b) => b.link.length - a.link.length)[0];
-    if (hit) return hit.id;
-    const mod = /^\/p\/([^/]+)\//.exec(path)?.[1];
-    return mod ? entries.find(e => !e.child && e.link.startsWith(`/p/${mod}/`))?.id ?? '' : '';
+  readonly groupLabel = computed(() => ({
+    today: tr('Today'), chat: tr('Chat'), agenda: tr('Agenda'), spaces: tr('Spaces'), assistant: this.name,
+    notifications: tr('Notices'), settings: tr('Settings'),
+  } as Record<NavGroup, string>)[this.nav.group()]);
+  /** Agenda, assistant and notices: their pages. */
+  readonly groupLinks = computed<NavLink[]>(() => {
+    const g = this.nav.group();
+    return g === 'agenda' || g === 'assistant' || g === 'notifications' ? this.nav.byPlace()[g] : [];
   });
-
-  /** What the sidebar draws: a closed section or module opens by itself while the page on screen is inside it. */
-  /** «Pinned», drawn above the scroll area (it never scrolls away); null when nothing is pinned. */
-  readonly pinnedSection = computed(() => this.view().find(sec => sec.key === 'pinned' && sec.items.length) ?? null);
-
-  readonly view = computed(() => {
-    const active = this.activeId();
-    const folded = this.plugins.navCollapsed();
-    return this.sections().map(sec => {
-      const parentOf = (e: NavEntry) => e.child && sec.items.some(p => p.id === e.parent) ? e.parent : '';
-      const activeParent = parentOf(sec.items.find(e => e.id === active) ?? ({ child: false } as NavEntry));
-      const items = sec.items.map(e => {
-        const kids = sec.items.filter(c => parentOf(c) === e.id);
-        const open = !folded.includes('m:' + e.id) || activeParent === e.id;
-        return { ...e, kids: kids.length > 0, open, within: activeParent === e.id,
-                 badge: kids.length && !open ? e.badge + kids.reduce((n, c) => n + c.badge, 0) : e.badge };
-      });
-      const shown = items.filter(e => { const p = parentOf(e); return !p || !!items.find(x => x.id === p)?.open; });
-      return { ...sec, items: shown, closed: folded.includes(sec.key) && !sec.items.some(e => e.id === active) };
-    });
-  });
-
-  /** «Section › Page» above a page of a module, a dashboard or the system (the sidebar may be closed or far away). */
-  readonly crumbs = computed<Crumb[]>(() => {
-    const active = this.activeId();
-    for (const sec of this.sections()) {
-      const e = sec.items.find(x => x.id === active);
-      if (!e || !CRUMB_SECTIONS.includes(sec.key)) continue;
-      const parent = e.child ? sec.items.find(x => x.id === e.parent) : undefined;
-      // Every piece is a way back (dossier 2026-11-18-real-test-problems D): the section opens its overview (System) or
-      // its first page, the parent its own page.
-      const sectionLink = sec.key === 'system' ? '/system' : sec.items.find(x => !x.child)?.link;
-      return [{ label: sec.label, link: sectionLink }, ...(parent ? [{ label: parent.label, link: parent.link }] : []),
-              { label: e.label }];
-    }
-    return [];
-  });
+  /** Today: Home, the owner's other dashboards, Discover. */
+  readonly todayLinks = computed<NavLink[]>(() => [
+    { id: 'app.home', label: tr('alt::Home'), icon: 'home', link: '/home', online: true, badge: 0, color: '' },
+    ...this.plugins.dashboards().filter(d => d.id !== 'home' && d.id !== 'system')
+      .map(d => ({ id: 'dash.' + d.id, label: d.title, icon: d.icon || 'grid', link: '/d/' + d.id, online: true, badge: 0, color: '' })),
+    { id: 'app.discover', label: tr('Discover'), icon: 'sparkle', link: '/discover', online: true, badge: 0, color: '' },
+  ]);
+  isPinned(l: NavLink): boolean { return this.plugins.navPinned().includes(l.id); }
 
   readonly bellLabel = computed(() => {
     const n = this.notifications.badge();
     return n ? tr("Notifications: {0} to read", n) : tr('Notifications');
   });
 
-  /** «…» on a conversation: rename, pin, delete. Drawn outside the sidebar, which clips what overflows it. */
-  chatMenu = signal<{ chat: ChatSummary; x: number; y: number } | null>(null);
-  renaming = signal('');
-  openChatMenu(ev: MouseEvent, chat: ChatSummary): void {
-    ev.stopPropagation();
-    const r = (ev.currentTarget as HTMLElement).getBoundingClientRect();
-    this.chatMenu.set({ chat, x: Math.max(8, Math.min(r.left, window.innerWidth - 200)), y: Math.min(r.bottom + 4, window.innerHeight - 130) });
-  }
-  startRename(c: ChatSummary): void {
-    this.chatMenu.set(null);
-    this.renaming.set(c.session_id);
-    setTimeout(() => { const el = document.querySelector<HTMLInputElement>('.nav input.ren'); el?.focus(); el?.select(); });
-  }
-  async rename(c: ChatSummary, title: string): Promise<void> {
-    if (this.renaming() !== c.session_id) return;      // Enter then blur: once
-    this.renaming.set('');
-    const t = title.trim();
-    if (!t || t === c.title) return;
-    if (!(await this.chats.setMeta(c.session_id, { title: t })).ok) this.toasts.error(tr('Not saved'));
-  }
-  async pinChat(c: ChatSummary): Promise<void> {
-    this.chatMenu.set(null);
-    if (!(await this.chats.setMeta(c.session_id, { pinned: !c.pinned })).ok) this.toasts.error(tr('Not saved'));
-  }
-  deleteChat(c: ChatSummary): void {
-    this.chatMenu.set(null);
-    void this.chats.confirmRemove(c);
-  }
-
-  isSectionClosed(key: string): boolean { return this.plugins.navCollapsed().includes(key); }
-
-  /** Drag to reorder inside «Pinned» (native drag and drop; the order is saved on drop). */
-  dragId = signal<string | null>(null);
-  private dragOrder: string[] | null = null;
-  dragStart(id: string, section: string): void {
-    if (section !== 'pinned') return;
-    this.dragId.set(id);
-    this.dragOrder = [...this.plugins.navPinned()];
-  }
-  dragOver(ev: DragEvent, overId: string, section: string): void {
-    const id = this.dragId();
-    if (!id || section !== 'pinned' || !this.dragOrder) return;
-    ev.preventDefault();
-    const order = this.dragOrder;
-    const from = order.indexOf(id), to = order.indexOf(overId);
-    if (from < 0 || to < 0 || from === to) return;
-    order.splice(to, 0, order.splice(from, 1)[0]);
-    this.plugins.navPinned.set([...order]);
-  }
-  drop(ev: DragEvent): void {
-    if (!this.dragId() || !this.dragOrder) return;
-    ev.preventDefault();
-    void this.plugins.setNavPinned(this.dragOrder);
-    this.dragOrder = null;
-    this.dragId.set(null);
-  }
-  presenceOpen = signal(false);
-  presencePos = signal({ left: 8, bottom: 8, maxHeight: 480 });
-
-  /** Opens the state popover above its button, in viewport coordinates (never clipped by the sidebar). */
-  togglePresence(ev: MouseEvent): void {
-    if (this.presenceOpen()) { this.presenceOpen.set(false); return; }
-    const r = (ev.currentTarget as HTMLElement).getBoundingClientRect();
-    const width = Math.min(300, window.innerWidth - 16);
-    this.presencePos.set({
-      left: Math.max(8, Math.min(r.left, window.innerWidth - width - 8)),
-      bottom: window.innerHeight - r.top + 6,
-      maxHeight: Math.max(160, r.top - 14),
-    });
-    this.presenceOpen.set(true);
-  }
-
-  @HostListener('window:resize')
-  closePresenceOnResize(): void { if (this.presenceOpen()) this.presenceOpen.set(false); }
-  presenceTab = signal<'effects' | 'history'>('effects');
-  reasonLabel = reasonLabel;
-
-  openPresenceHistory(): void {
-    this.presenceTab.set('history');
-    void this.presence.loadHistory();
-  }
-
-  dndHint(p: PresenceState): string {
-    const m = p.dnd_minutes ?? 120;
-    const d = m % 60 === 0 ? (m === 60 ? tr('1 hour') : tr('{0} hours', m / 60)) : `${m} min`;
-    return tr("«Do not disturb»: for {0} you get only urgent notifications; you receive the others in a summary when it ends.", d);
-  }
-  readonly ago = ago;
-  session = inject(SessionService);
-  chats = inject(ChatsService);
-  live = inject(LiveVoiceService);
-  private chat = inject(ChatService);
-  private url = signal('');
-  readonly onChat = computed(() => this.url().startsWith('/chat'));
-  tagCss(c: string) { return TAG_CSS[c] || TAG_CSS['gray']; }
-  private settings = inject(SettingsService);
-  private router = inject(Router);
-  collapsed = signal(this.readCollapsed());
-  /** Expanded sidebar width, dragged from its right edge (<hx-resize>), kept per browser. */
-  navWidth = signal(savedWidth('nav', 248));
+  /** Panel open/closed and width, per browser. */
+  panelClosed = signal(this.readClosed());
+  navWidth = signal(savedWidth('panel', 236));
   mobileOpen = signal(false);
+  moreOpen = signal(false);
+  togglePanel(): void {
+    if (window.innerWidth <= 860) { this.mobileOpen.set(false); return; }
+    this.panelClosed.update(v => !v);
+    try { localStorage.setItem('hestia_panel_closed', this.panelClosed() ? '1' : '0'); } catch { /* */ }
+  }
+  /** A rail button shows its list: a closed panel stays closed (the owner closed it), the phone drawer closes. */
+  openPanel(): void { this.mobileOpen.set(false); }
+  openDrawer(): void {
+    if (window.innerWidth <= 860) { this.mobileOpen.set(true); return; }
+    this.togglePanel();
+  }
+  private readClosed(): boolean {
+    try { return localStorage.getItem('hestia_panel_closed') === '1'; } catch { return false; }
+  }
+
   online = computed(() => this.signalR.connectionState() === 'connected');
   connLabel = computed(() => ({ connected: tr('Connected'), connecting: tr('Connecting…'), disconnected: tr('Disconnected') })[this.signalR.connectionState()]);
   private bootstrapped = false;
 
   constructor() {
-    this.router.events.subscribe(() => this.url.set(this.router.url));
-    // The sidebar's latest conversations follow each finished answer.
+    // The panel's conversations follow each finished answer.
     let streaming = false;
     effect(() => {
       const now = this.chat.isStreaming();
@@ -599,11 +455,6 @@ export class ShellComponent {
       streaming = now;
     });
     effect(() => { if (this.plugins.modules().has('oracle')) untracked(() => void this.chats.refreshRecent()); });
-    // The entry of the page on screen is always in sight, also when the list is long.
-    effect(() => {
-      if (!this.activeId()) return;
-      setTimeout(() => document.querySelector('.nav .scroll a.item.active')?.scrollIntoView({ block: 'nearest' }), 150);
-    });
     // Connect whenever authenticated (URL token or login form); reset on logout.
     effect(() => {
       const authed = this.auth.isAuthenticated();
@@ -624,12 +475,83 @@ export class ShellComponent {
     await Promise.all([this.session.load(), this.settings.load()]);
   }
 
-  openSearch(): void { window.dispatchEvent(new CustomEvent('hestia:palette')); }
+  openSearch(): void { this.mobileOpen.set(false); window.dispatchEvent(new CustomEvent('hestia:palette')); }
 
   async openChat(id: string): Promise<void> {
     this.mobileOpen.set(false);
     await this.chats.open(id);
   }
+
+  /** «New conversation» in the Chat panel: a fresh session (the memories stay). */
+  async newChat(): Promise<void> {
+    this.mobileOpen.set(false);
+    await this.session.clear();
+    this.chat.clearMessages();
+  }
+
+  tagCss(c: string) { return TAG_CSS[c] || TAG_CSS['gray']; }
+
+  /** «…» on a conversation: rename, pin, delete. Drawn outside the panel, which clips what overflows it. */
+  chatMenu = signal<{ chat: ChatSummary; x: number; y: number } | null>(null);
+  renaming = signal('');
+  openChatMenu(ev: MouseEvent, chat: ChatSummary): void {
+    ev.stopPropagation();
+    const r = (ev.currentTarget as HTMLElement).getBoundingClientRect();
+    this.chatMenu.set({ chat, x: Math.max(8, Math.min(r.left, window.innerWidth - 200)), y: Math.min(r.bottom + 4, window.innerHeight - 130) });
+  }
+  startRename(c: ChatSummary): void {
+    this.chatMenu.set(null);
+    this.renaming.set(c.session_id);
+    setTimeout(() => { const el = document.querySelector<HTMLInputElement>('.panel input.ren'); el?.focus(); el?.select(); });
+  }
+  async rename(c: ChatSummary, title: string): Promise<void> {
+    if (this.renaming() !== c.session_id) return;      // Enter then blur: once
+    this.renaming.set('');
+    const t = title.trim();
+    if (!t || t === c.title) return;
+    if (!(await this.chats.setMeta(c.session_id, { title: t })).ok) this.toasts.error(tr('Not saved'));
+  }
+  async pinChat(c: ChatSummary): Promise<void> {
+    this.chatMenu.set(null);
+    if (!(await this.chats.setMeta(c.session_id, { pinned: !c.pinned })).ok) this.toasts.error(tr('Not saved'));
+  }
+  deleteChat(c: ChatSummary): void {
+    this.chatMenu.set(null);
+    void this.chats.confirmRemove(c);
+  }
+
+  presenceOpen = signal(false);
+  presencePos = signal({ left: 8, bottom: 8, maxHeight: 480 });
+
+  /** Opens the state popover next to its button, in viewport coordinates (never clipped by the rail). */
+  togglePresence(ev: MouseEvent): void {
+    if (this.presenceOpen()) { this.presenceOpen.set(false); return; }
+    const r = (ev.currentTarget as HTMLElement).getBoundingClientRect();
+    const width = Math.min(300, window.innerWidth - 16);
+    this.presencePos.set({
+      left: Math.max(8, Math.min(r.right + 8, window.innerWidth - width - 8)),
+      bottom: Math.max(8, window.innerHeight - r.bottom),
+      maxHeight: Math.max(160, r.bottom - 14),
+    });
+    this.presenceOpen.set(true);
+  }
+
+  @HostListener('window:resize')
+  closePresenceOnResize(): void { if (this.presenceOpen()) this.presenceOpen.set(false); }
+  presenceTab = signal<'effects' | 'history'>('effects');
+  reasonLabel = reasonLabel;
+
+  openPresenceHistory(): void {
+    this.presenceTab.set('history');
+    void this.presence.loadHistory();
+  }
+
+  dndHint(p: PresenceState): string {
+    const m = p.dnd_minutes ?? 120;
+    const d = m % 60 === 0 ? (m === 60 ? tr('1 hour') : tr('{0} hours', m / 60)) : `${m} min`;
+    return tr("«Do not disturb»: for {0} you get only urgent notifications; you receive the others in a summary when it ends.", d);
+  }
+  readonly ago = ago;
 
   /** «Talk» from anywhere: same live mode as the chat page (layout/live-overlay shows it on other pages). */
   toggleLive(): void {
@@ -637,11 +559,12 @@ export class ShellComponent {
     void this.live.start().then(() => { if (this.live.error()) this.toasts.error(this.live.error()); });
   }
 
-  /** Ctrl+J = «Write here» from anywhere; Ctrl+Shift+Space = «Talk». */
+  /** Ctrl+J = «Write here» from anywhere; Ctrl+Shift+Space = «Talk»; Ctrl+B = open/close the panel. */
   @HostListener('document:keydown', ['$event'])
   onKey(e: KeyboardEvent) {
     if (e.key === 'Escape' && this.chatMenu()) { this.chatMenu.set(null); return; }
     if (e.key === 'Escape' && this.presenceOpen()) { this.presenceOpen.set(false); return; }
+    if (e.key === 'Escape' && this.moreOpen()) { this.moreOpen.set(false); return; }
     if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.code === 'Space') { e.preventDefault(); this.toggleLive(); return; }
     if ((e.ctrlKey || e.metaKey) && !e.altKey && !e.shiftKey && e.key.toLowerCase() === 'j') {
       e.preventDefault();
@@ -649,18 +572,9 @@ export class ShellComponent {
     }
   }
 
-  toggleCollapse() {
-    this.collapsed.update(v => !v);
-    try { localStorage.setItem('hestia_nav_collapsed', this.collapsed() ? '1' : '0'); } catch { /* */ }
-  }
-
   logout() {
     this.auth.logout();
     void this.signalR.disconnect();
     this.router.navigate(['/login']);
-  }
-
-  private readCollapsed(): boolean {
-    try { return localStorage.getItem('hestia_nav_collapsed') === '1'; } catch { return false; }
   }
 }

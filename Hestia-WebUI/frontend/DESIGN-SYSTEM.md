@@ -1,7 +1,7 @@
 # Hestia WebUI — Design system & module guide
 
 Rules for humans and AI models adding UI to Hestia. Angular 19, standalone components, signals,
-new control flow (`@if`, `@for`, `@switch`). Style = Claude (warm neutrals, serif headings, one accent).
+new control flow (`@if`, `@for`, `@switch`). Default look = theme **Aurora** (teal + blue, sans headings) with the **Glass** style; logo = `<hx-logo>` (hearth ring, theme colours, never the mascot).
 
 ## 1. Golden rules
 
@@ -44,13 +44,13 @@ new control flow (`@if`, `@for`, `@switch`). Style = Claude (warm neutrals, seri
 | `--head-inset` | phone only: room for the shell's menu button on a plugin page's first line |
 
 **New theme** = one `makeTheme(id, label, mode, pair, { bg, surface, text, accent })` line in `THEMES`
-(every other colour is derived with the same steps as the Claude pair), or a full entry for hand-tuned colours.
+(every other colour is derived with the same steps as the Terracotta pair), or a full entry for hand-tuned colours.
 `pair` is the same family in the other mode. It appears in Impostazioni automatically. `ThemeService.set(id)` /
 `toggleMode()` (keeps the family); `'auto'` follows the OS. Tip for tints: `color-mix(in srgb, var(--c) 15%, transparent)`.
 
 ### Styles (second axis, `core/theme/looks.ts`, 2026-10-29)
 
-Over the colours the user picks a **style** — `classic` (current look), `glass` (translucent blurred panels on a shaded
+Over the colours the user picks a **style** — `classic` (serif titles, full surfaces), `glass` (default) (translucent blurred panels on a shaded
 backdrop, rounder, lively motion), `net` (sans everywhere, almost square corners, strong borders, no shadows) — and
 can change its four knobs one by one: **corners** (radius scale), **borders** (`--border*` lighter/stronger),
 **transparency** (`--surface`, `--bg-subtle`, `--surface-2` with alpha + `--glass`), **animations** (`--dur*`;
@@ -70,7 +70,8 @@ scrollbars per component.
 
 | Component | Usage |
 |---|---|
-| `<hx-icon name size stroke tone>` | stroke icons; list in `icon.component.ts`. Add an icon to it **and** to the SDK `kit/basics.ts` (same name and path). Every icon a plugin names in its manifest (pages, widgets, quick actions) must be here, or the sidebar shows «Info» — `python tools/cloud_test.py flows plugins` checks it |
+| `<hx-logo size>` | the app logo (hearth ring in `--accent`, fire in `--accent-2`): rail, setup, about. Never draw the mascot as logo |
+| `<hx-icon name size stroke tone>` | stroke icons; list in `icon.component.ts`. Add an icon to it **and** to the SDK `kit/basics.ts` (same name and path). Every icon a plugin names in its manifest (pages, widgets, quick actions) must be here, or the navigation shows «Info» — `python tools/cloud_test.py flows plugins` checks it |
 | `<button hx-btn variant size icon iconRight iconOnly block loading>` | variants `primary · secondary · ghost · subtle · danger`; sizes `sm · md · lg` |
 | `.hx-input`, `.hx-select`, `.hx-textarea`, `.hx-check` (+ `.mono`) | global form classes |
 | `<hx-field label hint error required>` | label/hint/error wrapper around a control |
@@ -136,7 +137,7 @@ export class NotesPageComponent {}
   (short, human); `hints` are compact key/values for Oracle (ids, keys, dates — no prose, every token is paid).
   Reload page data on `AssistantService.changed$` (agenda / Forge / action notices).
 - **Side panels are resizable** (the owner likes it): every side column/drawer gets `<hx-resize>` with a `key`
-  (shell sidebar, Crea con Hestia, Sviluppo list + context panel, Calendario filters, Impostazioni → Sistema modules).
+  (shell context panel, Crea con Hestia, Sviluppo list + context panel, Calendario filters, Impostazioni → Sistema modules).
 - **Tooltips** (dossier `docs/work/2026-11-18-real-test-problems` D): write a plain `title` (or the `aria-label` of an
   icon-only button) and nothing else: `ui/tooltip.ts` (started by `AppComponent`) gives every one of them, plugins
   included, the same tooltip (hover after 450 ms, keyboard focus, long press on touch). Never build a tooltip of your own.
@@ -144,8 +145,8 @@ export class NotesPageComponent {}
   panel under the tiles) or `open` (go to the page that lists them). A dead number is bad UX.
 - **Model lists** (brain chains, memory, voice engines): always the SDK `<hxk-chain>` (ordered list, chevrons to move,
   a picker that lists only the models that fit). Rarely needed choices sit behind «Show the advanced settings».
-- **Breadcrumb**: every piece is a link back (section → its overview or first page, parent → its page).
-- **Pinned** sidebar entries sit in their own block above the scroll area and never scroll away.
+- **Sub-pages are tabs**: a page with `parent` is drawn as a tab at the top of its family (`plugin-page.component.ts`
+  from `NavService.family()`), never as a list entry of its own; a `detail` page is reached from its parent only.
 - **Chat box**: no instruction line under it; the hints live in the placeholder and the tooltips. Mic (tap dictates
   at the cursor, hold = voice message) and «Talk» sit together in the box.
 - **Random ids**: `uid()` from `core/uid.ts` (`crypto.randomUUID` is missing on plain-http LAN addresses).
@@ -206,15 +207,18 @@ Module UI is **not** written in this Angular app. A module ships Web Components 
   flex column filling the cell, keep the key line (`.big`, title) from shrinking (`flex-shrink: 0`), or `truncate` hides it whole.
 - Quick actions are declared, not drawn: the Home strip, the Ctrl/⌘+K palette and `<hxk-quicklog>` render them.
 - In Angular, show a plugin element with `<hx-plugin-outlet [module] [element] [ctx]>` (loading/offline/error states built in).
-- Sidebar (`layout/shell.component.ts`): fixed top (logo, bell, Chat, Cerca) and bottom (Impostazioni, Esci, state),
-  **one scroll area** in between with sections *Generale · Fissati · Conversazioni · Dashboard · Moduli · Sistema*
-  (core modules = manifest `kind: "core"`, plus Panoramica, Aggiornamenti, Macchine, Download). One rule: every
-  section folds, a module with sub-pages folds (`m:<id>` in the same setting), the page on screen is marked with its
-  parent and its section opens by itself; never add a top-level button for a feature: the two ways to reach the
-  assistant from any page are in the bubble (`layout/quick-bubble.component.ts`). A menu that opens from inside the
-  sidebar or a scrolling list is drawn in the viewport with the global `.hx-ctx` (+ `.hx-ctx-scrim`). A divider inside
-  a conversation is the global `.hx-divider` (label between two wavy lines). Section headers collapse (`webui.sidebar.collapsed`); the pin on hover moves an entry to
-  *Fissati* (`webui.sidebar.pinned`, ids `app.<path>` · `dash.<id>` · `<module>.<page>`), drag to reorder there. The
-  list is computed, so a pinned entry leaves its section (never shown twice); a pinned parent brings its sub-pages.
+- Navigation (`layout/shell.component.ts` + `layout/nav.service.ts`, dossier `docs/work/2026-11-27-webui-rethink`):
+  an **icon rail** (logo, Oggi, Chat, Agenda, Spazi, the assistant by its chosen name, the pages the owner pins, then
+  Cerca, Avvisi with count, Impostazioni, the assistant's state dot) and a **context panel** next to it (`<hx-resize
+  key="panel">`, closable, kept per browser) that lists what fits the rail button lit: the spaces (one entry each),
+  the conversations (new, pinned, recent, all), the Agenda / assistant / notification pages, Settings + System.
+  Every list is built from the page **place** (`page(place=…)`: `space` default for domain modules, `agenda`,
+  `assistant`, `notifications`, `system` default for core modules), so a new module finds its place by itself; never
+  hard-code a module in the shell. Pins: the pin on a space tile (`webui.sidebar.pinned`, ids `<module>.<page>`).
+  Phone (≤ 860 px): bottom bar Oggi · Chat · Agenda · Spazi · Altro, the panel opens as a drawer. One door to the
+  assistant from any page: the bubble (`layout/quick-bubble.component.ts`); never add a top-level button for a
+  feature. A menu that opens from inside the panel or a scrolling list is drawn in the viewport with the global
+  `.hx-ctx` (+ `.hx-ctx-scrim`). A divider inside a conversation is the global `.hx-divider`.
+  Module names never reach the owner: `moduleLabel()` (mirror of `hestia_common.areas.MODULE_LABELS`).
   A page with `badge: {source, field}` shows that number (read through the plugin call proxy with the catalog poll).
 

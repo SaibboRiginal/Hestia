@@ -220,7 +220,12 @@ Web client (.NET 9 backend + Angular frontend, port 19015).
 - Public doors for external AIs (outside `/api/webui/`, no WebUI login): `POST /mcp`, `/.well-known/oauth-*`, `/oauth/*`.
 - Backend proxies everything through Hub routing; single-token auth minted from Telegram (`webui_token`), plus
   12-hour Mini App sessions after Telegram verified the signed initData (`POST /api/webui/auth/telegram`).
-- Look: 14 colour themes × 3 styles (Classico, Vetro, Netto) with knobs, per browser; touch targets 44px on touch screens.
+- Look: 16 colour themes × 3 styles (Classico, Vetro, Netto) with knobs, per browser; default Aurora + Vetro, ring
+  logo; touch targets 44px on touch screens.
+- **Page places (rule)**: every module page declares where it lives with `plugin_client.page(place=…)` — `space`
+  (default for domain modules), `agenda`, `assistant`, `notifications`, `system` (default for core modules). The
+  WebUI rail and context panel are built only from it; a sub-page (`parent`) is a tab of its parent, never a list
+  entry. Never hard-code a module in the shell.
 - See `Hestia-WebUI/hestia-webui.md` and `Hestia-WebUI/frontend/DESIGN-SYSTEM.md`.
 
 ### Hestia-Chronos 📅

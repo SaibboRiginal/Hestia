@@ -106,18 +106,23 @@ Oracle and streams the NDJSON response back with proper line delimiters (Hub add
   `Hestia-Shared/webui-sdk` in the Dockerfile) through the import map in `index.html`. Elements get `host` + `ctx`.
 - **Home** (`/home`, first module) = quick-action strip + dashboard grid; until edited it is composed from widgets
   marked `auto` of the domain modules. A ready-made *Sistema* dashboard (`/d/system`) takes the core modules' `auto`
-  widgets (hidden while there is none; deleting it leaves a `removed` marker in `webui.dashboards`). Other dashboards at `/d/:id` (tabs + sidebar "Dashboard"). Edit mode: add, drag, size, configure,
-  remove; Oracle-created dashboards carry `created_by: oracle`.
-- Module pages at `/p/<module>/<page>` (sidebar "Moduli", core modules under "Sistema"; detail pages hidden).
-  Sidebar: one scroll area between a fixed top and bottom, collapsible sections, entries pinned to "Fissati" leave
-  their section; plugin pages may show a `badge` counter (DESIGN-SYSTEM §9). Ctrl/⌘+K palette: «Now», quick actions,
+  widgets (hidden while there is none; deleting it leaves a `removed` marker in `webui.dashboards`). Other dashboards at `/d/:id` (listed in the Oggi panel). Edit mode: add, drag, size, configure,
+  remove; Oracle-created dashboards carry `created_by: oracle`. The Home header has no Talk / «Write here» button:
+  the one door to the assistant is the bubble.
+- **Navigation** (2026-11-27, dossier `docs/work/2026-11-27-webui-rethink`): icon rail (Oggi, Chat, Agenda, Spazi, the
+  assistant, pins, Cerca, Avvisi, Impostazioni, state dot) + resizable, closable context panel (`layout/nav.service.ts`
+  builds every list from the page `place` declared in the manifest: `space` · `agenda` · `assistant` ·
+  `notifications` · `system`; default space for domain modules, system for core ones). Sub-pages are tabs at the top of
+  their module page, never list entries. `/spaces` = tiles of every space. Phone: bottom bar Oggi · Chat · Agenda ·
+  Spazi · Altro. Module pages at `/p/<module>/<page>`; plugin pages may show a `badge` counter (DESIGN-SYSTEM §9).
+  Ctrl/⌘+K palette: «Now», quick actions,
   module pages, dashboards, WebUI pages and, while typing, every setting.
 - Client config (Themis, scope user, layer `client`): `webui.plugins.hidden`, `webui.plugins.order`,
   `webui.home.quick` (pinned chips), `webui.dashboards` (`{dashboards: [...]}`), `webui.plugins.prefs`,
-  `webui.sidebar.pinned` (pinned sidebar entries, in order), `webui.sidebar.collapsed` (closed sidebar sections).
+  `webui.sidebar.pinned` (pages pinned on the rail, in order). Panel open/closed and width are per browser.
   Impostazioni → Personali → "Moduli e Home" toggles each module/contribution.
 - PWA: `public/manifest.webmanifest` + `public/sw.js` (registered in production only). Offline the shell, catalog,
-  settings and plugin bundles come from cache; plugin calls reject with `offline`; sidebar shows an "offline" badge.
+  settings and plugin bundles come from cache; plugin calls reject with `offline`; the rail shows an "offline" mark.
   The home-network "no token" answer is remembered for offline starts. Logout clears the data cache.
 - Dashboards from the chat: Hestia reads `webui_widgets` / `webui_dashboards` and proposes `webui.dashboards`
   (Themis, layer `client:webui`); the confirm card appears in the same chat (ChatHub sends the answer with
@@ -243,9 +248,9 @@ move/resize, skip/restore, pause, run now, cancel, "only this occurrence" vs "wh
 (tools from Hestia-MCP `tools/list` as client `webui`, run with `tools/call` — `HubClient.McpListToolsAsync` /
 `McpCallToolAsync`; arguments come from each tool's JSON schema),
 **Sviluppo** (Forge tasks + repository, see below), **Documenti**, **Impostazioni** (themes, tone, reasoning display, instructions, session).
-Look (2026-10-29): 14 colour themes (Claude, Ardesia, Oceano, Foresta, Lavanda, Cipria, Sabbia and their dark twins,
+Look (2026-10-29, default changed 2026-11-27 to **Aurora** + **Vetro**, ring logo `<hx-logo>`): 16 colour themes (Aurora, Terracotta, Ardesia, Oceano, Foresta, Lavanda, Cipria, Sabbia and their dark twins,
 Mezzanotte) × 3 styles (Classico, Vetro, Netto) with knobs for corners, borders, transparency/blur and animations,
-per browser (`core/theme/looks.ts`); thin themed scrollbars; sidebar shows one status line (assistant state; the
+per browser (`core/theme/looks.ts`); thin themed scrollbars; the rail shows one state dot (assistant state; the
 connection only when it is not «Connected»).
 Rules for new UI: **`frontend/DESIGN-SYSTEM.md`**.
 

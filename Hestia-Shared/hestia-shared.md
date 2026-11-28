@@ -334,8 +334,12 @@ app.include_router(ui.router())                       # GET /api/ui/manifest · 
 registration["capabilities"].update(ui.capabilities(base_url))   # ui_manifest + ui_version
 ```
 
-`PluginClient(..., kind="core")` marks a system module (WebUI shows its pages under *Sistema*; default `domain`).
-`page(..., badge={"source": "/api/…", "field": "unread"})` adds a counter next to the sidebar entry (GET under
+`PluginClient(..., kind="core")` marks a system module (default `domain`).
+`page(..., place=…)` says where the page lives in the client's navigation (docs/work/2026-11-27-webui-rethink):
+`space` (the owner's spaces, default for domain modules), `agenda`, `assistant` (what the assistant knows and thinks),
+`notifications`, `system` (Settings → System, default for core modules). A sub-page (`parent=`) is a tab of its
+parent and follows its place.
+`page(..., badge={"source": "/api/…", "field": "unread"})` adds a counter next to the navigation entry (GET under
 `api_prefix`, a number in `field`).
 
 Validation at declare time: element names `<module>-…`, every path under `api_prefix`, known parents/sizes/param

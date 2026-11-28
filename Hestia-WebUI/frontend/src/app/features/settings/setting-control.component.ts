@@ -146,7 +146,7 @@ export class SettingControlComponent {
   }
 
   editorLink(editor?: string): { path: string; label: string } | null {
-    return editor?.startsWith('llm_') ? { path: '/p/oracle/brain', label: tr('Edit in Oracle · Brain · Models') } : null;
+    return editor?.startsWith('llm_') ? { path: '/p/oracle/brain', label: tr('Change the models') } : null;
   }
 
   commitJson(v: string) {
