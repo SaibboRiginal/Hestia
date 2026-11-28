@@ -156,10 +156,9 @@ export class OracleDocuments extends HestiaElement {
     const domains = [...new Set(this.docs.map(d => d.domain))].sort();
     const shown = this.domain ? this.docs.filter(d => d.domain === this.domain) : this.docs;
     return html`<div class="page">
-      <div class="head"><div class="grow"><h1>${tr("Documents")}</h1>
-        <div class="sub">${tr("Files you shared with {assistant}: the chat uses them when you talk about them")}</div></div>
+      <hxk-page-head heading=${tr("Shared files")} sub=${tr("Files you shared with {assistant}: the chat uses them when you talk about them")} ask=${tr("Shared files")}>
         <hxk-button variant="ghost" icon="refresh" title=${tr("Refresh")} @click=${() => this.load()}></hxk-button>
-        <hxk-button variant="primary" icon="plus" ?loading=${this.adding} @click=${() => this.add()}>${tr("Add file")}</hxk-button></div>
+        <hxk-button variant="primary" icon="plus" ?loading=${this.adding} @click=${() => this.add()}>${tr("Add file")}</hxk-button></hxk-page-head>
       <div class="bar">
         <input type="search" placeholder=${tr("Search in the documents (e.g. «contract expiry»)")} .value=${this.q}
           @input=${(e: any) => (this.q = e.target.value)} @keydown=${(e: KeyboardEvent) => e.key === 'Enter' && this.search()}>
@@ -172,7 +171,7 @@ export class OracleDocuments extends HestiaElement {
         ${domains.map(dm => html`<button class="chip ${this.domain === dm ? 'on' : ''}" @click=${() => (this.domain = dm)}>${dm}</button>`)}
       </div>` : nothing}
       ${shown.length ? html`<div class="grid docs">${shown.map(d => this.renderDoc(d))}</div>`
-        : html`<hxk-state kind="empty" text=${tr("No document: add one here or attach a file in chat.")}></hxk-state>`}
+        : html`<hxk-empty icon="file" heading=${tr("No file yet")} example=${tr("Read this PDF and tell me the deadlines")}>${tr("Add one here or attach a file in chat.")}</hxk-empty>`}
     </div>`;
   }
 }

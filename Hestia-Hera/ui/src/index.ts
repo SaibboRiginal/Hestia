@@ -61,8 +61,8 @@ export class HeraPeople extends HestiaElement {
     const q = this.q.trim().toLowerCase();
     const shown = this.items.filter(p => !q || p.name.toLowerCase().includes(q));
     return html`<div class="page">
-      <div class="between"><h1>${tr("People")}</h1>
-        <hxk-button variant="primary" icon="plus" @click=${() => { this.adding = !this.adding; }}>${tr("Add")}</hxk-button></div>
+      <hxk-page-head heading=${tr("People")} sub=${tr("The people who matter to you: birthdays, gifts, what they like")} ask=${tr("People")}>
+        <hxk-button variant="primary" icon="plus" @click=${() => { this.adding = !this.adding; }}>${tr("Add")}</hxk-button></hxk-page-head>
       ${this.adding ? html`<div class="card col">
         <div class="form">
           <hxk-field label=${tr("Name")} .value=${this.draft.name || ''} @change=${(e: any) => this.set('name', e.detail)}></hxk-field>
@@ -82,7 +82,7 @@ export class HeraPeople extends HestiaElement {
           <div class="avatar">${p.name.slice(0, 1).toUpperCase()}</div>
           <div class="grow"><div>${p.name}</div><div class="small muted">${relLabel(p.relation)}${p.dates.length ? ` · ${p.dates[0].label.toLowerCase()} ${ddmm(p.dates[0].next)}` : ''}</div></div>
           ${p.contact_due_in !== null && p.contact_due_in !== undefined && p.contact_due_in <= 0 ? html`<hxk-badge tone="warning">${tr("to call")}</hxk-badge>` : nothing}
-        </div>`) : html`<hxk-state kind="empty" text=${this.items.length ? tr('No person with this name.') : tr('No person yet: add who is important to you.')}></hxk-state>`}</div>
+        </div>`) : html`${this.items.length ? html`<hxk-state kind="empty" text=${tr('No person with this name.')}></hxk-state>` : html`<hxk-empty icon="user" heading=${tr("No person yet")} example=${tr("Anna is my sister, her birthday is on 3 May")}>${tr("Add who is important to you.")}</hxk-empty>`}`}</div>
     </div>`;
   }
 }

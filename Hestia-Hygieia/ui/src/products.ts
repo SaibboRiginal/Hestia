@@ -160,10 +160,8 @@ export class HygieiaProducts extends HestiaElement {
     </div>`;
   }
   render() {
-    const head = html`<div class="between wrap"><div class="head"><button class="link" @click=${() => this.host.navigate('today')}>${tr("‹ Today")}</button><h1>${tr("Products")}</h1>
-      ${this.items ? html`<span class="sub">${this.items.length}</span>` : nothing}</div>
-      <div class="row"><hxk-button icon="calendar" variant="ghost" @click=${() => this.host.navigate('groceries')}>${tr('Shopping list')}</hxk-button>
-        <hxk-button variant="primary" icon="plus" @click=${() => (this.form = true)}>${tr("New")}</hxk-button></div></div>`;
+    const head = html`<hxk-page-head heading=${tr("Products")} sub=${this.items ? String(this.items.length) : ''} ask=${tr("Products")}>
+        <hxk-button variant="primary" icon="plus" @click=${() => (this.form = true)}>${tr("New")}</hxk-button></hxk-page-head>`;
     return html`<div class="page">${head}
       <div class="filters">
         <input class="in grow" style="min-width:180px" placeholder=${tr("Search by name, brand, type…")} .value=${this.q} @input=${(e: any) => this.setQ(e.target.value)}>

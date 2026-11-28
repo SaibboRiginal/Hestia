@@ -742,6 +742,10 @@ Applies to every user-facing Telegram delivery path (chat replies, tool results,
    `settings_client.translated`). Every module follows «Language» (`follow_personal()`). Standard: `docs/LANGUAGES.md`.
    **No Italian in the code, ever** (owner 2026-11-19): ids, keys, routes, stored values, comments and logs are English
    too; the gate `tools/governance/check_english.py` (precheck and CI) fails on any Italian word outside `tr(…)`.
+   **No module names for people** (2026-11-28): a text a person reads never names a module («Not available», never
+   «Athena not reachable»); the gate `tools/governance/check_module_names.py` (precheck and CI) scans the `tr()` texts of
+   the WebUI and every plugin. Every plugin page uses the SDK `hxk-page-head` and `hxk-empty` (one page pattern,
+   `Hestia-WebUI/frontend/DESIGN-SYSTEM.md` §9).
 
 ## Logging Contract (Global Observability)
 

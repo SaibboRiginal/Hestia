@@ -90,7 +90,7 @@ export class ArgusPerformance extends HestiaElement {
   }
 
   render() {
-    if (this.error) return html`<div class="page"><h1>${tr("Performance")}</h1><hxk-state kind="offline" text=${this.error} @retry=${() => this.load()}></hxk-state></div>`;
+    if (this.error) return html`<div class="page"><hxk-page-head heading=${tr("Performance")}></hxk-page-head><hxk-state kind="offline" text=${this.error} @retry=${() => this.load()}></hxk-state></div>`;
     const d = this.data;
     if (!d) return html`<div class="page"><hxk-state kind="loading"></hxk-state></div>`;
     const t = d.thresholds || {};
@@ -99,7 +99,7 @@ export class ArgusPerformance extends HestiaElement {
     const dbOver = st && t.database_gb && st.database_bytes > t.database_gb * 1024 ** 3;
     const growOver = st && t.growth_mb_day && (st.growth_day_bytes || 0) > t.growth_mb_day * 1024 ** 2;
     return html`<div class="page">
-      <div class="head"><h1>${tr("Performance")}</h1><span class="sub">${d.at ? tr("Last check {0}", new Date(d.at).toLocaleTimeString(locale(), { hour: '2-digit', minute: '2-digit' })) : tr('No check yet')}</span></div>
+      <hxk-page-head heading=${tr("Performance")} sub=${d.at ? tr("Last check {0}", new Date(d.at).toLocaleTimeString(locale(), { hour: '2-digit', minute: '2-digit' })) : tr('No check yet')} ask=${tr("Performance")}></hxk-page-head>
       <div class="stats">
         <div class="stat"><span class="small muted">${tr("Round trip through the hub")}</span><b>${num(d.hub_ms)} ms</b></div>
         <div class="stat"><span class="small muted">${tr("Database")}</span><b style=${dbOver ? 'color:var(--danger)' : ''}>${bytes(st?.database_bytes)}</b>

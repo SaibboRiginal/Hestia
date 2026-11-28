@@ -311,9 +311,9 @@ export class HephaestusDevelopment extends HestiaElement {
   // ── render ─────────────────────────────────────────────────────────────
   private header() {
     const s = this.store, st = s.status, c = s.counts;
-    const sub = c.review ? tr("{0} to review · Forge develops {assistant} on separate branches", c.review) : tr('Forge develops {assistant} on separate branches: nothing changes until you approve');
+    const sub = c.review ? tr("{0} to review · {assistant} develops on separate branches", c.review) : tr('{assistant} develops on separate branches: nothing changes until you approve');
     return html`<div class="phead">
-      <div class="ptitle"><h1>${tr("Development")}</h1><div class="sub">${sub}</div></div>
+      <hxk-page-head class="ptitle" heading=${tr("Development")} sub=${sub}></hxk-page-head>
       <div class="seg" role="tablist">
         <button class=${this.mode === 'tasks' ? 'on' : ''} @click=${() => this.setMode('tasks')}>${icon('terminal', 14)} ${tr("Task")}</button>
         <button class=${this.mode === 'repo' ? 'on' : ''} @click=${() => this.setMode('repo')}>${icon('branch', 14)} ${tr("Repository")}</button>

@@ -56,7 +56,7 @@ export class HephaestusRepairs extends HestiaElement {
       this.host.api('GET', `${API}/runbooks`),
       this.host.api('GET', `${API}/status`),
     ]);
-    if (!t.ok) { this.error = t.status === 0 || !t.error ? tr('Hephaestus not reachable') : t.error; return; }
+    if (!t.ok) { this.error = t.status === 0 || !t.error ? tr('Not available') : t.error; return; }
     this.error = '';
     this.tasks = t.data?.tasks || [];
     this.runbooks = Object.fromEntries((r.ok ? r.data?.runbooks || [] : []).map((b: any) => [b.runbook_id, b]));
@@ -106,8 +106,8 @@ export class HephaestusRepairs extends HestiaElement {
     if (!this.tasks) return html`<div class="page"><hxk-state kind="loading"></hxk-state></div>`;
     const list = this.tasks.filter(t => !this.filter || t.state === this.filter);
     return html`<div class="page">
-      <div class="head"><h1>${tr("Repairs")}</h1><span class="sub">${tr("Automatic interventions on the services, with runbooks and consent")}</span>
-        <span class="grow"></span><hxk-button variant="ghost" icon="refresh" @click=${() => this.load()}>${tr("Refresh")}</hxk-button></div>
+      <hxk-page-head heading=${tr("Repairs")} sub=${tr("Automatic interventions on the services, with runbooks and consent")} ask=${tr("Repairs")}>
+        <hxk-button variant="ghost" icon="refresh" title=${tr("Refresh")} @click=${() => this.load()}></hxk-button></hxk-page-head>
       <hxk-stat .items=${this.stats()}></hxk-stat>
       ${this.info ? html`<div class="note">${tr("Mode:")} ${this.info.mode === 'policy_gated_execution' ? tr('run with consent rules') : this.info.mode}
         · ${this.info.runbook_count} ${tr("runbook · in production")} ${this.info.production_execution_allowed ? tr('allowed') : tr('never without you')}</div>` : nothing}

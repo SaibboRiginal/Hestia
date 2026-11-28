@@ -227,8 +227,8 @@ export class HermesInbox extends HestiaElement {
     const r = await this.host.api('GET', `${API}/inbox`, { query });
     this.loading = false;
     if (!r.ok) {
-      if (more || this.items) { this.host.toast(tr('Notifications not available: Hermes doesn\'t answer'), 'danger'); if (more) return; }
-      this.error = tr('Hermes not reachable');
+      if (more || this.items) { this.host.toast(tr('Notifications not available right now'), 'danger'); if (more) return; }
+      this.error = tr('Not available');
       return;
     }
     this.error = '';
@@ -505,7 +505,7 @@ export class HermesInbox extends HestiaElement {
 
   render() {
     if (this.error && !this.items) {
-      return html`<div class="page"><h1>${tr("Notifications")}</h1><hxk-state kind="offline" text=${this.error}></hxk-state></div>`;
+      return html`<div class="page"><hxk-page-head heading=${tr("Notifications")}></hxk-page-head><hxk-state kind="offline" text=${this.error}></hxk-state></div>`;
     }
     const c = this.counts;
     const filters: Array<{ id: Filter; label: string }> = [
@@ -514,10 +514,9 @@ export class HermesInbox extends HestiaElement {
       { id: 'all', label: tr('All') },
     ];
     return html`<div class="page">
-      <div class="head">
-        <div class="grow"><h1>${tr("Notifications")}</h1><div class="sub">${this.subtitle()}</div></div>
-        ${c.unread ? html`<hxk-button size="sm" variant="ghost" icon="check" @click=${() => this.markAllSeen()}>${tr("Mark all read")}</hxk-button>` : nothing}
-      </div>
+      <hxk-page-head heading=${tr("Notifications")} sub=${this.subtitle()} ask=${tr("Notifications")}>
+        ${c.unread ? html`<hxk-button variant="primary" icon="check" @click=${() => this.markAllSeen()}>${tr("Mark all read")}</hxk-button>` : nothing}
+      </hxk-page-head>
       <div class="bar">
         <div class="chips" role="group" aria-label=${tr("Filter")}>${filters.map(f => html`<button class="chip" aria-pressed=${this.filter === f.id}
           @click=${() => this.setFilter(f.id)}>${f.label}</button>`)}</div>

@@ -113,14 +113,14 @@ export class AthenaLearning extends HestiaElement {
   }
 
   render() {
-    if (this.error) return html`<div class="page"><h1>${tr("What I learned")}</h1><hxk-state kind="offline" text=${this.error} @retry=${() => this.load()}></hxk-state></div>`;
+    if (this.error) return html`<div class="page"><hxk-page-head heading=${tr("What I learned")}></hxk-page-head><hxk-state kind="offline" text=${this.error} @retry=${() => this.load()}></hxk-state></div>`;
     if (!this.items) return html`<div class="page"><hxk-state kind="loading"></hxk-state></div>`;
     return html`<div class="page">
-      <div class="head"><h1>${tr("What I learned")}</h1><span class="sub">${tr("Only from what you said, with the sentence it comes from")}</span>
-        <span class="grow"></span><hxk-button icon="sparkle" ?loading=${this.busy === 'review'} @click=${() => this.review()}>${tr("Review what you know about me")}</hxk-button></div>
+      <hxk-page-head heading=${tr("What I learned")} sub=${tr("Only from what you said, with the sentence it comes from")} ask=${tr("What I learned")}>
+        <hxk-button variant="primary" icon="sparkle" ?loading=${this.busy === 'review'} @click=${() => this.review()}>${tr("Review what you know about me")}</hxk-button></hxk-page-head>
       ${this.proposals.length ? html`<h2>${tr("To decide")}</h2><div class="card">${this.proposals.map(p => this.proposal(p))}</div>` : nothing}
       ${this.items.length ? html`<div class="card">${this.items.map(e => this.row(e))}</div>`
-        : html`<hxk-state kind="empty" text=${tr("Nothing yet: the night reflection learns from the conversations and writes it here.")}></hxk-state>`}
+        : html`<hxk-empty icon="sparkle" heading=${tr("Nothing learned yet")} example=${tr("Remember that I don't eat meat")}>${tr("Every night I learn from our conversations and write it here.")}</hxk-empty>`}
     </div>`;
   }
 }

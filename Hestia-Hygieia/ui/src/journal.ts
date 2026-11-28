@@ -41,12 +41,10 @@ export class HygieiaJournal extends HestiaElement {
   }
   private async drop(id: string) { await call(this.host, 'DELETE', `${API}/journal/${id}`); this.load(); }
   render() {
-    const back = html`<button class="link" @click=${() => this.host.navigate('today')}>${tr("‹ Today")}</button>`;
-    if (!this.m) return html`<div class="page">${back}<hxk-state kind="loading"></hxk-state></div>`;
+    if (!this.m) return html`<div class="page"><hxk-state kind="loading"></hxk-state></div>`;
     const ms = this.metrics(), series = this.data?.series?.[this.area] || {};
     return html`<div class="page">
-      ${back}
-      <div class="head"><h1>${tr("Diary")}</h1></div>
+      <hxk-page-head heading=${tr("Diary")} sub=${tr("How you feel, day by day")} ask=${tr("Diary")}></hxk-page-head>
       <div class="chips">${(this.m.areas || []).map((a: any) => html`<button class="chip" aria-pressed=${this.area === a.value}
         @click=${() => { this.area = a.value; this.scores = {}; this.data = undefined; this.load(); }}>${a.label}</button>`)}</div>
       <div class="card col">

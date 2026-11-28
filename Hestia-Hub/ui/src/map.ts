@@ -92,10 +92,9 @@ export class HubMap extends HestiaElement {
       .some((v: string) => String(v || '').toLowerCase().includes(q)));
     const groups: Array<[string, string]> = [['layer', tr('By layer')], ['node', tr('By node')], ['type', tr('By type')]];
     return html`<div class="page">
-      <div class="head"><h1>${tr("Map")}</h1><span class="sub">${tr("Log review")} ${d.revision} · ${tr("updated {0}", ago(d.updated_at))}</span>
-        <span class="grow"></span>
-        <hxk-button icon="check" ?loading=${this.busy} @click=${() => this.load(true)}>${tr("Health check")}</hxk-button>
-        <hxk-button variant="ghost" icon="refresh" @click=${() => this.load()}>${tr("Refresh")}</hxk-button></div>
+      <hxk-page-head heading=${tr("Map")} sub=${tr("updated {0}", ago(d.updated_at))} ask=${tr("Map")}>
+        <hxk-button variant="ghost" icon="refresh" title=${tr("Refresh")} @click=${() => this.load()}></hxk-button>
+        <hxk-button variant="primary" icon="check" ?loading=${this.busy} @click=${() => this.load(true)}>${tr("Health check")}</hxk-button></hxk-page-head>
       ${this.error ? html`<hxk-state kind="error" text="${tr("{0}: showing the last map", this.error)}" @retry=${() => this.load()}></hxk-state>` : nothing}
       <hxk-stat .items=${[
         { label: tr('Services'), value: d.services_count, list: (d.services || []).map((s: any) => ({ title: s.name, subtitle: s.node || '' })) },

@@ -20,7 +20,7 @@ export class HermesTodayWidget extends HestiaElement {
   }
   private async load() {
     const r = await this.host.api('GET', `${API}/deliveries`, { query: { since: todayStart(), limit: 200 } });
-    if (!r.ok) { this.error = tr('Hermes not reachable'); return; }
+    if (!r.ok) { this.error = tr('Not available'); return; }
     this.error = ''; this.s = r.data.summary;
   }
   render() {

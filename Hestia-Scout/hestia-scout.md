@@ -333,3 +333,7 @@ app keep «Hestia».
   `wait: true` returns `waiting` too.
 - **Tool name**: `scout.search` → `scout_search` (rule `<domain>_<verb>`, like `scout_fetch`/`scout_stats`); the
   stored routines that pre-check with the old name are renamed by Chronos at boot (`routines.rename_stored_tools`).
+
+### Page pattern (2026-11-28)
+
+The page is «House hunting» with the shared header; Statistics is a tab of the shell, so the in-page Statistics/back buttons are gone. Dossier `docs/work/2026-11-27-webui-rethink` piece 2.

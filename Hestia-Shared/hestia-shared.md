@@ -615,3 +615,7 @@ No library change.
 **2026-11-27 (installer download progress, same dossier v2.27)**: Italian of «ready» / «not downloaded» added to `locales/it/installer.tsv`. No library change.
 
 **2026-11-27 (Google with one button, dossier `docs/work/2026-10-30-one-click-setup` v2.30)**: Italian of «Use your own Google app» and the «app not verified» hint added to `locales/it/messages.json`. No library change.
+
+### WebUI SDK: page header and empty state (2026-11-28)
+
+`hxk-page-head` and `hxk-empty` join the kit (README of `webui-sdk`); both send `hxk-ask`, which `HestiaElement` turns into `host.assistant(...)` with the page as context. Dossier `docs/work/2026-11-27-webui-rethink` piece 2.

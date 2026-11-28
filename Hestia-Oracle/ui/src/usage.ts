@@ -46,7 +46,7 @@ export class OracleUsage extends HestiaElement {
   async load() {
     const q = (group: string) => this.host.api('GET', `${API}/usage`, { query: { group, days: this.days } });
     const [mod, day, ses, step] = await Promise.all([q('module'), q('day'), q('session'), q('step')]);
-    if (!mod.ok) { this.error = mod.error || tr('Usage not available (Archive)'); return; }
+    if (!mod.ok) { this.error = mod.error || tr('Usage not available'); return; }
     this.error = '';
     this.data = { modules: mod.data.rows || [], days: day.ok ? day.data.rows : [], sessions: ses.ok ? ses.data.rows : [],
                   steps: step.ok ? step.data.rows : [] };

@@ -4,7 +4,7 @@
  * Temperature and rain left empty = the day's forecast (shown above the ideas); typing one overrides it.
  */
 import { css, html, nothing, plural, tr } from '@hestia/webui-sdk';
-import { API, seasonIcon, WardrobeElement, call, dots, img, localDay, vocabOptions, wardrobeStyles } from './util';
+import { API, WardrobeElement, call, dots, img, localDay, vocabOptions, wardrobeStyles } from './util';
 
 export class WardrobeSuggest extends WardrobeElement {
   static properties = { ...WardrobeElement.properties, res: { state: true }, occasion: { state: true }, temp: { state: true }, rain: { state: true },
@@ -56,8 +56,8 @@ export class WardrobeSuggest extends WardrobeElement {
     const m = this.m, res = this.res, w = res?.weather;
     const manual = this.temp !== '' || this.rain !== null;
     return html`<div class="page">
-      <div class="head"><h1>${tr("What should I wear")}</h1>${res ? html`<span class="sub">${seasonIcon(res.season)} ${m?.seasons[res.season] || ''} · ${plural(res.available_pieces, 'garment', 'garments')} ${tr("available")}</span>` : nothing}
-        <span class="grow"></span><hxk-button variant="ghost" icon="refresh" ?loading=${this.busy} @click=${() => this.load()}>${tr("More ideas")}</hxk-button></div>
+      <hxk-page-head heading=${tr("What should I wear")} sub=${res ? `${m?.seasons[res.season] || ''} · ${plural(res.available_pieces, 'garment', 'garments')} ${tr("available")}` : ''} ask=${tr("What should I wear")}>
+        <hxk-button variant="primary" icon="refresh" ?loading=${this.busy} @click=${() => this.load()}>${tr("More ideas")}</hxk-button></hxk-page-head>
       <div class="chips">${vocabOptions(m, 'occasion').map(o => html`<button class="chip" aria-pressed=${this.occasion === o.key} @click=${() => this.setOcc(o.key)}>${o.label}</button>`)}</div>
       <div class="opts">
         <label class="row small">${tr("Temperature")} <input class="in num" inputmode="decimal" placeholder=${w ? String(w.temp_c ?? '°C') : '°C'} .value=${this.temp} @change=${(e: any) => { this.temp = e.target.value; this.load(); }}> °C</label>

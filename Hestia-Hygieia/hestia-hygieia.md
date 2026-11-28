@@ -175,3 +175,7 @@ The Hub registration declares `capabilities.when_to_use` (one line in the assist
 **2026-11-15 (WebUI page in the owner's language, dossier `docs/work/2026-11-14-english-backend`)**: the texts of this module's WebUI page and widgets go through `tr` of `@hestia/webui-sdk` and follow «Language»; source texts in English, Italian in `Hestia-Shared/hestia_common/locales/it/messages.json`.
 
 **2026-11-16 (no Italian in the code, dossier `docs/work/2026-11-14-english-backend` v2.0)**: every text is English in the code; Italian lives only in `Hestia-Shared/hestia_common/locales/it/messages.json`. Labels declared at registration (manifest, capabilities, agenda rules, settings) are plain English, translated at the edge.
+
+### Page pattern (2026-11-28)
+
+The pages use the shared header; the in-page nav row of Today and the back link of the journal are gone (sub-pages are shell tabs). Dossier `docs/work/2026-11-27-webui-rethink` piece 2.

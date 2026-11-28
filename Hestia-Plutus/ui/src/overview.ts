@@ -42,11 +42,11 @@ export class PlutusOverview extends HestiaElement {
     const pct = s.budget ? Math.round(100 * s.spent / s.budget) : null;
     const running = s.days_gone < s.days_total;
     return html`<div class="page">
-      <div class="between wrap"><div class="head"><h1>${tr("Expenses")}</h1>
-          <hxk-button size="sm" variant="ghost" icon="chevron-left" @click=${() => this.shift(-1)}></hxk-button>
-          <b>${s.label}</b><hxk-button size="sm" variant="ghost" icon="chevron-right" @click=${() => this.shift(1)}></hxk-button></div>
-        <div class="row wrap"><hxk-button variant="primary" icon="plus" @click=${() => (this.form = true)}>${tr("Expense")}</hxk-button>
-          <hxk-button icon="upload" @click=${() => this.host.navigate('import')}>${tr("Bank statement")}</hxk-button></div></div>
+      <hxk-page-head heading=${tr("Expenses")} sub=${s.label} ask=${tr("Expenses of {0}", s.label)}
+        .suggestions=${[tr('How did the month go?'), tr('Where can I save?'), tr('How much did I spend at restaurants?')]}>
+        <hxk-button variant="ghost" icon="chevron-left" @click=${() => this.shift(-1)}></hxk-button>
+        <hxk-button variant="ghost" icon="chevron-right" @click=${() => this.shift(1)}></hxk-button>
+        <hxk-button variant="primary" icon="plus" @click=${() => (this.form = true)}>${tr("Expense")}</hxk-button></hxk-page-head>
       ${s.to_review ? html`<div class="note warning between click" @click=${() => this.host.navigate('transactions', { review: '1' })}>
         <span>${plural(s.to_review, 'transaction', 'transactions')} ${tr("with the category to check")}</span><span class="link">${tr("Review ›")}</span></div>` : nothing}
       <hxk-stat .items=${[
@@ -76,10 +76,7 @@ export class PlutusOverview extends HestiaElement {
           <span class="tnum amt">${money(-r.amount, cur, true)}</span></div>`)}</div></div>` : nothing}
       ${s.top_merchants.length ? html`<div class="card col"><h2>${tr("Main merchants")}</h2>
         ${s.top_merchants.map((x: any) => html`<div class="between small" style="padding:3px 0"><span class="truncate">${x.merchant}</span><span class="tnum">${money(x.spent, cur)}</span></div>`)}</div>` : nothing}
-      <div class="row wrap"><hxk-button variant="ghost" icon="refresh" ?loading=${this.checking} @click=${() => this.checkMail()}>${tr("Recheck PayPal emails")}</hxk-button>
-        <hxk-button variant="ghost" icon="chart" @click=${() => this.host.navigate('stats')}>${tr("Statistics")}</hxk-button>
-        <hxk-button variant="ghost" icon="sparkle" @click=${() => this.host.assistant({ label: tr("Expenses of {0}", s.label), hints: { month: s.month },
-          suggestions: [tr('How did the month go?'), tr('Where can I save?'), tr('How much did I spend at restaurants?')] })}>${tr("Ask")}</hxk-button></div>
+      <div class="row wrap"><hxk-button variant="ghost" icon="refresh" ?loading=${this.checking} @click=${() => this.checkMail()}>${tr("Recheck PayPal emails")}</hxk-button></div>
       ${this.form ? html`<plutus-tx-form .host=${this.host} @close=${() => { this.form = false; this.load(); }}></plutus-tx-form>` : nothing}
     </div>`;
   }

@@ -230,9 +230,9 @@ export class HermesDeliveries extends HestiaElement {
   }
 
   render() {
-    if (this.error) return html`<div class="page"><h1>${tr('Deliveries')}</h1><hxk-state kind="offline" text=${this.error}></hxk-state></div>`;
+    if (this.error) return html`<div class="page"><hxk-page-head heading=${tr('Deliveries')}></hxk-page-head><hxk-state kind="offline" text=${this.error}></hxk-state></div>`;
     return html`<div class="page">
-      <div class="head"><h1>${tr('Deliveries')}</h1><span class="sub">${tr('What was sent to you, where it arrived and how it went')}</span></div>
+      <hxk-page-head heading=${tr('Deliveries')} sub=${tr('What was sent to you, where it arrived and how it went')} ask=${tr('Deliveries')}></hxk-page-head>
       ${this.renderStats()}
       <div class="row wrap">
         <div class="chips grow">${FILTERS.map(f => html`<button class="chip" aria-pressed=${this.flag === f.id} @click=${() => this.setFlag(f.id)}>${f.label}</button>`)}</div>

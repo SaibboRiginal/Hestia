@@ -93,9 +93,9 @@ export class KairosList extends Base {
     const later = this.items.filter(d => d.in_days > 30);
     const total = soon.reduce((s, d) => s + (d.amount || 0), 0);
     return html`<div class="page">
-      <div class="between"><h1>${tr("Deadlines")}</h1>
-        <div class="row"><hxk-button variant="ghost" @click=${() => { this.done = !this.done; this.load(); }}>${this.done ? tr('To do') : tr('f.pl::Done')}</hxk-button>
-          <hxk-button variant="primary" icon="plus" @click=${() => { this.adding = !this.adding; }}>${tr("Add")}</hxk-button></div></div>
+      <hxk-page-head heading=${tr("Deadlines")} sub=${tr("Bills, documents and renewals, with a notice in time")} ask=${tr("Deadlines")}>
+        <hxk-button variant="ghost" @click=${() => { this.done = !this.done; this.load(); }}>${this.done ? tr('To do') : tr('f.pl::Done')}</hxk-button>
+        <hxk-button variant="primary" icon="plus" @click=${() => { this.adding = !this.adding; }}>${tr("Add")}</hxk-button></hxk-page-head>
       ${this.adding ? html`<div class="card col">${this.form(this.draft, (k, v) => { this.draft = { ...this.draft, [k]: v }; })}
         <div class="row"><hxk-button variant="primary" @click=${() => this.save()}>${tr("Save")}</hxk-button>
           <hxk-button variant="ghost" @click=${() => { this.adding = false; }}>${tr("Cancel")}</hxk-button></div></div>` : nothing}
@@ -105,7 +105,7 @@ export class KairosList extends Base {
         ${soon.length ? html`<div class="card col"><div class="between"><h3>${tr("Next 30 days")}</h3>${total ? html`<span class="small muted">${money(total)}</span>` : nothing}</div>
           ${soon.map(d => this.row(d))}</div>` : nothing}
         ${later.length ? html`<div class="card col"><h3>${tr("Later on")}</h3>${later.map(d => this.row(d))}</div>` : nothing}
-        ${!this.items.length ? html`<hxk-state kind="empty" text=${tr("No deadlines: bills, insurance, car tax, inspection, documents. Add them here or say it in chat.")}></hxk-state>` : nothing}`}
+        ${!this.items.length ? html`<hxk-empty icon="clock" heading=${tr("No deadline yet")} example=${tr("The car insurance expires on 15 March")}>${tr("Bills, insurance, car tax, inspection, documents.")}</hxk-empty>` : nothing}`}
     </div>`;
   }
 }

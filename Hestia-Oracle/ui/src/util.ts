@@ -37,7 +37,7 @@ export function when(ts: number | null | undefined): string {
 }
 
 export function ago(seconds: number | null | undefined): string {
-  if (seconds == null) return tr('no chat since Oracle started');
+  if (seconds == null) return tr('no chat since the last start');
   if (seconds < 60) return tr('just now');
   if (seconds < 3600) return `${Math.floor(seconds / 60)} min fa`;
   if (seconds < 86400) return `${Math.floor(seconds / 3600)} h fa`;

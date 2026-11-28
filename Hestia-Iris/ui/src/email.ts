@@ -59,7 +59,7 @@ export class IrisEmail extends HestiaElement {
 
   private async load() {
     const r = await this.host.api('GET', `${API}/dispatch`);
-    if (!r.ok) { this.error = r.status === 0 ? tr('Iris not reachable') : r.error || tr('Iris not reachable'); return; }
+    if (!r.ok) { this.error = r.status === 0 ? tr('Not available') : r.error || tr('Not available'); return; }
     this.error = ''; this.data = r.data;
   }
 
@@ -95,7 +95,7 @@ export class IrisEmail extends HestiaElement {
         <div class="row wrap">
           ${push.active ? html`<hxk-badge tone="success">${tr("Gmail push active")}</hxk-badge>`
             : push.configured ? html`<hxk-badge tone="warning" title=${push.error || ''}>${tr("Gmail push configured, not connected")}</hxk-badge>`
-            : html`<hxk-badge tone="neutral" title=${tr("It turns on with the Pub/Sub setup (see Hecate's documentation)")}>${tr("Gmail push off")}</hxk-badge>`}
+            : html`<hxk-badge tone="neutral" title=${tr("It turns on with the Gmail push setup (see the documentation)")}>${tr("Gmail push off")}</hxk-badge>`}
           <hxk-badge tone="info">${every(w.interval_seconds)}</hxk-badge>
           ${auth ? html`<hxk-badge tone="danger">${tr("Link Google again")}</hxk-badge>` : st.last_error ? html`<hxk-badge tone="danger" title=${st.last_error}>${tr("error")}</hxk-badge>` : nothing}
         </div>
@@ -135,12 +135,12 @@ export class IrisEmail extends HestiaElement {
   }
 
   render() {
-    if (this.error) return html`<div class="page"><h1>${tr("Email")}</h1><hxk-state kind="offline" text=${this.error}></hxk-state></div>`;
+    if (this.error) return html`<div class="page"><hxk-page-head heading=${tr("Email")}></hxk-page-head><hxk-state kind="offline" text=${this.error}></hxk-state></div>`;
     const d = this.data;
     return html`<div class="page">
-      <div class="head"><h1>${tr("Email")}</h1><span class="sub">${tr("Emails reach the modules by themselves: no checks per module")}</span>
-        <span class="grow"></span>
-        <hxk-button icon="refresh" ?loading=${this.busy === 'check'} @click=${() => this.check()}>${tr("alt2::Check now")}</hxk-button></div>
+      <hxk-page-head heading=${tr("Email")} sub=${tr("Emails reach the modules by themselves: no checks per module")} ask=${tr("Email")}>
+        
+        <hxk-button variant="primary" icon="refresh" ?loading=${this.busy === 'check'} @click=${() => this.check()}>${tr("alt2::Check now")}</hxk-button></hxk-page-head>
       ${!d ? html`<hxk-state kind="loading"></hxk-state>` : html`
         <hxk-stat .items=${[
           { label: tr('Subscribed modules'), value: new Set((d.subscriptions || []).map((s: any) => s.owner)).size,

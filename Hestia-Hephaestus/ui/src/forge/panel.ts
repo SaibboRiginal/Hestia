@@ -103,7 +103,7 @@ export class HephaestusTaskPanel extends LitElement {
       ${t.deploy_plan ? html`<h4>${tr("Deploy plan")}</h4><p class="small">
         ${t.deploy_plan.restart.length ? html`${tr("Restart:")} <b>${t.deploy_plan.restart.join(', ')}</b>. ` : nothing}
         ${t.deploy_plan.rebuild.length ? html`${tr("To rebuild by hand:")} <code>${"up-all.bat --build"} ${t.deploy_plan.rebuild.join(' ')}</code>. ` : nothing}
-        ${t.deploy_plan.restart_self ? tr('Hephaestus restarts itself last. ') : nothing}
+        ${t.deploy_plan.restart_self ? tr('Development restarts itself last. ') : nothing}
         ${!t.deploy_plan.restart.length && !t.deploy_plan.rebuild.length && !t.deploy_plan.restart_self ? tr('No service to restart.') : nothing}</p>` : nothing}
       <h4>${tr("Notes")}</h4>
       ${(t.notes ?? []).length ? html`<div class="notes">${(t.notes ?? []).map(n => html`<div>

@@ -76,13 +76,13 @@ export class AthenaSignals extends HestiaElement {
     const links: any[] = (d.links || []).filter((l: any) => !this.domain || l.a_domain === this.domain || l.b_domain === this.domain);
     const obs: any[] = d.observations || [];
     return html`<div class="page">
-      <div class="head"><h1>${tr("Signals")}</h1><span class="sub">${tr("What each area notices in its data, and what the reflection gets from it")}</span>
-        <span class="grow"></span><hxk-button variant="ghost" icon="refresh" @click=${() => this.load()}>${tr("Refresh")}</hxk-button></div>
+      <hxk-page-head heading=${tr("Signals")} sub=${tr("What each area notices in its data, and what the reflection gets from it")} ask=${tr("Signals")}>
+        <hxk-button variant="ghost" icon="refresh" title=${tr("Refresh")} @click=${() => this.load()}></hxk-button></hxk-page-head>
       ${domains.length > 1 ? html`<div class="filters" role="group" aria-label=${tr("Area")}>
         <button aria-pressed=${String(!this.domain)} @click=${() => (this.domain = '')}>${tr("All")}</button>
         ${domains.map(dm => html`<button aria-pressed=${String(this.domain === dm)} @click=${() => (this.domain = dm)}>${area(dm)}</button>`)}</div>` : nothing}
 
-      <hxk-card heading=${tr("Active signals")} subtitle=${tr("Short sentences computed from the areas, without artificial intelligence")}>
+      <hxk-card heading=${tr("Active signals")} subtitle=${tr("Short sentences computed from the areas")}>
         ${sig.length ? sig.map(s => this.signalRow(s))
           : html`<div class="small muted">${tr("No active signal. The areas publish them as they collect data.")}</div>`}
       </hxk-card>

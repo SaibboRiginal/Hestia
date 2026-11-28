@@ -72,7 +72,7 @@ export class MetisImprovement extends HestiaElement {
     this.traces = t.ok ? t.data : null;
     this.exports = x.ok ? x.data?.items || [] : null;
     this.review = r.ok ? r.data : null;
-    if (!j.ok && !i.ok) { this.error = j.status === 0 || !j.error ? tr('Metis not reachable') : j.error; return; }
+    if (!j.ok && !i.ok) { this.error = j.status === 0 || !j.error ? tr('Not available') : j.error; return; }
     this.error = '';
     this.jobs = j.ok ? j.data : null;
     this.insights = i.ok ? i.data : null;
@@ -100,7 +100,7 @@ export class MetisImprovement extends HestiaElement {
             ${s.note ? html`<div class="muted">${tr("Note:")} ${s.note}</div>` : nothing}</div>`)}
         </div>`)
         : html`<hxk-state kind="empty" text=${tr("No weak point: no negative rating.")}></hxk-state>`}
-      <p class="note">${tr("Athena uses these weak points to propose improvements (Forge).")}</p>
+      <p class="note">${tr("The assistant uses these weak points to propose improvements.")}</p>
     </hxk-card>`;
   }
 
@@ -154,7 +154,7 @@ export class MetisImprovement extends HestiaElement {
 
   private renderTraces() {
     const t = this.traces;
-    if (!t) return html`<hxk-card heading=${tr("Training dataset")}><hxk-state kind="error" text=${tr("alt::Archive not reachable")}></hxk-state></hxk-card>`;
+    if (!t) return html`<hxk-card heading=${tr("Training dataset")}><hxk-state kind="error" text=${tr('Not available')}></hxk-state></hxk-card>`;
     return html`<hxk-card heading=${tr("Training dataset")} subtitle=${tr("Your exchanges with the assistant, saved only here")}>
       <hxk-stat .items=${[
         { label: tr('Saved exchanges'), value: t.traces ?? 0 },
@@ -193,7 +193,7 @@ export class MetisImprovement extends HestiaElement {
 
   private renderDatasets() {
     if (!this.datasets.length) return nothing;
-    return html`<hxk-card heading=${tr("Dataset")} subtitle=${tr("Good examples collected for training (until Metis restarts)")}>
+    return html`<hxk-card heading=${tr("Dataset")} subtitle=${tr("Good examples collected for training (until the next restart)")}>
       ${this.datasets.map(d => html`<div class="item">
         <div class="top"><b class="grow">${d.name}</b><span class="small muted">${when(d.created_at)}</span></div>
         <div class="small muted">${d.total_kept ?? 0} ${tr("examples kept out of")} ${d.total_fetched ?? 0}
@@ -225,8 +225,8 @@ export class MetisImprovement extends HestiaElement {
     if (this.error) return html`<div class="page"><hxk-state kind="offline" text=${this.error}></hxk-state></div>`;
     if (!this.loaded) return html`<div class="page"><hxk-state kind="loading"></hxk-state></div>`;
     return html`<div class="page">
-      <div class="head"><h1>${tr("Improvement")}</h1><span class="sub">${tr("How {assistant} learns from your ratings")}</span><span class="grow"></span>
-        <hxk-button variant="ghost" icon="refresh" @click=${() => this.load()}>${tr("Refresh")}</hxk-button></div>
+      <hxk-page-head heading=${tr("Improvement")} sub=${tr("How {assistant} learns from your ratings")} ask=${tr("Improvement")}>
+        <hxk-button variant="ghost" icon="refresh" title=${tr("Refresh")} @click=${() => this.load()}></hxk-button></hxk-page-head>
       ${this.renderTraces()}${this.renderReview()}${this.renderExport()}${this.renderInsights()}${this.renderDatasets()}${this.renderJobs()}
     </div>`;
   }

@@ -174,3 +174,7 @@ as a person (pages, help, agenda titles, notes) write `{assistant}` and say the 
 app keep «Hestia».
 
 **2026-11-17** (dossier `docs/work/2026-11-17-client-names`): texts and page descriptions that spoke of «Hestia» as the assistant use the chosen name (`{assistant}`).
+
+### Page pattern (2026-11-28)
+
+The plugin pages use the shared page header (`hxk-page-head`: title, one line, one primary action, «Ask») and, where a list can be empty, the shared empty state (`hxk-empty`, with an example to say in chat); people texts never name a module. Dossier `docs/work/2026-11-27-webui-rethink` piece 2.

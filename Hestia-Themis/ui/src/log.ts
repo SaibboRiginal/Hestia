@@ -8,8 +8,7 @@ import { HestiaElement, html, css, nothing, locale, tr } from '@hestia/webui-sdk
 
 const API = '/api/settings';
 const WHO_FILTERS = [
-  { id: '', label: tr('pl::All') }, { id: 'user,webui,telegram', label: 'Tu' }, { id: 'athena', label: 'Athena' },
-  { id: 'oracle', label: 'Oracle' }, { id: 'external', label: tr('External AIs') },
+  { id: '', label: tr('pl::All') }, { id: 'user,webui,telegram', label: tr('You') }, { id: 'athena,oracle', label: tr('{assistant}') }, { id: 'external', label: tr('External AIs') },
 ];
 const KIND: Record<string, string> = { undo: tr('f::undone'), reset: tr('default'), approved: tr('proposal approved'), preset: 'preset' };
 const PROPOSAL: Record<string, { text: string; tone: string }> = {
@@ -22,7 +21,7 @@ export function who(actor?: string | null): string {
   const a = String(actor || '');
   if (!a) return '–';
   if (a.startsWith('external:')) return tr('{0} (external AI)', a.slice(9));
-  return ({ user: 'Tu', webui: tr('You (WebUI)'), telegram: tr('You (Telegram)'), oracle: tr('Oracle (chat)'), athena: 'Athena',
+  return ({ user: tr('You'), webui: tr('You (WebUI)'), telegram: tr('You (Telegram)'), oracle: tr('{assistant} (chat)'), athena: tr('{assistant} (thoughts)'),
             themis: tr('settings'), cascade: tr('automatic') } as Record<string, string>)[a] || a;
 }
 
@@ -74,7 +73,7 @@ export class ThemisLog extends HestiaElement {
     this.addEventListener('retry', () => this.load());
   }
 
-  private fail(r: any) { this.error = r.status === 0 ? tr('Themis unreachable') : r.error || tr('Themis unreachable'); }
+  private fail(r: any) { this.error = r.status === 0 ? tr('Not available') : r.error || tr('Not available'); }
 
   private async load() {
     const [h, p] = await Promise.all([this.loadChanges(0), this.host.api('GET', `${API}/proposals`, { query: { status: 'all' } })]);
@@ -156,11 +155,11 @@ export class ThemisLog extends HestiaElement {
   }
 
   render() {
-    if (this.error) return html`<div class="page"><h1>${tr("Log")}</h1><hxk-state kind="offline" text=${this.error}></hxk-state></div>`;
+    if (this.error) return html`<div class="page"><hxk-page-head heading=${tr("Log")}></hxk-page-head><hxk-state kind="offline" text=${this.error}></hxk-state></div>`;
     const pending = (this.props || []).filter(p => p.status === 'pending');
     const props = (this.props || []).filter(p => !this.module || String(p.key || '').startsWith(`${this.module}.`));
     return html`<div class="page">
-      <div class="head"><h1>${tr("Log")}</h1><span class="sub">${tr("Who changed the settings, when and how")}</span></div>
+      <hxk-page-head heading=${tr("Log")} sub=${tr("Who changed the settings, when and how")} ask=${tr("Log")}></hxk-page-head>
       ${pending.length ? html`<hxk-card heading=${tr("To confirm")} subtitle=${tr("No proposal changes anything without your yes")}>
         ${pending.map(p => this.renderProposal(p))}</hxk-card>` : nothing}
       <div class="row wrap">

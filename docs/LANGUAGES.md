@@ -142,7 +142,11 @@ python tools/governance/check_i18n.py --todo todo.json    # writes {"Text": ""} 
 python tools/governance/check_i18n.py --merge todo.json   # after filling it in: adds them to the Italian catalog
 python tools/governance/check_english.py                  # no Italian in the code (precheck and CI run it)
 python tools/governance/check_english.py --show all       # where an Italian word is
+python tools/governance/check_module_names.py             # no module name (Athena, Oracle…) in a people text
 ```
+
+A people text never names a module: the owner reads «Not available», «{assistant}», «Thoughts», never «Athena not
+reachable». `check_module_names.py` (precheck and CI) scans the `tr()` texts of the WebUI and of every plugin.
 
 `check_english.py` (owner 2026-11-19: «what the user never sees is English, everything else translatable, never
 fixed in one language») counts the Italian words of every source file outside `tr(…)`, tests, `tools/cloud_test`

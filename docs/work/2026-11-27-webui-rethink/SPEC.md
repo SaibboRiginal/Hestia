@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Version** | 1.1 |
+| **Version** | 1.2 |
 | **Source** | user via WebUI project chat (Marko, 2026-11-27): «non so dove sia cosa, ci sono 20000 voci, la sidebar e logo sono stile claude, non ha uno stile moderno, vivace e facile da usare» |
 | **Status** | Approved («dai iniziamo da qui», 2026-11-27 22:24) — piece 1 in progress |
 
@@ -56,8 +56,8 @@ what he does.
 
 ### Piece 2 — one page pattern
 
-Shared kit components (WebUI `ui/` + SDK `kit/`): page header (title, one line of context, one primary action, «…»
-with page settings and «Ask»), summary-first layout, empty state (icon, sentence, start button, «or say it in chat»
+Shared kit components (WebUI `ui/` + SDK `kit/`): page header (title, one line of context, one primary action and «Ask»;
+page settings stay on the shell's gear (v1.2)), summary-first layout, empty state (icon, sentence, start button, «or say it in chat»
 with an example). Applied to every module page; developer text removed (Thoughts formula/threshold etc.); governance
 check for module names in people texts.
 

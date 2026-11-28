@@ -133,7 +133,7 @@ export class OracleBrain extends HestiaElement {
     const turns: any[] = a.turns || [];
     return html`<hxk-card heading=${tr("Latest requests")} subtitle=${tr("Your last chat: {0}", ago(a.idle_seconds))}>
       ${turns.length ? turns.map(t => this.renderTurn(t))
-        : html`<hxk-state kind="empty" text=${tr("No request since Oracle started.")}></hxk-state>`}
+        : html`<hxk-state kind="empty" text=${tr("No request since the last start.")}></hxk-state>`}
     </hxk-card>`;
   }
 
@@ -152,7 +152,7 @@ export class OracleBrain extends HestiaElement {
         <div class="num small">${r.state === 'running' ? html`<hxk-badge tone="info">${tr("running")}</hxk-badge>`
           : html`<hxk-badge tone=${r.ok ? 'success' : 'danger'}>${r.ok ? 'ok' : tr('failed')}</hxk-badge>`}
           <div class="muted">${r.state === 'running' ? '' : `${ms(r.ms)} · ${tr('{0} turns', r.turns)}${r.cost_usd ? ` · ${cost(r.cost_usd)}` : ''}`}</div></div></div>`)}
-      ${!runs.length && c.available ? html`<div class="note">${tr("No job since Oracle started.")}</div>` : nothing}
+      ${!runs.length && c.available ? html`<div class="note">${tr("No job since the last start.")}</div>` : nothing}
     </hxk-card>`;
   }
 
@@ -170,13 +170,13 @@ export class OracleBrain extends HestiaElement {
         <div class="col" style="gap:16px">${this.renderActivity()}</div>
         <div class="col" style="gap:16px">${this.renderDays()}${this.stats ? this.renderToday() : nothing}${this.renderUseCases()}${this.renderCode()}</div>
       </div>
-      <p class="note">${tr("The numbers of this tab are in memory: they reset when Oracle restarts. The Usage tab keeps them.")}</p>`;
+      <p class="note">${tr("The numbers of this tab reset at every restart. The Usage tab keeps them.")}</p>`;
   }
 
   render() {
     return html`<div class="page">
-      <div class="head"><h1>${tr("Requests and models")}</h1><span class="sub">${tr("What the assistant does: requests, models, tokens")}</span><span class="grow"></span>
-        ${this.tab === 'activity' ? html`<hxk-button variant="ghost" icon="refresh" ?loading=${this.loading} @click=${() => this.load()}>${tr("Refresh")}</hxk-button>` : nothing}</div>
+      <hxk-page-head heading=${tr("Requests and models")} sub=${tr("What the assistant does: requests, models, tokens")} ask=${tr("Requests and models")}>
+        ${this.tab === 'activity' ? html`<hxk-button variant="ghost" icon="refresh" title=${tr("Refresh")} ?loading=${this.loading} @click=${() => this.load()}></hxk-button>` : nothing}</hxk-page-head>
       ${this.tabs()}
       ${this.tab === 'use' ? html`<oracle-usage .host=${this.host}></oracle-usage>`
         : this.tab === 'models' ? html`<oracle-models .host=${this.host}></oracle-models>` : this.activityTab()}

@@ -346,7 +346,7 @@ export class ChronosAgenda extends HestiaElement {
     return html`<chronos-pop .open=${!!this.viewRect} .anchor=${this.viewRect} .width=${340} placement="below" @close=${() => (this.viewRect = null)}>
       <div class="view">
         <h4>${tr("Calendar view")}</h4>
-        <div class="lab">${tr("Windows (e.g. Athena when you are idle)")}
+        <div class="lab">${tr("Windows (e.g. thinking while you are idle)")}
           ${segmented([{ value: 'lane', label: tr('Lane') }, { value: 'band', label: tr('Band') }, { value: 'hidden', label: tr('f.pl::Hidden') }],
             vp.windowsMode, v => s.setVp({ windowsMode: v }))}</div>
         <div class="lab">${tr("Frequent recurrences")} <small>${tr("Rules with at least")} ${vp.frequentPerDay} ${tr("runs per day")}</small>

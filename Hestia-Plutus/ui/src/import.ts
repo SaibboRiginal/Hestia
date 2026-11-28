@@ -84,7 +84,7 @@ export class PlutusImport extends HestiaElement {
   render() {
     const banks = (this.m?.accounts || []).filter((a: any) => a.kind === 'bank');
     return html`<div class="page">
-      <div class="head"><button class="link" @click=${() => this.host.navigate('overview')}>${tr('‹ Expenses')}</button><h1>${tr("Import")}</h1></div>
+      <hxk-page-head heading=${tr("Import")} ask=${tr("Import")}></hxk-page-head>
       ${this.v ? this.preview() : html`<div class="card col">
         <h2>${tr("Bank statement (PDF)")}</h2>
         <div class="small muted">${tr("From the bank app download the transaction list as PDF (Hype: Transactions › Export) and upload it here, or send it in chat. You see the preview before confirming; uploading the same file twice adds nothing.")}</div>
@@ -92,7 +92,7 @@ export class PlutusImport extends HestiaElement {
             ${(banks.length ? banks : [{ id: 'hype', name: 'Hype' }]).map((a: any) => html`<option value=${a.id} ?selected=${a.id === this.account}>${a.name}</option>`)}</select>
           <hxk-button variant="primary" icon="upload" ?loading=${this.busy === 'preview'} @click=${() => this.pick()}>${tr("Choose the PDF")}</hxk-button></div></div>`}
       <div class="card col"><h2>${tr("PayPal emails")}</h2>
-        <div class="small muted">${tr("They arrive by themselves: as soon as Gmail receives a PayPal receipt, Iris passes it to Expenses.")}
+        <div class="small muted">${tr("They arrive by themselves: as soon as Gmail receives a PayPal receipt, it reaches Expenses.")}
           ${this.mail?.last_run ? html`${tr("Last check")} ${new Date(this.mail.last_run).toLocaleString(locale(), { dateStyle: 'short', timeStyle: 'short' })}, ${this.mail.added} ${tr("recorded in total.")}` : nothing}</div>
         ${this.mail?.last_error ? html`<div class="note warning">${this.mail.last_error}</div>` : nothing}
         <div class="row wrap"><hxk-button icon="refresh" @click=${async () => { const r = await call(this.host, 'POST', `${API}/mail/check`, { body: { days: 30 } });

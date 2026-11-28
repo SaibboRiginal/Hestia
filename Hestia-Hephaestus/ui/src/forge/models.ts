@@ -107,7 +107,7 @@ export const meta = (state?: string) => STATE_META[state ?? 'new'] ?? { label: s
 export const ENGINES = ['', 'oracle', 'claude'];
 // oracle = Oracle's chain of use case forge.code (Brain → Models); local/cloud = old names of old tasks.
 export const ENGINE_LABEL: Record<string, string> = {
-  '': tr('Default'), auto: tr('Default'), oracle: tr('Oracle chain'), local: tr('Oracle chain'), cloud: tr('Oracle chain'),
+  '': tr('Default'), auto: tr('Default'), oracle: tr('Assistant models'), local: tr('Assistant models'), cloud: tr('Assistant models'),
   claude: tr('Claude Code'),
 };
 export const engineLabel = (e: string) => ENGINE_LABEL[e] ?? e;
@@ -161,7 +161,7 @@ export async function call<T = any>(host: HestiaHost, method: 'GET' | 'POST', pa
   const r = await host.api<T>(method, path, opts);
   if (!r.ok) {
     const offline = r.status === 0 || r.error === 'offline' || r.error === 'unreachable';
-    throw new ApiError(offline ? tr('Hephaestus not reachable') : (r.error || tr("Error {0}", r.status)), r.status);
+    throw new ApiError(offline ? tr('Not available') : (r.error || tr("Error {0}", r.status)), r.status);
   }
   return r.data;
 }

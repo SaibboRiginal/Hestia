@@ -244,17 +244,16 @@ export class ChronosWeek extends HestiaElement {
   }
 
   render() {
-    if (this.error) return html`<div class="page"><h1>${tr("Your week")}</h1><hxk-state kind="offline" text=${this.error}></hxk-state></div>`;
+    if (this.error) return html`<div class="page"><hxk-page-head heading=${tr("Your week")}></hxk-page-head><hxk-state kind="offline" text=${this.error}></hxk-state></div>`;
     const d = this.data;
-    if (!d) return html`<div class="page"><h1>${tr("Your week")}</h1><hxk-state kind="loading"></hxk-state></div>`;
+    if (!d) return html`<div class="page"><hxk-page-head heading=${tr("Your week")}></hxk-page-head><hxk-state kind="loading"></hxk-state></div>`;
     const today = isoDay(new Date());
     const c = d.counts || {};
     return html`<div class="page">
-      <div class="head"><h1 class="grow">${tr("Your week")}</h1>
+      <hxk-page-head heading=${tr("Your week")} sub=${`${dayLabel(d.start)} – ${dayLabel(addDays(d.end, -1))}`} ask=${tr("Your week")}>
         <hxk-button variant="ghost" icon="chevron-left" aria-label=${tr("Week before")} @click=${() => this.week(-1)}></hxk-button>
-        <span class="sub">${dayLabel(d.start)} – ${dayLabel(addDays(d.end, -1))}</span>
         <hxk-button variant="ghost" icon="chevron-right" aria-label=${tr("Week after")} @click=${() => this.week(1)}></hxk-button>
-      </div>
+      </hxk-page-head>
       <div class="row wrap">
         <hxk-button icon="refresh" ?loading=${this.busy === 'replan'} @click=${() => this.replan()}>${tr("Redo the plan")}</hxk-button>
         <hxk-button variant="ghost" icon="plus" @click=${() => (this.adding = !this.adding)}>${tr("Add appointment")}</hxk-button>

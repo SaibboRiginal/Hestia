@@ -54,8 +54,8 @@ export class HerculesExercises extends LocalPage {
     items = this.q ? search(items, this.q) : items.sort((a, b) => b.times - a.times || a.name.localeCompare(b.name));
     const c = this.creating;
     return html`<div class="page">
-      <div class="head"><h1>${tr("Exercises")}</h1><span class="sub">${items.length}</span><span class="grow"></span>
-        <hxk-button variant="primary" icon="plus" @click=${() => (this.creating = { name: this.q, equipment: 'barbell', kind: 'weight_reps', pattern: 'isolation', muscle: '' })}>${tr("New")}</hxk-button></div>
+      <hxk-page-head heading=${tr("Exercises")} sub=${items.length} ask=${tr("Exercises")}>
+        <hxk-button variant="primary" icon="plus" @click=${() => (this.creating = { name: this.q, equipment: 'barbell', kind: 'weight_reps', pattern: 'isolation', muscle: '' })}>${tr("New")}</hxk-button></hxk-page-head>
       ${c ? html`<div class="card col"><h2>${tr("New exercise")}</h2><div class="form">
           <input class="in" placeholder=${tr("Name")} .value=${c.name} @input=${(e: any) => (this.creating = { ...c, name: e.target.value })}>
           <select class="in" .value=${c.equipment} @change=${(e: any) => (this.creating = { ...c, equipment: e.target.value })}>${Object.entries(EQUIPMENT).map(([k, v]) => html`<option value=${k} ?selected=${c.equipment === k}>${v}</option>`)}</select>

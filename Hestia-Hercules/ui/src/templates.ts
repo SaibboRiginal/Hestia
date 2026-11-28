@@ -83,9 +83,9 @@ export class HerculesTemplates extends LocalPage {
     const tpls = L.templates();
     const prog = this.editProgram || this.program();
     return html`<div class="page">
-      <div class="head"><h1>${tr("Workout plans")}</h1><span class="sub">${tr("your workout types")}</span><span class="grow"></span>
+      <hxk-page-head heading=${tr("Workout plans")} sub=${tr("your workout types")}>
         <hxk-button variant="ghost" icon="heart" @click=${() => this.host.assistant({ label: tr('Create a plan'), prompt: tr('Help me create a workout plan.'), suggestions: [tr('A push pull legs program'), tr('Full body 3 times a week'), tr('40-minute plan')] })}>${tr("Create it with the assistant")}</hxk-button>
-        <hxk-button variant="primary" icon="plus" @click=${() => this.create()}>${tr("New plan")}</hxk-button></div>
+        <hxk-button variant="primary" icon="plus" @click=${() => this.create()}>${tr("New plan")}</hxk-button></hxk-page-head>
 
       ${tpls.length ? html`<div class="grid">${tpls.map(t => {
         const last = L.doneSessions().filter(s => s.template_id === t.id).pop();
@@ -98,7 +98,7 @@ export class HerculesTemplates extends LocalPage {
           <div class="tpl"><div class="small muted truncate">${(t.items || []).map((i: any) => exs.get(i.exercise_id)?.name).filter(Boolean).join(', ') || tr('Empty')}</div>
             ${groups.length ? html`<div class="chips">${groups.map(g => html`<span class="pill">${g}</span>`)}</div>` : nothing}</div>
         </hxk-card>`;
-      })}</div>` : html`<hxk-state kind="empty" text=${tr("No plan: create one (e.g. Push, Pull, Legs).")}></hxk-state>`}
+      })}</div>` : html`<hxk-empty icon="dumbbell" heading=${tr("No plan yet")} example=${tr("Make me a push pull legs plan")}>${tr("Create one (e.g. Push, Pull, Legs).")}</hxk-empty>`}
 
       <div class="card col">
         <div class="between"><h2>${tr("Weekly programme")}</h2>

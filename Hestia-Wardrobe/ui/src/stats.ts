@@ -32,8 +32,8 @@ export class WardrobeStats extends WardrobeElement {
     if (s === null) return html`<div class="page"><hxk-state kind="error" text=${tr("Statistics not available now.")}></hxk-state></div>`;
     const t = s.totals, u = s.usage;
     return html`<div class="page">
-      <div class="head"><h1>${tr("Statistics")}</h1><span class="grow"></span>
-        <hxk-button variant="ghost" icon="sparkle" @click=${() => this.host.assistant({ label: tr('Wardrobe'), prompt: tr('Look at my wardrobe: what am I missing and what could I give away?') })}>${tr("Ask for an opinion")}</hxk-button></div>
+      <hxk-page-head heading=${tr("Statistics")}>
+        <hxk-button variant="ghost" icon="sparkle" @click=${() => this.host.assistant({ label: tr('Wardrobe'), prompt: tr('Look at my wardrobe: what am I missing and what could I give away?') })}>${tr("Ask for an opinion")}</hxk-button></hxk-page-head>
       <hxk-stat .items=${s.kpi.items}></hxk-stat>
       ${g ? html`<div class="card between"><div><h3>${tr("«Worn» goal")}</h3><div class="big">${g.done}<span class="muted" style="font-size:15px"> / ${g.times}</span></div>
           <div class="small muted">${g.hint}${g.met ? html` · <hxk-icon name="check" size=${12} tone="success"></hxk-icon> ${tr("done")}` : g.behind ? tr(' · a bit behind') : ''}</div></div>

@@ -181,7 +181,7 @@ export class AssistantDrawerComponent implements AfterViewChecked {
       tr('Plan a check for yourself every evening at 10 pm'), tr('What do you have planned for tonight?')];
   });
   readonly placeholder = computed(() => this.signalR.connectionState() !== 'connected' ? tr('Connecting…')
-    : this.ctx()?.page === 'calendar' ? tr('E.g. "every Friday at 6pm check Scout\'s emails"') : tr('What do you want to create or change?'));
+    : this.ctx()?.page === 'calendar' ? tr('E.g. "every Friday at 6pm check the house emails"') : tr('What do you want to create or change?'));
   readonly pageIcon = computed(() => ({ calendar: 'calendar', forge: 'code', commands: 'terminal', documents: 'file' } as Record<string, string>)[this.ctx()?.page ?? ''] ?? 'info');
 
   constructor() {

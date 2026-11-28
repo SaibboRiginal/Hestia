@@ -420,9 +420,8 @@ export class HerculesToday extends HestiaElement {
     const exs = L.exercises();
     const doneToday = (n?.done_today || []).length > 0 || L.doneSessions().some(s => s.started_at && new Date(s.started_at).toDateString() === new Date().toDateString());
     return html`
-      <div class="head"><h1>${tr("Training")}</h1><span class="sub">${new Date().toLocaleDateString(locale(), { weekday: 'long', day: 'numeric', month: 'long' })}</span>
-        <span class="grow"></span>
-        <hxk-button variant="ghost" icon="heart" @click=${() => this.talk()}>${tr("Talk with the assistant")}</hxk-button></div>
+      <hxk-page-head heading=${tr("Training")} sub=${new Date().toLocaleDateString(locale(), { weekday: 'long', day: 'numeric', month: 'long' })}>
+        <hxk-button variant="ghost" icon="heart" @click=${() => this.talk()}>${tr("Talk with the assistant")}</hxk-button></hxk-page-head>
 
       ${t ? html`<hxk-card heading=${t.name} subtitle=${[n?.reason, n?.estimated_minutes ? tr('about {0}', minutes(n.estimated_minutes)) : ''].filter(Boolean).join(' · ')}>
         ${doneToday ? html`<div class="pill" style="margin-bottom:8px"><hxk-icon name="check" size="12"></hxk-icon> ${tr("Already done today")}</div>` : nothing}

@@ -21,6 +21,17 @@ export class HestiaElement extends LitElement {
   declare ctx: PluginContext;
   private _offs: Array<() => void> = [];
 
+  constructor() {
+    super();
+    // «Ask» from the kit (hxk-page-head, hxk-empty): the assistant opens with this page as context.
+    this.addEventListener('hxk-ask', (e: Event) => {
+      const d = (e as CustomEvent).detail ?? {};
+      e.stopPropagation();
+      this.host?.assistant({ label: d.label || this.ctx?.title || this.ctx?.id || '', prompt: d.prompt,
+                             suggestions: d.suggestions?.length ? d.suggestions : undefined, hints: { page: this.ctx?.id ?? '' } });
+    });
+  }
+
   /** Subscribe to a host event for the element's lifetime. */
   protected onHost(event: HostEvent, cb: () => void): void {
     if (this.host) this._offs.push(this.host.on(event, cb));

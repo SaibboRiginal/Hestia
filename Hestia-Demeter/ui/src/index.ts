@@ -72,10 +72,10 @@ export class DemeterToday extends HestiaElement {
     if (s === null) return html`<hxk-state kind="offline" @retry=${() => this.load()}></hxk-state>`;
     const bySlot = Object.keys(SLOTS).map(k => [k, s.meals.filter((m: any) => m.slot === k)] as [string, any[]]).filter(([, m]) => m.length);
     return html`<div class="page">
-      <div class="between"><h1>${dayTitle(this.day)}</h1>
-        <div class="row"><hxk-button variant="ghost" icon="chevron-left" @click=${() => this.go(-1)}></hxk-button>
+      <hxk-page-head heading=${dayTitle(this.day)} sub=${tr("What you ate and drank")} ask=${tr("Nutrition")}>
+        <hxk-button variant="ghost" icon="chevron-left" @click=${() => this.go(-1)}></hxk-button>
           ${this.day !== localDay() ? html`<hxk-button variant="ghost" @click=${() => { this.day = localDay(); this.load(); }}>${tr("Today")}</hxk-button>` : nothing}
-          <hxk-button variant="ghost" icon="chevron-right" ?disabled=${this.day >= localDay()} @click=${() => this.go(1)}></hxk-button></div></div>
+          <hxk-button variant="ghost" icon="chevron-right" ?disabled=${this.day >= localDay()} @click=${() => this.go(1)}></hxk-button></hxk-page-head>
       <div class="grid" style="--min: 240px">
         <div class="card col"><h3>${tr("Calories")}</h3>${progress(s.kcal, s.kcal_target, 'kcal')}
           ${s.unknown ? html`<div class="small muted">${s.unknown} ${"past"}${s.unknown === 1 ? 'o' : 'i'} ${tr("still to estimate")}</div>` : nothing}</div>
@@ -119,7 +119,7 @@ export class DemeterDiet extends HestiaElement {
     if (d === undefined) return html`<hxk-state kind="loading"></hxk-state>`;
     if (d === null) return html`<hxk-state kind="offline" @retry=${() => this.load()}></hxk-state>`;
     const set = (k: string) => (e: any) => { this.d = { ...this.d, [k]: e.detail }; };
-    return html`<div class="page"><h1>${tr("Diet")}</h1>
+    return html`<div class="page"><hxk-page-head heading=${tr("Diet")}></hxk-page-head>
       <div class="card col"><div class="form">
           <hxk-field label=${tr("Calories per day")} type="int" unit="kcal" .value=${d.kcal ?? ''} @change=${set('kcal')}></hxk-field>
           <hxk-field label=${tr("Protein per day")} type="int" unit="g" .value=${d.protein ?? ''} @change=${set('protein')}></hxk-field></div>
@@ -163,7 +163,7 @@ export class DemeterSupplements extends HestiaElement {
     if (this.items === undefined) return html`<hxk-state kind="loading"></hxk-state>`;
     if (this.items === null) return html`<hxk-state kind="offline" @retry=${() => this.load()}></hxk-state>`;
     return html`<div class="page">
-      <div class="between"><h1>${tr("Supplements")}</h1><hxk-button variant="primary" icon="plus" @click=${() => { this.draft = { time_of_day: 'morning', days: [] }; }}>${tr("Add")}</hxk-button></div>
+      <hxk-page-head heading=${tr("Supplements")} ask=${tr("Supplements")}><hxk-button variant="primary" icon="plus" @click=${() => { this.draft = { time_of_day: 'morning', days: [] }; }}>${tr("Add")}</hxk-button></hxk-page-head>
       ${this.draft ? this.editor() : nothing}
       <div class="card">${this.items.length ? this.items.map(s => html`<div class="meal">
           <div class="grow"><div>${s.name}${s.dose ? html` <span class="muted small">${s.dose}</span>` : nothing}</div>
@@ -172,7 +172,7 @@ export class DemeterSupplements extends HestiaElement {
           <hxk-button size="sm" variant="ghost" @click=${async () => { await call(this.host, 'PUT', `/supplements/${s.id}`, { status: s.status === 'paused' ? 'active' : 'paused' }); this.load(); }}>${s.status === 'paused' ? tr('Resume') : tr('Pause')}</hxk-button>
           <hxk-button size="sm" variant="ghost" icon="edit" @click=${() => { this.draft = { ...s }; }}></hxk-button>
           <hxk-button size="sm" variant="ghost" icon="trash" @click=${async () => { if (await this.host.confirm(tr('Delete?'), s.name, { label: tr('Delete'), danger: true })) { await call(this.host, 'DELETE', `/supplements/${s.id}`); this.load(); } }}></hxk-button>
-        </div>`) : html`<hxk-state kind="empty" text=${tr("No supplements. Self-care products stay in their section: here you note what you take and when.")}></hxk-state>`}</div>
+        </div>`) : html`<hxk-empty icon="leaf" heading=${tr("No supplement yet")} example=${tr("I take vitamin D every morning")}>${tr("Note here what you take and when.")}</hxk-empty>`}</div>
     </div>`;
   }
 }

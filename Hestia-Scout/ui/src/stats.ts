@@ -33,13 +33,12 @@ export class ScoutStats extends HestiaElement {
     if (!this.s) return html`<div class="page"><hxk-state kind="loading"></hxk-state></div>`;
     const s = this.s;
     return html`<div class="page">
-      <button class="back" @click=${() => this.host.navigate('houses')}><hxk-icon name="chevron-left"></hxk-icon>${tr("Houses")}</button>
-      <div class="head"><h1>${tr("House statistics")}</h1>
+      <hxk-page-head heading=${tr("House statistics")} ask=${tr("House statistics")}>
         <select aria-label=${tr("City")} @change=${(e: Event) => { this.city = (e.target as HTMLSelectElement).value; this.load(); }}>
           <option value="">${tr("All cities")}</option>
           ${s.cities.map(c => html`<option value=${c} ?selected=${c === this.city}>${c}</option>`)}
         </select>
-      </div>
+      </hxk-page-head>
       <hxk-stat .items=${[
         { label: tr('Followed'), value: num(s.total) }, { label: tr('alt::New (7 days)'), value: num(s.new) },
         { label: tr('pl::Available'), value: num(s.available) }, { label: tr('Favourites'), value: num(s.favorites) },

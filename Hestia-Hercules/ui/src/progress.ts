@@ -54,9 +54,9 @@ export class HerculesProgress extends LocalPage {
     for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) days.push(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`);
     const prs = (st.recent_prs || []) as any[];
     return html`<div class="page">
-      <div class="head"><h1>${tr("Progress")}</h1>${this.fresh ? nothing : html`<span class="offline">${tr("data from the last connection")}</span>`}<span class="grow"></span>
+      <hxk-page-head heading=${tr("Progress")} sub=${this.fresh ? '' : tr("data from the last connection")} ask=${tr("Progress")}>
         <div class="tabs"><button class="tab" aria-pressed=${this.per === 'week'} @click=${() => this.setPer('week')}>${tr("Weeks")}</button>
-          <button class="tab" aria-pressed=${this.per === 'month'} @click=${() => this.setPer('month')}>${tr("Months")}</button></div></div>
+          <button class="tab" aria-pressed=${this.per === 'month'} @click=${() => this.setPer('month')}>${tr("Months")}</button></div></hxk-page-head>
       <hxk-stat .items=${[
         { label: this.per === 'week' ? tr('Workouts this week') : tr('Workouts this month'), value: cur.sessions ?? 0, delta: delta(cur.sessions || 0, prev.sessions || 0) },
         { label: tr('Volume'), value: num(cur.volume), unit: 'kg', delta: delta(cur.volume || 0, prev.volume || 0) },
@@ -123,7 +123,7 @@ export class HerculesBody extends LocalPage {
     })();
     const kinds = Object.keys(MEASURES).filter(k => k === 'bodyweight' || all.some(m => m.kind === k));
     return html`<div class="page">
-      <div class="head"><h1>${tr("Body")}</h1><span class="sub">${tr("weight and measurements")}</span></div>
+      <hxk-page-head heading=${tr("Body")} sub=${tr("weight and measurements")} ask=${tr("Body")}></hxk-page-head>
       <div class="card col"><h2>${tr("f::Log")}</h2><div class="row wrap">
         <select class="in" .value=${this.kind} @change=${(e: any) => (this.kind = e.target.value)}>${Object.entries(MEASURES).map(([k, v]) => html`<option value=${k} ?selected=${this.kind === k}>${v}</option>`)}</select>
         <input class="in num" style="width:100px" inputmode="decimal" placeholder=${last ? kg(last.value) : unit} .value=${this.value}

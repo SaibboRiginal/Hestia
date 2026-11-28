@@ -52,7 +52,7 @@ export class WardrobeVocab extends WardrobeElement {
     const rows = this.rows;
     const isCat = this.tab === 'category';
     return html`<div class="page">
-      <div class="head"><h1>${tr("Vocabularies")}</h1><span class="sub">${tr("Your lists: rename, hide or add items.")}</span></div>
+      <hxk-page-head heading=${tr("Vocabularies")} sub=${tr("Your lists: rename, hide or add items.")} ask=${tr("Vocabularies")}></hxk-page-head>
       <div class="tabs">${Object.entries(NAMES).map(([k, v]) => html`<button class="chip soft" aria-pressed=${this.tab === k} @click=${() => this.setTab(k)}>${v}</button>`)}</div>
       <div class="card col">
         ${rows.map((r, i) => html`<div class="r ${isCat && r.parent ? 'sub' : ''} ${r.hidden ? 'hidden' : ''}">

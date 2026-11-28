@@ -525,3 +525,7 @@ app keep «Hestia».
 The Hub registration declares `when_to_use`, `manual` and `title`: in Oracle's operating mode `agents` they are this module's agent (job area, rules, label in the clients), which works only with this module's tools. Dossier `docs/work/2026-11-06-modules-as-agents`.
 
 **2026-11-27 (setup one-click v2.28)**: the installer no longer pulls any Ollama model; the setup apply downloads the chosen chat model and the memory model when missing (comment updated, no behaviour change here).
+
+### Page pattern (2026-11-28)
+
+The plugin pages use the shared page header (`hxk-page-head`: title, one line, one primary action, «Ask») and, where a list can be empty, the shared empty state (`hxk-empty`, with an example to say in chat); people texts never name a module. Dossier `docs/work/2026-11-27-webui-rethink` piece 2.

@@ -83,7 +83,7 @@ export class ForgeStore {
       this.tasks = await this.api.tasks();
       this.error = '';
     } catch (e) {
-      this.error = errText(e, tr('Hephaestus not reachable'));
+      this.error = errText(e, tr('Not available'));
     } finally {
       this.loading = false;
       this.changed();

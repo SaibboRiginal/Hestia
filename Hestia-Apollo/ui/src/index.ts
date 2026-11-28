@@ -60,7 +60,7 @@ export class ApolloImages extends HestiaElement {
     if (s === undefined) return html`<hxk-state kind="loading"></hxk-state>`;
     if (s === null) return html`<hxk-state kind="offline" @retry=${() => this.load()}></hxk-state>`;
     return html`<div class="page">
-      <div class="between"><h1>${tr("Images")}</h1><hxk-button variant="ghost" icon="upload" @click=${() => this.host.navigate('workflows')}>${tr("Workflows (")}${s.flows})</hxk-button></div>
+      <hxk-page-head heading=${tr("Images")} sub=${tr("Pictures made on your computer")} ask=${tr("Images")}><hxk-button variant="ghost" icon="upload" @click=${() => this.host.navigate('workflows')}>${tr("Workflows (")}${s.flows})</hxk-button></hxk-page-head>
       ${!s.configured ? html`<div class="card small row wrap"><span>${tr("The generator is not linked: link your ComfyUI, then upload a workflow.")}</span>
           <hxk-button variant="secondary" icon="link" @click=${() => this.host.openConnection('comfyui')}>${tr("Link ComfyUI")}</hxk-button></div>`
         : !s.reachable ? html`<div class="card small">${tr("ComfyUI doesn't answer now: the requests stay in the queue.")}</div>` : nothing}
@@ -73,7 +73,7 @@ export class ApolloImages extends HestiaElement {
       ${this.jobs.length ? html`<div class="grid" style="--min: 160px">${this.jobs.map(j => html`<div class="thumb" @click=${() => this.host.navigate('job/' + j.id)}>
           ${j.status === 'done' && j.blob_ids?.length ? html`<img loading="lazy" src=${this.host.image(`${API}/jobs/${j.id}/image/0`)} alt="">` : html`<hxk-badge tone=${STATUS[j.status]?.[1] || 'neutral'}>${STATUS[j.status]?.[0] || j.status}</hxk-badge>`}
           <div class="cap truncate">${j.prompt}</div></div>`)}</div>`
-        : html`<hxk-state kind="empty" text=${tr("No image yet.")}></hxk-state>`}
+        : html`<hxk-empty icon="camera" heading=${tr("No image yet")} example=${tr("Draw me a cat in watercolour")}>${tr("Ask for one in chat: it is made on your computer.")}</hxk-empty>`}
     </div>`;
   }
 }
@@ -132,7 +132,7 @@ export class ApolloFlows extends HestiaElement {
     if (this.items === undefined) return html`<hxk-state kind="loading"></hxk-state>`;
     if (this.items === null) return html`<hxk-state kind="offline" @retry=${() => this.load()}></hxk-state>`;
     return html`<div class="page">
-      <div class="between"><h1>${tr("Workflows")}</h1><hxk-button variant="primary" icon="upload" @click=${() => { this.draft = { purpose: 'generic', default: true }; }}>${tr("Upload")}</hxk-button></div>
+      <hxk-page-head heading=${tr("Workflows")} ask=${tr("Workflows")}><hxk-button variant="primary" icon="upload" @click=${() => { this.draft = { purpose: 'generic', default: true }; }}>${tr("Upload")}</hxk-button></hxk-page-head>
       <div class="small muted">${tr("In ComfyUI: Save → API Format. One workflow per kind of image; the text, the size and the seed go in the usual nodes (I find them myself).")}</div>
       ${this.draft ? html`<div class="card col">
         <input type="file" accept=".json,application/json" @change=${(e: any) => this.pick(e)}>

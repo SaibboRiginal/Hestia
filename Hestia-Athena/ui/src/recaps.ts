@@ -50,7 +50,7 @@ export class AthenaRecaps extends HestiaElement {
 
   private async load() {
     const r = await this.host.api('GET', `${API}/recaps`, { query: { limit: 30 } });
-    if (!r.ok) { this.error = r.status === 0 ? tr('Athena not reachable') : r.error || tr('Athena not reachable'); return; }
+    if (!r.ok) { this.error = r.status === 0 ? tr('Not available') : r.error || tr('Not available'); return; }
     this.error = '';
     this.data = r.data.recaps || [];
   }
@@ -99,13 +99,12 @@ export class AthenaRecaps extends HestiaElement {
     if (this.error) return html`<div class="page"><hxk-state kind="offline" text=${this.error} @retry=${() => this.load()}></hxk-state></div>`;
     if (this.data === null) return html`<div class="page"><hxk-state kind="loading"></hxk-state></div>`;
     return html`<div class="page">
-      <div class="head"><h1>${tr("Recap")}</h1><span class="sub">${tr("How it went and what comes next, one message a day")}</span>
-        <span class="grow"></span>
-        <hxk-button variant="ghost" icon="refresh" @click=${() => this.load()}>${tr("Refresh")}</hxk-button>
-        <hxk-button variant="primary" icon="note" ?loading=${this.busy} @click=${() => this.now()}>${tr("Recap now")}</hxk-button></div>
+      <hxk-page-head heading=${tr("Recap")} sub=${tr("How it went and what comes next, one message a day")} ask=${tr("Recap")}>
+        <hxk-button variant="primary" icon="note" ?loading=${this.busy} @click=${() => this.now()}>${tr("Recap now")}</hxk-button></hxk-page-head>
       ${this.data.length ? this.data.map(r => this.recap(r))
-        : html`<hxk-state kind="empty" text=${tr("No recap yet. It arrives in the evening; if the day is quiet I don't write.")}></hxk-state>`}
-      <p class="small muted">${tr("The time is in the calendar («Evening recap», movable between 20:00 and 23:30 so it doesn't fall on your appointments). The morning recap is added from «From a module…». Tone and length in Settings → System → Athena.")}</p>
+        : html`<hxk-empty icon="note" heading=${tr("No recap yet")} example=${tr("How did my day go?")}>${tr("It arrives in the evening; if the day is quiet I don't write.")}
+            <hxk-button slot="action" variant="primary" icon="note" ?loading=${this.busy} @click=${() => this.now()}>${tr("Recap now")}</hxk-button></hxk-empty>`}
+      <p class="small muted">${tr("The time is in the calendar («Evening recap»); tone and length in Settings.")}</p>
     </div>`;
   }
 }

@@ -22,7 +22,7 @@ export class ChronosFailedWidget extends HestiaElement {
   }
   private async load() {
     const r = await this.host.api('GET', `${API}/runs/failed`);
-    if (!r.ok) { this.error = tr('Chronos not reachable'); return; }
+    if (!r.ok) { this.error = tr('Not available'); return; }
     this.error = ''; this.rows = Array.isArray(r.data) ? r.data : [];
   }
   private async run(c: any) {

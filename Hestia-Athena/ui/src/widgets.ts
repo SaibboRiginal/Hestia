@@ -27,7 +27,7 @@ export class AthenaLastWidget extends HestiaElement {
     const c = this.data.cycles?.[0];
     const go = () => this.host.navigate('thoughts');
     if (!c) return html`<div class="w" @click=${go}><span class="small muted">${tr("Latest thought")}</span>
-      <div class="muted">${this.data.running ? tr('Athena is thinking…') : tr('No cycle yet.')}</div></div>`;
+      <div class="muted">${this.data.running ? tr('Thinking about it…') : tr('No thought yet.')}</div></div>`;
     const cands: any[] = c.candidates || [];
     const accepted = cands.filter(x => x.accepted);
     const best = accepted[0] || [...cands].sort((a, b) => b.score - a.score)[0];

@@ -59,7 +59,10 @@ Types: `src/types.ts`. Context (`el.ctx`): module, surface, id, route/widget par
 event retry) · `hxk-list` (.items, event item-click) · `hxk-chart` (line|bar|donut) · `hxk-field` (Themis types plus `password` and `email`,
 event change) · `hxk-chain` (the one editor of an ordered «provider + model» list: .steps, .providers, .choices
 {provider: options that fit}, .states, field model|voice; events steps-change, need-choices, retry) · `hxk-image-picker` (.host, photos) · `hxk-quicklog` (one-tap chips, Annulla, ⋯ other day, progress
-hint). Utility classes in every `HestiaElement`: `.page .card .grid .row .col .grow .muted .small .truncate`.
+hint) · `hxk-page-head` (the one page header: heading, sub = one line of context, default slot = the page's ONE primary
+action, ask = label of the «Ask» button, .suggestions) · `hxk-empty` (the one empty state: icon, heading, text, slot
+action = start button, example = a sentence the owner can tap to say it in chat). Both send `hxk-ask` (`askEvent()`):
+`HestiaElement` catches it and opens the assistant with the page as context. Utility classes in every `HestiaElement`: `.page .card .grid .row .col .grow .muted .small .truncate`.
 
 Texts in the owner's language: write the English text and wrap it, `tr('Save')`, `tr('{0} items', n)` (`tr`,
 `language()` and `locale()` from `@hestia/webui-sdk`). The WebUI loads the catalog (`globalThis.__hestiaI18n`) before any

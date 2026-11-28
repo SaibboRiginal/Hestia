@@ -197,7 +197,7 @@ Module UI is **not** written in this Angular app. A module ships Web Components 
 `hestia_common.plugin_client`; the WebUI loads them from the Hub catalog at runtime.
 
 - Element names `<module>-…`; extend `HestiaElement`; no emoji: `<hxk-icon name tone>` (same names as `hx-icon`); use the `hxk-*` kit (icon, button, badge, card, stat, state,
-  list, chart, field, image-picker, quicklog). It reads the same CSS tokens, so plugins follow the theme. `hx-*` stays
+  page-head, empty, list, chart, field, image-picker, quicklog). It reads the same CSS tokens, so plugins follow the theme. `hx-*` stays
   the Angular kit.
 - Call only your module: `this.host.api('GET', '/api/ui/...')`. Navigate with `host.navigate(page, params)`;
   feedback with `host.toast`, `host.confirm`; keep offline data in `host.store(name)`; react to `host.on('refresh'|'online'|…)`.
@@ -205,6 +205,14 @@ Module UI is **not** written in this Angular app. A module ships Web Components 
   fit or scroll inside. On phone every widget is one column and one row tall (min 150 px, grows with content).
   The frame already draws the widget title and a chevron to its page: the widget body never repeats them. In a
   flex column filling the cell, keep the key line (`.big`, title) from shrinking (`flex-shrink: 0`), or `truncate` hides it whole.
+- **One page pattern** (dossier `docs/work/2026-11-27-webui-rethink` piece 2): a list page opens with
+  `<hxk-page-head heading sub ask>` — title, one line of context, at most ONE primary action in the slot (refresh is an
+  icon-only ghost button; a second action goes in the page) and «Ask», which opens the assistant on this page
+  (`.suggestions` for the chips). Page settings stay on the shell's gear, never in the header. Sub-pages are tabs of the
+  shell: no «‹ Back» link or in-page nav rows. Nothing yet = `<hxk-empty icon heading example>` with the sentence, the
+  start button (`slot="action"`) and an example the owner can tap to say it in chat. Detail pages keep their own title.
+  No developer text for people: no scores, thresholds, formulas, setting paths or module names
+  (`tools/governance/check_module_names.py` blocks a module name in a `tr()` text).
 - Quick actions are declared, not drawn: the Home strip, the Ctrl/⌘+K palette and `<hxk-quicklog>` render them.
 - In Angular, show a plugin element with `<hx-plugin-outlet [module] [element] [ctx]>` (loading/offline/error states built in).
 - Navigation (`layout/shell.component.ts` + `layout/nav.service.ts`, dossier `docs/work/2026-11-27-webui-rethink`):

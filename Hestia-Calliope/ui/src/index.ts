@@ -81,16 +81,15 @@ export class CalliopeDocs extends HestiaElement {
     if (this.items === undefined) return html`<hxk-state kind="loading"></hxk-state>`;
     if (this.items === null) return html`<hxk-state kind="offline" @retry=${() => this.load()}></hxk-state>`;
     return html`<div class="page">
-      <div class="between"><h1>${tr("Documents created")}</h1>
-        <div class="row"><hxk-button variant="ghost" icon="chat" @click=${() => this.host.assistant({ label: tr('New document'), suggestions: [tr('Make me a PDF with…'), tr('An Excel with this month\'s expenses'), tr('A Word letter for…')] })}>${tr("Ask the assistant")}</hxk-button>
-          <hxk-button variant="primary" icon="plus" @click=${() => { this.draft = { format: 'pdf' }; }}>${tr("New")}</hxk-button></div></div>
+      <hxk-page-head heading=${tr("Documents")} sub=${tr("PDF, Word and Excel made for you")} ask=${tr('New document')} .suggestions=${[tr('Make me a PDF with…'), tr('An Excel with this month\'s expenses'), tr('A Word letter for…')]}>
+        <hxk-button variant="primary" icon="plus" @click=${() => { this.draft = { format: 'pdf' }; }}>${tr("New")}</hxk-button></hxk-page-head>
       ${this.draft ? this.editor() : nothing}
       <div class="card">${this.items.length ? this.items.map(d => html`<div class="doc">
           <div class="ext">${(FORMAT[d.format] || d.format).slice(0, 4).toUpperCase()}</div>
           <div class="grow"><div class="truncate">${d.title}</div><div class="small muted">${when(d.created_at)} · ${d.pages} ${d.format === 'pdf' ? tr('pages') : d.format === 'xlsx' ? tr('sheets') : tr('parts')} · ${Math.max(1, Math.round((d.size || 0) / 1024))} KB</div></div>
           <hxk-button size="sm" icon="download" @click=${() => this.download(d)}>${tr("Download")}</hxk-button>
           <hxk-button size="sm" variant="ghost" icon="trash" @click=${() => this.deleteDoc(d)}></hxk-button></div>`)
-        : html`<hxk-state kind="empty" text=${tr("No document yet. Ask in chat «make me a PDF with…» or create one here.")}></hxk-state>`}</div>
+        : html`<hxk-empty icon="file" heading=${tr("No document yet")} example=${tr("Make me a PDF with this week's shopping list")}>${tr("Create one here or ask for it in chat.")}</hxk-empty>`}</div>
     </div>`;
   }
 }
