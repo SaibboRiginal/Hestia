@@ -709,3 +709,7 @@ shows its value with «Edit in Connections» instead of a field. `/p/hecate/devi
 
 **2026-11-27 (dossier `docs/work/2026-11-27-connections-leftovers`)**: a plugin's `host.openConnection(id)` also takes
 `<module>.<id>` to open another module's card (the AI accesses page opens `hecate.external_mcp`).
+
+### Page pattern (2026-11-28)
+
+Every plugin page opens with the SDK `hxk-page-head` (title, one line, one primary action, «Ask» on the page) and shows `hxk-empty` when there is nothing yet (DESIGN-SYSTEM §9). The assistant drawer examples never name modules. Dossier `docs/work/2026-11-27-webui-rethink` piece 2.

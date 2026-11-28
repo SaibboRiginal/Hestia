@@ -69,15 +69,15 @@ export class LaresHome extends HestiaElement {
     const s = this.s;
     if (s === undefined) return html`<hxk-state kind="loading"></hxk-state>`;
     if (s === null) return html`<hxk-state kind="offline" @retry=${() => this.load()}></hxk-state>`;
-    if (!s.configured) return html`<div class="page"><h1>${tr("Home")}</h1><div class="card col"><b>${tr("The home is not linked yet.")}</b>
+    if (!s.configured) return html`<div class="page"><hxk-page-head heading=${tr("Home")}></hxk-page-head><div class="card col"><b>${tr("The home is not linked yet.")}</b>
       <div class="small muted">${tr("The Home Assistant address and an access token (profile › long-lived token) are needed.")}</div>
       <div class="row"><hxk-button variant="primary" icon="link" @click=${() => this.host.openConnection('home_assistant')}>${tr("Link Home Assistant")}</hxk-button></div></div></div>`;
-    if (!s.connected) return html`<div class="page"><h1>${tr("Home")}</h1><hxk-state kind="error" text=${s.error || tr('Home Assistant doesn\'t answer.')} @retry=${() => this.load()}></hxk-state></div>`;
+    if (!s.connected) return html`<div class="page"><hxk-page-head heading=${tr("Home")}></hxk-page-head><hxk-state kind="error" text=${s.error || tr('Home Assistant doesn\'t answer.')} @retry=${() => this.load()}></hxk-state></div>`;
     const tabs = TABS.filter(d => this.items.some(e => e.domain === d));
     const q = this.q.trim().toLowerCase();
     const shown = this.items.filter(e => e.domain === this.tab && (!q || e.name.toLowerCase().includes(q)));
     return html`<div class="page">
-      <div class="between"><h1>${tr("Home")}</h1>${s.person ? html`<hxk-badge tone=${s.person === 'home' ? 'success' : 'neutral'}>${STATE[s.person] || s.person}</hxk-badge>` : nothing}</div>
+      <hxk-page-head heading=${tr("Home")} sub=${tr("Lights, climate and devices of the house")} ask=${tr("Home")}>${s.person ? html`<hxk-badge tone=${s.person === 'home' ? 'success' : 'neutral'}>${STATE[s.person] || s.person}</hxk-badge>` : nothing}</hxk-page-head>
       <div class="grid" style="--min: 220px">
         <div class="card col"><h3>${tr("Lights")}</h3><div class="small">${s.lights_on.length ? html`<span class="lit">${tr("On:")}</span> ${s.lights_on.join(', ')}` : tr('All off')}</div></div>
         ${s.temperatures.length ? html`<div class="card col"><h3>${tr("Temperatures")}</h3>${s.temperatures.map((t: string) => html`<div class="small">${t}</div>`)}</div>` : nothing}

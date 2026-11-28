@@ -2,6 +2,10 @@
 
 One line per finished task (details in `docs/work/<task>/`).
 
+## 2026-11-28
+
+- WebUI rethought, piece 2: every page has the same header (title, one line, one main button, «Ask» to talk about the page), every empty page says what to do with an example to say in chat, no more technical numbers or module names for people (and a check that blocks them) → `docs/work/2026-11-27-webui-rethink/` [ext-chat]
+
 ## 2026-11-27
 
 - WebUI rethought, piece 1: icon rail + context panel instead of the long sidebar, each page in its place (your spaces, Agenda, the assistant, notices, Settings › System), sub-pages as tabs, bottom bar on the phone, Aurora + Glass look by default with the new ring logo, no module names in Settings → `docs/work/2026-11-27-webui-rethink/` [ext-chat]

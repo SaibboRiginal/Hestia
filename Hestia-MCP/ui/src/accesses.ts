@@ -197,9 +197,9 @@ export class McpAccesses extends HestiaElement {
     if (!this.accesses) return html`<div class="page"><hxk-state kind="loading"></hxk-state></div>`;
     const list = this.accesses;
     return html`<div class="page">
-      <div class="head"><h1>${tr("AI access")}</h1><span class="sub">${tr("External AIs that can use {assistant} via MCP")}</span><span class="grow"></span>
+      <hxk-page-head heading=${tr("AI access")} sub=${tr("External AIs that can use {assistant} via MCP")} ask=${tr("AI access")}>
         ${this.form ? nothing : html`<hxk-button variant="primary" icon="plus"
-          @click=${() => (this.form = { name: '', scope: 'read', days: '90', all: true, tools: [] })}>${tr("New token")}</hxk-button>`}</div>
+          @click=${() => (this.form = { name: '', scope: 'read', days: '90', all: true, tools: [] })}>${tr("New token")}</hxk-button>`}</hxk-page-head>
       ${this.renderConsent()}${this.renderCreated()}${this.renderForm()}
       ${list.length ? html`<div class="card">${list.map(a => html`<div class="acc"><div class="grow">
           <div><b>${a.name}</b> ${this.status(a)}${this.kind(a)}</div>
@@ -209,7 +209,7 @@ export class McpAccesses extends HestiaElement {
             <hxk-button size="sm" variant="ghost" icon="refresh" @click=${() => this.act(a, 'renew')}>${a.kind === 'oauth' ? tr('Turn back on') : tr('Renew')}</hxk-button>
             <hxk-button size="sm" variant="ghost" icon="trash" @click=${() => this.act(a, 'delete')}>${tr("Delete")}</hxk-button></div>
         </div>`)}</div>`
-        : this.form || this.created ? nothing : html`<hxk-state kind="empty" text=${tr("No access: create a token to link Claude Code or another AI.")}></hxk-state>`}
+        : this.form || this.created ? nothing : html`<hxk-empty icon="unlock" heading=${tr("No access yet")} example=${tr("How do I link Claude Code?")}>${tr("Create a token to link Claude Code or another AI.")}</hxk-empty>`}
       <p class="note">${tr("claude.ai (web and phone) and ChatGPT: add a custom connector with the public address")}
         ${this.base()}/mcp${tr('; the assistant asks for your consent here.')}</p>
       <hxk-card heading=${tr("{assistant} inside Claude Code")} subtitle=${tr("A bar above the prompt: turn it on only when you want")}>

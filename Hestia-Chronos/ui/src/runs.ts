@@ -50,7 +50,7 @@ export class ChronosRuns extends HestiaElement {
     if (this.status) query.status = this.status;
     if (this.owner) query.owner = this.owner;
     const r = await this.host.api('GET', `${API}/runs`, { query });
-    if (!r.ok) { this.error = r.status === 0 ? tr('Chronos not reachable') : r.error || tr('Chronos not reachable'); return; }
+    if (!r.ok) { this.error = r.status === 0 ? tr('Not available') : r.error || tr('Not available'); return; }
     this.error = ''; this.data = r.data;
   }
 
@@ -99,11 +99,11 @@ export class ChronosRuns extends HestiaElement {
   }
 
   render() {
-    if (this.error) return html`<div class="page"><h1>${tr("Runs")}</h1><hxk-state kind="offline" text=${this.error}></hxk-state></div>`;
+    if (this.error) return html`<div class="page"><hxk-page-head heading=${tr("Runs")}></hxk-page-head><hxk-state kind="offline" text=${this.error}></hxk-state></div>`;
     const d = this.data;
     const s = d?.summary;
     return html`<div class="page">
-      <div class="head"><h1>${tr("Runs")}</h1><span class="sub">${tr("The jobs of the assistant's agenda: how each run went")}</span></div>
+      <hxk-page-head heading=${tr("Runs")} sub=${tr("The jobs of the assistant's agenda: how each run went")} ask=${tr("Runs")}></hxk-page-head>
       ${s ? html`<hxk-stat .items=${[
         { label: tr('pl::Succeeded'), value: s.ok, tone: 'success' },
         { label: tr('pl::Failed'), value: s.failed, tone: s.failed ? 'danger' : 'neutral', delta: s.failed_items ? tr('{0} stuck', s.failed_items) : '' },

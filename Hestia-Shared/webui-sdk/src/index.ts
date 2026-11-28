@@ -16,6 +16,7 @@ export { tr, language, locale, named, assistantName } from './i18n';
 export { tokens, kitStyles, toneColor } from './styles';
 export { HestiaElement, definePlugin, fillPath, plural } from './base';
 export { HxkIcon, HxkButton, HxkBadge, HxkCard, HxkStat, HxkState, HxkList } from './kit/basics';
+export { HxkPageHead, HxkEmpty, askEvent } from './kit/page';
 export { HxkChart } from './kit/chart';
 export type { ChartSeries } from './kit/chart';
 export { HxkField, HxkImagePicker } from './kit/forms';
@@ -33,12 +34,14 @@ import { HxkField, HxkImagePicker } from './kit/forms';
 import { HxkQuicklog } from './kit/quicklog';
 import { HxkChain } from './kit/chain';
 import { HxkConnections } from './kit/connections';
+import { HxkEmpty, HxkPageHead } from './kit/page';
 
 /** Kit elements, registered once for every plugin (prefix `hxk-` so they never clash with the WebUI's own `hx-*`). */
 definePlugin({
   'hxk-icon': HxkIcon, 'hxk-button': HxkButton, 'hxk-badge': HxkBadge, 'hxk-card': HxkCard, 'hxk-stat': HxkStat,
   'hxk-state': HxkState, 'hxk-list': HxkList, 'hxk-chart': HxkChart, 'hxk-field': HxkField,
   'hxk-image-picker': HxkImagePicker, 'hxk-quicklog': HxkQuicklog, 'hxk-chain': HxkChain, 'hxk-connections': HxkConnections,
+  'hxk-page-head': HxkPageHead, 'hxk-empty': HxkEmpty,
 });
 
 export const SDK_VERSION = '1';

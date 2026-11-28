@@ -42,6 +42,7 @@ def main() -> int:
         ("Icons, not emoji", ["check_icons.py"]),
         ("Every text has its Italian", ["check_i18n.py"]),
         ("No Italian in the code", ["check_english.py"]),
+        ("No module names for people", ["check_module_names.py"]),
         ("Hub tags", ["check_hub_tags.py"]),
         ("Expected test files", ["check_test_sync.py"]),
         ("Every function on Telegram", ["check_telegram.py"]),

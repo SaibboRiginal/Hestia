@@ -15,7 +15,13 @@
 - [x] merged by the thread once CI is green (Marko's standing rule)
 
 ## Piece 2 — one page pattern
-- [ ] not started
+- [x] SDK kit: `hxk-page-head`, `hxk-empty`, `hxk-ask` event caught by `HestiaElement` (opens the assistant on the page)
+- [x] Every module list page uses the header (one primary action, icon-only refresh, «Ask»); back links / in-page nav on sub-pages removed
+- [x] Empty states with an example to say in chat (Images, Documents, Agenda routines/dates, Supplements, People, Workouts/plans, Deadlines, Accesses, Memory, Shared files, Mood, Wardrobe, Thoughts/learning/recaps)
+- [x] Developer text removed (Thoughts scores, thresholds, formula, setting paths); «X not reachable» → «Not available»
+- [x] Module names out of people texts + gate `tools/governance/check_module_names.py` (precheck + CI)
+- [x] Translations, docs (DESIGN-SYSTEM, SDK README, module docs, root CHANGELOG)
+- [x] ng build, bench screenshots (`/mnt/project-files/webui-ripensata/pezzo2/`), precheck, PR
 
 ## Piece 3 — search everything + ask on the fly
 - [ ] not started

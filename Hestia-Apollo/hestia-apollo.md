@@ -57,3 +57,7 @@ Pages **Immagini** (`apollo-images`: new image, grid of the jobs, refreshed ever
 **2026-11-16 (no Italian in the code, dossier `docs/work/2026-11-14-english-backend` v2.0)**: every text is English in the code; Italian lives only in `Hestia-Shared/hestia_common/locales/it/messages.json`. Labels declared at registration (manifest, capabilities, agenda rules, settings) are plain English, translated at the edge.
 
 **2026-11-19 (unified connections, dossier `docs/work/2026-11-19-unified-connections`)**: ComfyUI is linked from the Connections page (address in Themis, key via Hephaestus); `APOLLO_COMFYUI_URL/KEY` are gone from env and compose. The «Images» page button «Link ComfyUI» opens that card.
+
+### Page pattern (2026-11-28)
+
+The plugin pages use the shared page header (`hxk-page-head`: title, one line, one primary action, «Ask») and, where a list can be empty, the shared empty state (`hxk-empty`, with an example to say in chat); people texts never name a module. Dossier `docs/work/2026-11-27-webui-rethink` piece 2.

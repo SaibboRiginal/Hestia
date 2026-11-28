@@ -93,14 +93,14 @@ export class ChronosStandard extends HestiaElement {
   }
 
   render() {
-    if (this.error) return html`<div class="page"><h1>${tr("Standard tasks")}</h1><hxk-state kind="offline" text=${this.error} @retry=${() => this.load()}></hxk-state></div>`;
+    if (this.error) return html`<div class="page"><hxk-page-head heading=${tr("Standard tasks")}></hxk-page-head><hxk-state kind="offline" text=${this.error} @retry=${() => this.load()}></hxk-state></div>`;
     const d = this.data;
     if (!d) return html`<div class="page"><hxk-state kind="loading"></hxk-state></div>`;
     const all: any[] = d.activities || [];
     const rows = this.filter === 'todo' ? all.filter(a => a.can_restore) : all;
     const tpls: any[] = d.templates || [];
     return html`<div class="page">
-      <div class="head"><h1>${tr("Standard tasks")}</h1><span class="sub">${tr("What the modules put in the agenda by themselves: if you remove one, put it back with a click")}</span></div>
+      <hxk-page-head heading=${tr("Standard tasks")} sub=${tr("What the modules put in the agenda by themselves: if you remove one, put it back with a click")} ask=${tr("Standard tasks")}></hxk-page-head>
       <div class="chips">${FILTERS.map(f => html`<button class="chip" aria-pressed=${this.filter === f.id} @click=${() => (this.filter = f.id)}>
         ${f.label}${f.id === 'todo' ? ` (${all.filter(a => a.can_restore).length})` : ''}</button>`)}</div>
       ${rows.length ? html`<div class="card">${rows.map(a => this.row(a))}</div>`

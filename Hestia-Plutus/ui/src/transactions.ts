@@ -103,8 +103,8 @@ export class PlutusTransactions extends HestiaElement {
     const days: Record<string, any[]> = {};
     for (const t of items || []) (days[t.date] ||= []).push(t);
     return html`<div class="page">
-      <div class="between wrap"><div class="head"><button class="link" @click=${() => this.host.navigate('overview')}>${tr('‹ Expenses')}</button><h1>${tr("Transactions")}</h1></div>
-        <hxk-button variant="primary" icon="plus" @click=${() => (this.form = true)}>${tr("New")}</hxk-button></div>
+      <hxk-page-head heading=${tr("Transactions")} ask=${tr("Transactions")}>
+        <hxk-button variant="primary" icon="plus" @click=${() => (this.form = true)}>${tr("New")}</hxk-button></hxk-page-head>
       <div class="row wrap">
         ${this.review ? html`<span class="pill warn">${tr("Only to review")}</span>` : html`<hxk-button size="sm" variant="ghost" icon="chevron-left" @click=${() => this.shift(-1)}></hxk-button>
           <b style="min-width:120px;text-align:center">${this.label}</b>

@@ -563,3 +563,7 @@ The Hub registration declares `when_to_use`, `manual` and `title`: in Oracle's o
 **2026-11-27 (dossier `docs/work/2026-11-27-scout-house-hunt-review`)**: the «New houses» routine template pre-checks
 with `scout_search` (was `scout.search`); at boot `routines.rename_stored_tools()` gives the stored routines the new
 name of a renamed tool (`RENAMED_TOOLS`). Scout plans its one-off `scout.retry_waiting` tasks in the agenda.
+
+### Page pattern (2026-11-28)
+
+The agenda pages use the shared page header and empty state; owner labels use people names («You», the assistant's name), never module names. Dossier `docs/work/2026-11-27-webui-rethink` piece 2.

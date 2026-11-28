@@ -119,8 +119,8 @@ export const STATUS_META: Record<AgendaStatus, { label: string; tone: 'neutral' 
 
 /** Friendly names for module owners (fallback: capitalized owner). */
 export const OWNER_LABELS: Record<string, string> = {
-  user: 'Tu', hephaestus: tr('Hephaestus (Forge)'), athena: 'Athena', scout: 'Scout', chronos: 'Chronos',
-  metis: 'Metis', argus: 'Argus', oracle: 'Oracle', hermes: 'Hermes',
+  user: tr('You'), hephaestus: tr('Development'), athena: tr('Thoughts'), scout: tr('House hunting'), chronos: tr('Agenda'),
+  metis: tr('Improvement'), argus: tr('System health'), oracle: tr('{assistant}'), hermes: tr('Notifications'),
 };
 
 export function ownerLabel(owner: string): string {
@@ -156,8 +156,8 @@ export function colorFor(owner: string): string {
 
 /** Plain-language meaning of a window, by module (fallback: generic). */
 export const WINDOW_TEXT: Record<string, string> = {
-  athena: tr('Athena can work (consolidating memory, analyses) only in this interval, usually when you are idle. Outside the window she does not start.'),
-  metis: tr('Metis can train the models only in this interval, so as not to slow down the PC while you use it.'),
+  athena: tr('The assistant thinks (memory, analyses) only in this interval, usually when you are idle. Outside the window it does not start.'),
+  metis: tr('The models are trained only in this interval, so as not to slow down the PC while you use it.'),
   hephaestus: tr('Forge can use the given engine (e.g. Claude Pro) only in this interval.'),
 };
 

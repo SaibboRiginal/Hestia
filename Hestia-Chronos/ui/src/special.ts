@@ -97,12 +97,12 @@ export class ChronosSpecial extends HestiaElement {
   }
 
   render() {
-    if (this.error) return html`<div class="page"><h1>${tr("Special events")}</h1><hxk-state kind="offline" text=${this.error} @retry=${() => this.load()}></hxk-state></div>`;
+    if (this.error) return html`<div class="page"><hxk-page-head heading=${tr("Special events")}></hxk-page-head><hxk-state kind="offline" text=${this.error} @retry=${() => this.load()}></hxk-state></div>`;
     if (!this.items) return html`<div class="page"><hxk-state kind="loading"></hxk-state></div>`;
     const f = this.form;
     return html`<div class="page">
-      <div class="head"><h1>${tr("Special events")}</h1><span class="sub">${tr("Birthdays, anniversaries and the dates that matter, with a notice a few days before")}</span>
-        <span class="grow"></span><hxk-button icon="plus" @click=${() => (this.form = { title: '', day: '', kind: 'birthday', lead_days: 3, person: '', note: '', yearly: true })}>${tr("Add")}</hxk-button></div>
+      <hxk-page-head heading=${tr("Special events")} sub=${tr("Birthdays, anniversaries and the dates that matter, with a notice a few days before")} ask=${tr("Special events")}>
+        <hxk-button variant="primary" icon="plus" @click=${() => (this.form = { title: '', day: '', kind: 'birthday', lead_days: 3, person: '', note: '', yearly: true })}>${tr("Add")}</hxk-button></hxk-page-head>
       ${f ? html`<div class="card col">
         <h2>${tr("New event")}</h2>
         <hxk-field label=${tr("Name")} .value=${f.title} placeholder=${tr("E.g. Anna's birthday")} @change=${(e: CustomEvent) => this.set('title', e.detail)}></hxk-field>
@@ -117,7 +117,7 @@ export class ChronosSpecial extends HestiaElement {
           <hxk-button variant="ghost" @click=${() => (this.form = null)}>${tr("Cancel")}</hxk-button></div>
       </div>` : nothing}
       ${this.items.length ? html`<div class="card">${this.items.map(s => this.row(s))}</div>`
-        : html`<hxk-state kind="empty" text=${tr("No events. Your birthday comes from the personal settings; people's dates from People.")}></hxk-state>`}
+        : html`<hxk-empty icon="calendar" heading=${tr("No special date yet")} example=${tr("Anna's birthday is on 3 May")}>${tr("Your birthday comes from your settings; people's dates from People.")}</hxk-empty>`}
     </div>`;
   }
 }

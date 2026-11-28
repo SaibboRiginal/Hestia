@@ -212,14 +212,14 @@ export class ChronosRoutines extends HestiaElement {
   }
 
   render() {
-    if (this.error) return html`<div class="page"><h1>${tr("Routine")}</h1><hxk-state kind="offline" text=${this.error} @retry=${() => this.load()}></hxk-state></div>`;
+    if (this.error) return html`<div class="page"><hxk-page-head heading=${tr("Routine")}></hxk-page-head><hxk-state kind="offline" text=${this.error} @retry=${() => this.load()}></hxk-state></div>`;
     if (!this.items) return html`<div class="page"><hxk-state kind="loading"></hxk-state></div>`;
     return html`<div class="page">
-      <div class="head"><h1>${tr("Routine")}</h1><span class="sub">${tr("What the assistant does by itself, at a time or when an email arrives")}</span>
-        <span class="grow"></span><hxk-button icon="plus" @click=${() => this.newForm()}>${tr("New routine")}</hxk-button></div>
+      <hxk-page-head heading=${tr("Routine")} sub=${tr("What the assistant does by itself, at a time or when an email arrives")} ask=${tr("Routine")}>
+        <hxk-button variant="primary" icon="plus" @click=${() => this.newForm()}>${tr("New routine")}</hxk-button></hxk-page-head>
       ${this.form ? this.formView() : nothing}
       ${this.items.length ? html`<div class="card">${this.items.map(r => this.row(r))}</div>`
-        : html`<hxk-state kind="empty" text=${tr("No routines. Write it in words, pick a ready one below or ask for it in chat.")}></hxk-state>`}
+        : html`<hxk-empty icon="refresh" heading=${tr("No routine yet")} example=${tr("Every Monday at 8 tell me the week's weather")}>${tr("Write it in words or pick a ready one below.")}</hxk-empty>`}
       ${this.templates.length ? html`<h2>${tr("Ready to use")}</h2>
         <div class="tpl">${this.templates.map(t => html`<button class="tp" aria-pressed=${this.tpl?.id === t.id} @click=${() => this.pickTemplate(t)}>
           <hxk-icon name=${t.icon || 'repeat'} tone="accent" size="16"></hxk-icon>

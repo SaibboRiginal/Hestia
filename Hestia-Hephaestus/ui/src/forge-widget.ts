@@ -31,7 +31,7 @@ export class HephaestusForgeWidget extends HestiaElement {
       this.host.api('GET', `${FORGE}/claude-budget`),
       this.host.api('GET', `${FORGE}/tasks`, { query: { limit: 100 } }),
     ]);
-    if (!s.ok) { this.error = s.status === 0 || !s.error ? tr('Hephaestus not reachable') : s.error; return; }
+    if (!s.ok) { this.error = s.status === 0 || !s.error ? tr('Not available') : s.error; return; }
     this.error = ''; this.st = s.data; this.budget = b.ok ? b.data : null;
     const counts: Record<string, number> = {};
     for (const task of (t.ok ? t.data?.tasks || [] : [])) counts[task.state] = (counts[task.state] || 0) + 1;

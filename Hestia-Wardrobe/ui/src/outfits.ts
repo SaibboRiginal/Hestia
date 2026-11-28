@@ -120,9 +120,9 @@ export class WardrobeOutfits extends WardrobeElement {
   render() {
     const m = this.m, items = this.items, today = localDay();
     return html`<div class="page">
-      <div class="head"><h1>${tr("Outfit")}</h1><span class="sub">${items?.length ?? ''}</span><span class="grow"></span>
+      <hxk-page-head heading=${tr("Outfit")} sub=${items?.length ?? ''} ask=${tr("Outfit")}>
         <hxk-button variant="ghost" icon="sparkle" @click=${() => this.host.navigate('what-to-wear')}>${tr("What should I wear")}</hxk-button>
-        <hxk-button variant="primary" icon="plus" @click=${() => { this.building = !this.building; this.seed = []; }}>${tr("New outfit")}</hxk-button></div>
+        <hxk-button variant="primary" icon="plus" @click=${() => { this.building = !this.building; this.seed = []; }}>${tr("New outfit")}</hxk-button></hxk-page-head>
       ${this.building ? html`<div class="card"><wardrobe-outfit-builder .host=${this.host} .ctx=${this.ctx} .meta=${m} .value=${this.seed}
           @save=${this.create} @cancel=${() => { this.building = false; this.seed = []; }}></wardrobe-outfit-builder></div>` : nothing}
       <input class="in" placeholder=${tr("Search by name or item…")} .value=${this.q} @input=${(e: any) => { this.q = e.target.value; clearTimeout(this._t); this._t = setTimeout(() => this.load(), 220); }}>
@@ -135,8 +135,7 @@ export class WardrobeOutfits extends WardrobeElement {
           ${Object.entries({ favorites: tr('Favourites first'), recent: tr('Recently created'), least_recent: tr('Least recently worn'), worn: tr('Most worn'), rating: tr('Rating'), name: tr('Name') })
             .map(([k, v]) => html`<option value=${k} ?selected=${this.f.sort === k}>${v}</option>`)}</select>
       </div>
-      ${items === undefined ? html`<hxk-state kind="loading"></hxk-state>` : !items.length ? html`<hxk-state kind="empty"
-          text=${tr("No outfit. Create one from «New outfit», from «What do I wear» or by selecting items in the Wardrobe.")}></hxk-state>` : html`
+      ${items === undefined ? html`<hxk-state kind="loading"></hxk-state>` : !items.length ? html`<hxk-empty icon="shirt" heading=${tr("No outfit yet")} example=${tr("Put together an outfit for a dinner out")}>${tr("Create one from «New outfit», from «What should I wear» or by selecting items in the Wardrobe.")}</hxk-empty>` : html`
         <div class="tiles">${items.map(o => html`<div class="tile" @click=${() => this.host.navigate('outfit/' + o.id)}>
           <div class="ph">${collage(this.host, o)}</div>
           ${o.favorite ? html`<span class="fav"><hxk-icon name="star" size=${13} tone="warning"></hxk-icon></span>` : nothing}

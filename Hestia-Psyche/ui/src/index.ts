@@ -114,8 +114,7 @@ export class PsycheMood extends HestiaElement {
     const s = this.today.summary;
     const days = (this.hist?.days || []).slice(-30);
     return html`<div class="page">
-      <div class="between"><h1>${tr("Mood")}</h1>
-        <hxk-button variant="ghost" icon="chat" @click=${() => this.host.assistant({ label: tr('Mood'), suggestions: [tr('How was I this week?'), tr("What makes me feel better?")] })}>${tr("Ask")}</hxk-button></div>
+      <hxk-page-head heading=${tr("Mood")} sub=${tr("How you feel, in a few seconds a day")} ask=${tr('Mood')} .suggestions=${[tr('How was I this week?'), tr("What makes me feel better?")]}></hxk-page-head>
       <div class="card col"><div class="between"><h3>${tr("How are you?")}</h3>
           ${s ? html`<hxk-badge tone=${level(s.mood).tone || 'neutral'}>${tr("Today")} ${s.mood}/5 · ${s.mood_word}</hxk-badge>` : nothing}</div>
         <div class="faces">${LEVELS.map(l => html`<div class="face ${this.draft.mood === l.v ? 'on' : ''}"
@@ -150,7 +149,7 @@ export class PsycheMood extends HestiaElement {
               ${r.note ? html`<div class="small">${r.note}</div>` : nothing}
               <div class="small muted"><hxk-icon name=${(SOURCES[r.source] || SOURCES.webui).icon} size="12"></hxk-icon> ${ddmm(r.date)} ${hhmm(r.at)} · ${(SOURCES[r.source] || SOURCES.webui).label}</div></div>
             <hxk-button size="sm" variant="ghost" icon="trash" title=${tr("Remove")} @click=${() => this.drop(r.id)}></hxk-button>
-          </div>`) : html`<hxk-state kind="empty" text=${tr("Nothing yet: tap a face above or say it in chat.")}></hxk-state>`}
+          </div>`) : html`<hxk-empty icon="smile" heading=${tr("Nothing yet")} example=${tr("Today I feel a bit down")}>${tr("Tap a face above.")}</hxk-empty>`}
       </div>
     </div>`;
   }

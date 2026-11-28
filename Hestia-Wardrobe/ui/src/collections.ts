@@ -35,9 +35,9 @@ export class WardrobeCollections extends WardrobeElement {
   render() {
     const m = this.m, items = this.items, t = this.trip, c = this.creating;
     return html`<div class="page">
-      <div class="head"><h1>${tr("Suitcases and lists")}</h1><span class="grow"></span>
+      <hxk-page-head heading=${tr("Suitcases and lists")} ask=${tr("Suitcases and lists")}>
         <hxk-button icon="plus" @click=${() => (this.creating = c ? null : { name: '', type: 'capsule' })}>${tr("New list")}</hxk-button>
-        <hxk-button variant="primary" icon="calendar" @click=${() => (this.trip = t ? null : { place: '', from: localDay(), to: '', occasion: '', temp_c: '', rain: null })}>${tr("Pack a suitcase")}</hxk-button></div>
+        <hxk-button variant="primary" icon="calendar" @click=${() => (this.trip = t ? null : { place: '', from: localDay(), to: '', occasion: '', temp_c: '', rain: null })}>${tr("Pack a suitcase")}</hxk-button></hxk-page-head>
       ${t ? html`<div class="card col"><h2>${tr("Suitcase")}</h2><div class="form">
           <input class="in" placeholder=${tr("Where (e.g. Milan)")} .value=${t.place} @input=${(e: any) => (this.trip = { ...t, place: e.target.value })}>
           <label class="row small">${tr("From")} <input class="in" type="date" .value=${t.from} @change=${(e: any) => (this.trip = { ...t, from: e.target.value })}></label>
@@ -50,7 +50,7 @@ export class WardrobeCollections extends WardrobeElement {
       ${c ? html`<div class="card row wrap"><input class="in grow" placeholder=${tr("Name (e.g. Summer capsule)")} .value=${c.name} @input=${(e: any) => (this.creating = { ...c, name: e.target.value })}>
           <select class="in" @change=${(e: any) => (this.creating = { ...c, type: e.target.value })}>${Object.entries(m?.collection_types || {}).filter(([k]) => k !== 'packing').map(([k, v]) => html`<option value=${k} ?selected=${c.type === k}>${v}</option>`)}</select>
           <hxk-button variant="primary" @click=${() => this.create()}>${tr("Create")}</hxk-button></div>` : nothing}
-      ${items === undefined ? html`<hxk-state kind="loading"></hxk-state>` : !items.length ? html`<hxk-state kind="empty" text=${tr("No list. Pack a suitcase or create a capsule.")}></hxk-state>` : html`
+      ${items === undefined ? html`<hxk-state kind="loading"></hxk-state>` : !items.length ? html`<hxk-empty icon="bag" heading=${tr("No list yet")} example=${tr("Pack me a suitcase for 3 days at the sea")}>${tr("Pack a suitcase or create a capsule.")}</hxk-empty>` : html`
         <div class="grid" style="--min:260px">${items.map(l => html`<div class="card col" style="cursor:pointer" @click=${() => this.host.navigate('lists/' + l.id)}>
           <div class="between"><h2 class="truncate">${l.name}</h2><hxk-badge tone=${l.type === 'packing' ? 'info' : l.type === 'shopping' ? 'accent' : 'neutral'}>${l.type_label}</hxk-badge></div>
           ${l.trip?.from ? html`<span class="small muted">${dayLabel(l.trip.from)}${l.trip.to && l.trip.to !== l.trip.from ? ' → ' + dayLabel(l.trip.to) : ''}${l.trip.place ? ' · ' + l.trip.place : ''}</span>` : nothing}

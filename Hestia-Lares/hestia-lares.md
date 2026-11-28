@@ -56,3 +56,7 @@ Page **Casa** (`lares-home`: status, quick actions to run or remove, devices by 
 **2026-11-16 (no Italian in the code, dossier `docs/work/2026-11-14-english-backend` v2.0)**: every text is English in the code; Italian lives only in `Hestia-Shared/hestia_common/locales/it/messages.json`. Labels declared at registration (manifest, capabilities, agenda rules, settings) are plain English, translated at the edge.
 
 **2026-11-19 (unified connections, dossier `docs/work/2026-11-19-unified-connections`)**: Home Assistant is linked from the Connections page; `LARES_HA_URL/TOKEN` are gone. Endpoints of the shared contract under `/api/home/connections` and `POST /api/connections/reload-keys`.
+
+### Page pattern (2026-11-28)
+
+The plugin pages use the shared page header (`hxk-page-head`: title, one line, one primary action, «Ask») and, where a list can be empty, the shared empty state (`hxk-empty`, with an example to say in chat); people texts never name a module. Dossier `docs/work/2026-11-27-webui-rethink` piece 2.

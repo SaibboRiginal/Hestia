@@ -117,7 +117,7 @@ export class HygieiaStats extends HestiaElement {
   render() {
     const tabs: Array<[string, string]> = [['overview', tr('Overview')], ['history', tr('Change history')], ['day', tr('A day has passed')]];
     return html`<div class="page">
-      <div class="head"><button class="link" @click=${() => this.host.navigate('today')}>${tr("‹ Today")}</button><h1>${tr("Statistics")}</h1></div>
+      <hxk-page-head heading=${tr("Statistics")} ask=${tr("Statistics")}></hxk-page-head>
       <div class="tabs">${tabs.map(([k, l]) => html`<button class="tab" aria-pressed=${this.tab === k} @click=${() => { this.tab = k; this.load(); }}>${l}</button>`)}</div>
       ${this.tab === 'overview' ? this.overview() : this.tab === 'history' ? this.history() : this.pastDay()}
     </div>`;
@@ -149,8 +149,8 @@ export class HygieiaShopping extends HestiaElement {
   render() {
     const d = this.data;
     return html`<div class="page">
-      <div class="between wrap"><div class="head"><button class="link" @click=${() => this.host.navigate('products')}>${tr('‹ Products')}</button><h1>${tr("Shopping list")}</h1></div>
-        <hxk-button icon="plus" @click=${() => (this.form = true)}>${tr("Wish")}</hxk-button></div>
+      <hxk-page-head heading=${tr("Shopping list")} ask=${tr("Shopping list")}>
+        <hxk-button variant="primary" icon="plus" @click=${() => (this.form = true)}>${tr("Wish")}</hxk-button></hxk-page-head>
       ${d === undefined ? html`<hxk-state kind="loading"></hxk-state>` : d === null ? html`<hxk-state kind="offline" @retry=${() => this.load()}></hxk-state>` : html`
         ${this.section(tr('Running out'), d.restock, 'repurchase', tr('Nothing running out.'))}
         ${this.section(tr('Finished, to buy again'), d.repurchase, 'repurchase', tr('Mark «I\'d buy it again» on a finished product to see it here.'))}

@@ -240,7 +240,7 @@ export class CalStore {
       this.offline = false; this.loaded = true;
       void this.loadWeather(seq);
     } catch (e: any) {
-      if (seq === this.seq) { this.error = e?.message || tr('Chronos not reachable'); this.offline = !!e?.offline; }
+      if (seq === this.seq) { this.error = e?.message || tr('Not available'); this.offline = !!e?.offline; }
     } finally {
       if (seq === this.seq) { this.loading = false; this.changed(); }
     }

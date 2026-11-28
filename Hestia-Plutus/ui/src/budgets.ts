@@ -34,9 +34,9 @@ export class PlutusBudgets extends HestiaElement {
     const spent: Record<string, any> = Object.fromEntries(b.categories.map((c: any) => [c.id, c]));
     const sumCats = Object.entries(b.budgets).filter(([k]) => k !== 'total').reduce((a, [, v]) => a + Number(v), 0);
     return html`<div class="page">
-      <div class="head"><button class="link" @click=${() => this.host.navigate('overview')}>${tr('‹ Expenses')}</button><h1>${tr("Budget")}</h1>
+      <hxk-page-head heading=${tr("Budget")} ask=${tr("Budget")}>
         <hxk-button size="sm" variant="ghost" icon="chevron-left" @click=${() => { this.month = addMonths(this.month, -1); this.load(); }}></hxk-button>
-        <b>${b.label}</b><hxk-button size="sm" variant="ghost" icon="chevron-right" @click=${() => { this.month = addMonths(this.month, 1); this.load(); }}></hxk-button></div>
+        <b>${b.label}</b><hxk-button size="sm" variant="ghost" icon="chevron-right" @click=${() => { this.month = addMonths(this.month, 1); this.load(); }}></hxk-button></hxk-page-head>
       <div class="note">${tr("The budget applies to every month. I'll let you know when a category reaches the threshold and when it goes over it (Settings › Expenses).")}</div>
       <div class="card col"><div class="between"><h2>${tr("Month total")}</h2>${this.input('total', b.budgets.total)}</div>
         <div class="small muted">${tr("Spent")} ${money(b.spent, cur)}${b.total ? ` su ${money(b.total, cur)}` : ''}${!b.budgets.total && sumCats ? tr(" · sum of the categories {0}", money(sumCats, cur)) : ''}</div>
@@ -78,7 +78,7 @@ export class PlutusRecurring extends HestiaElement {
       ${r.status === 'suggested' ? html`<hxk-button size="sm" icon="check" @click=${() => this.set(r, 'confirmed')}>${tr("Yes")}</hxk-button>` : nothing}
       <hxk-button size="sm" variant="ghost" icon="x" title=${tr("It's not recurring")} @click=${() => this.set(r, 'dismissed')}></hxk-button></div>`;
     return html`<div class="page">
-      <div class="head"><button class="link" @click=${() => this.host.navigate('overview')}>${tr('‹ Expenses')}</button><h1>${tr("Subscriptions")}</h1></div>
+      <hxk-page-head heading=${tr("Subscriptions")} ask=${tr("Subscriptions")}></hxk-page-head>
       ${items === undefined ? html`<hxk-state kind="loading"></hxk-state>` : items === null ? html`<hxk-state kind="offline" @retry=${() => this.load()}></hxk-state>` : html`
         ${confirmed.length ? html`<hxk-stat .items=${[{ label: tr('Per month'), value: money(monthly, this.cur) }, { label: tr('Per year'), value: money(monthly * 12, this.cur) },
           { label: tr('pl::Active'), value: confirmed.length }]}></hxk-stat>` : nothing}

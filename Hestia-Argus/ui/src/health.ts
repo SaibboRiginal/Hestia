@@ -74,7 +74,7 @@ export class ArgusHealth extends HestiaElement {
       this.host.api('GET', `${API}/history`, { query: { minutes: this.minutes, buckets: 60 } }),
       this.host.api('GET', `${API}/incidents`, { query: { limit: 100 } }),
     ]);
-    if (!ov.ok) { this.error = ov.error === 'offline' ? tr('You are offline') : tr('Argus not reachable'); return; }
+    if (!ov.ok) { this.error = ov.error === 'offline' ? tr('You are offline') : tr('Not available'); return; }
     this.error = ''; this.ov = ov.data;
     if (hist.ok) this.hist = hist.data;
     if (inc.ok) this.inc = inc.data;
@@ -93,12 +93,12 @@ export class ArgusHealth extends HestiaElement {
 
   private async recheck(service: string, unhealthy: boolean) {
     if (unhealthy && !(await this.host.confirm(tr("Recheck {0}?", service),
-      tr('If it still doesn\'t answer, Argus asks Hephaestus for the repair again and schedules the next recheck.'),
+      tr('If it still doesn\'t answer, the repair is asked again and the next recheck is scheduled.'),
       { label: tr('Recheck') }))) return;
     this.busy = service;
     const r = await this.host.api('POST', `${API}/recheck/${encodeURIComponent(service)}`, { body: { trigger: 'webui' } });
     this.busy = '';
-    if (!r.ok) { this.host.toast(r.error === 'unreachable' ? tr('Argus not reachable') : tr('Recheck failed'), 'danger'); return; }
+    if (!r.ok) { this.host.toast(r.error === 'unreachable' ? tr('Not available') : tr('Recheck failed'), 'danger'); return; }
     const h = r.data?.health;
     this.host.toast(r.data?.message || `${service}: ${statusOf(h)[1]}`, h === 'up' ? 'success' : 'warning');
     this.load();
@@ -123,7 +123,7 @@ export class ArgusHealth extends HestiaElement {
     const h = this.hist;
     if (!h) return html`<hxk-state kind="loading"></hxk-state>`;
     const names = Object.keys(h.services || {});
-    if (!names.length) return html`<hxk-state kind="empty" text=${tr("No check yet: Argus collects the history since it started.")}></hxk-state>`;
+    if (!names.length) return html`<hxk-state kind="empty" text=${tr("No check yet: the history starts now.")}></hxk-state>`;
     const bad = (n: string) => h.services[n].status !== 'up';
     names.sort((a, b) => Number(bad(b)) - Number(bad(a)) || a.localeCompare(b));
     const label = WINDOWS.find(w => w.value === h.minutes)?.label || `${h.minutes} min`;
@@ -170,9 +170,8 @@ export class ArgusHealth extends HestiaElement {
     if (!this.ov) return html`<div class="page"><hxk-state kind="loading"></hxk-state></div>`;
     const ov = this.ov; const open: any[] = this.inc?.open || []; const closed: any[] = this.inc?.recent || [];
     return html`<div class="page">
-      <div class="head"><h1>${tr("Health")}</h1>
-        <span class="sub">${ov.last_cycle_at ? tr("last check {0}{1}", ago(ov.last_cycle_at), ov.last_cycle_ms != null ? ` · ${ov.last_cycle_ms} ms` : '') : tr('first check in progress…')}</span>
-        <span class="grow"></span><hxk-button variant="ghost" icon="refresh" @click=${() => { this.load(); this.loadLogs(); }}>${tr("Refresh")}</hxk-button></div>
+      <hxk-page-head heading=${tr("Health")} sub=${ov.last_cycle_at ? tr("last check {0}", ago(ov.last_cycle_at)) : tr('first check in progress…')} ask=${tr("Health")}>
+        <hxk-button variant="ghost" icon="refresh" title=${tr("Refresh")} @click=${() => { this.load(); this.loadLogs(); }}></hxk-button></hxk-page-head>
       ${this.error ? html`<hxk-state kind="error" text="${tr("{0}: showing the last data", this.error)}" @retry=${() => this.load()}></hxk-state>` : nothing}
       <hxk-stat .items=${[
         { label: tr('Healthy services'), value: `${ov.healthy}/${ov.total}`, tone: ov.unhealthy ? 'warning' : 'success' },
@@ -180,7 +179,7 @@ export class ArgusHealth extends HestiaElement {
           list: Object.entries(this.hist?.services || {}).filter(([, s]: [string, any]) => s.status !== 'up').map(([n]) => n) },
         { label: tr('Open incidents'), value: ov.open_incidents, tone: ov.open_incidents ? 'danger' : 'neutral',
           list: open.map((i: any) => ({ title: String(i.service || ''), subtitle: String(i.error || '') })) },
-        { label: tr('Checks'), value: ov.cycles, hint: tr('Check cycles since Argus started') },
+        { label: tr('Checks'), value: ov.cycles, hint: tr('Check cycles since the last start') },
       ]}></hxk-stat>
       ${open.length ? html`<section><h2>${tr("Open incidents")}</h2>${open.map(i => this.renderIncident(i, true))}</section>` : nothing}
       <section>

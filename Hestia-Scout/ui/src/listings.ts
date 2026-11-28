@@ -127,13 +127,9 @@ export class ScoutListings extends HestiaElement {
   render() {
     const s = this.stats;
     return html`<div class="page">
-      <div class="head">
-        <div><h1>${tr("Houses")}</h1><div class="sub">${s ? tr("{0} houses followed · {1} new this week", num(s.total), num(s.new)) : tr('Listings arrived by email')}</div></div>
-        <div class="acts">
-          <hxk-button variant="ghost" icon="chart" @click=${() => this.host.navigate('stats')}>${tr("Statistics")}</hxk-button>
-          <hxk-button icon="refresh" ?loading=${this.cycling} @click=${() => this.cycle()}>${tr("Check emails")}</hxk-button>
-        </div>
-      </div>
+      <hxk-page-head heading=${tr("House hunting")} sub=${s ? tr("{0} houses followed · {1} new this week", num(s.total), num(s.new)) : tr('Listings arrived by email')} ask=${tr("House hunting")}>
+        <hxk-button variant="primary" icon="refresh" ?loading=${this.cycling} @click=${() => this.cycle()}>${tr("Check emails")}</hxk-button>
+      </hxk-page-head>
       ${s && !this.ctx.phone ? html`<hxk-stat .items=${[
         { label: tr('Followed'), value: num(s.total) },
         { label: tr('alt::New (7 days)'), value: num(s.new), tone: s.new ? 'success' : undefined },

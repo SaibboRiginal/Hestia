@@ -89,8 +89,8 @@ export class HygieiaRoutines extends HestiaElement {
     </div></div>`;
   }
   render() {
-    const head = html`<div class="between wrap"><div class="head"><button class="link" @click=${() => this.host.navigate('today')}>${tr("‹ Today")}</button><h1>${tr("Routine")}</h1></div>
-      <hxk-button variant="primary" icon="plus" @click=${() => this.startCreate()}>${tr("f::New")}</hxk-button></div>`;
+    const head = html`<hxk-page-head heading=${tr("Routine")} ask=${tr("Routine")}>
+      <hxk-button variant="primary" icon="plus" @click=${() => this.startCreate()}>${tr("f::New")}</hxk-button></hxk-page-head>`;
     if (this.items === undefined) return html`<div class="page">${head}<hxk-state kind="loading"></hxk-state></div>`;
     if (this.items === null) return html`<div class="page">${head}<hxk-state kind="offline" @retry=${() => this.load()}></hxk-state></div>`;
     const active = this.items.filter(r => r.status === 'active'), other = this.items.filter(r => r.status !== 'active');

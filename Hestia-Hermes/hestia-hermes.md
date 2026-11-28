@@ -311,3 +311,7 @@ Notifications below the presence `notify.level` (all/important/urgent) are **hel
 The Hub registration declares `when_to_use`, `manual` and `title`: in Oracle's operating mode `agents` they are this module's agent (job area, rules, label in the clients), which works only with this module's tools. Dossier `docs/work/2026-11-06-modules-as-agents`.
 
 **2026-11-19 (unified connections, dossier `docs/work/2026-11-19-unified-connections`)**: Web Push keys are generated and saved by Hestia (`HERMES_KEY_VAPID_*`); `HERMES_VAPID_*` env and compose entries are gone.
+
+### Page pattern (2026-11-28)
+
+The plugin pages use the shared page header (`hxk-page-head`: title, one line, one primary action, «Ask») and, where a list can be empty, the shared empty state (`hxk-empty`, with an example to say in chat); people texts never name a module. Dossier `docs/work/2026-11-27-webui-rethink` piece 2.

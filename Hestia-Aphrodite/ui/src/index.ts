@@ -98,7 +98,7 @@ export class AphroditeLook extends HestiaElement {
     if (n === null) return html`<hxk-state kind="offline" @retry=${() => this.load()}></hxk-state>`;
     const p = n.profile;
     return html`<div class="page">
-      <h1>${tr("Look")}</h1>
+      <hxk-page-head heading=${tr("Look")} sub=${tr("Colours, effects and the pet of the site, by season and by occasion")} ask=${tr("Look")}></hxk-page-head>
       <div class="card col">
         <div class="between"><div><h3>${p.name}</h3><div class="small muted">${n.why}</div></div>
           <hxk-field type="bool" label=${tr("Automatic themes")} .value=${n.auto} @change=${(e: any) => this.choose({ auto: e.detail })}></hxk-field></div>

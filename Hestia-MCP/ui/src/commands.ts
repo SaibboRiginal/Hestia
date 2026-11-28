@@ -212,12 +212,11 @@ export class McpCommands extends HestiaElement {
     const groups = this.groups();
     const services = new Set(this.all.map(c => c.area_label || c.service)).size;
     return html`<div class="page">
-      <div class="head"><div class="grow"><h1>${tr("Commands & MCP")}</h1>
-        <div class="sub">${this.all.length} ${tr("tools in")} ${services} ${tr("areas: the same as chat, Telegram and external AIs")}</div></div>
+      <hxk-page-head heading=${tr("Commands & MCP")} sub=${`${this.all.length} ${tr("tools in")} ${services} ${tr("areas: the same as chat, Telegram and external AIs")}`}>
         <input class="search" type="search" placeholder=${tr("Search command…")} .value=${this.q} @input=${(e: any) => (this.q = e.target.value)}>
         <hxk-button variant="ghost" icon="refresh" @click=${() => this.load()} title=${tr("Refresh")}></hxk-button>
         <hxk-button variant="ghost" icon="sparkle" @click=${() => this.askHestia()}
-          title=${tr("Use a spoken command, or have a new tool proposed")}>${tr("Ask {assistant}")}</hxk-button></div>
+          title=${tr("Use a spoken command, or have a new tool proposed")}>${tr("Ask {assistant}")}</hxk-button></hxk-page-head>
       <div class="body">
         <div class="card list">
           ${groups.length ? groups.map(g => html`<h4>${g.service} <span>${g.items.length}</span></h4>

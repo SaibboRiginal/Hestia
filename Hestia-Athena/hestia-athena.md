@@ -444,3 +444,7 @@ app keep «Hestia».
 
 ## Module agent (Oracle operating mode «agents», 2026-11-17)
 The Hub registration declares `when_to_use`, `manual` and `title`: in Oracle's operating mode `agents` they are this module's agent (job area, rules, label in the clients), which works only with this module's tools. Dossier `docs/work/2026-11-06-modules-as-agents`.
+
+### Page pattern (2026-11-28)
+
+The Thoughts, Signals, Learning and Recaps pages use the shared page header and empty state; Thoughts no longer shows scores, thresholds, the formula or setting paths (the owner reads the ideas, not the maths). Dossier `docs/work/2026-11-27-webui-rethink` piece 2.

@@ -55,8 +55,8 @@ export class HerculesHistory extends LocalPage {
     let month = '';
     const im = this.importing;
     return html`<div class="page">
-      <div class="head"><h1>${tr("History")}</h1><span class="sub">${plural(sessions.length, 'workout', 'workouts')}</span><span class="grow"></span>
-        <select class="in" .value=${this.tpl} @change=${(e: any) => (this.tpl = e.target.value)}><option value="">${tr("All tabs")}</option>${tpls.map(t => html`<option value=${t.id}>${t.name}</option>`)}</select></div>
+      <hxk-page-head heading=${tr("History")} sub=${plural(sessions.length, 'workout', 'workouts')} ask=${tr("History")}>
+        <select class="in" .value=${this.tpl} @change=${(e: any) => (this.tpl = e.target.value)}><option value="">${tr("All plans")}</option>${tpls.map(t => html`<option value=${t.id}>${t.name}</option>`)}</select></hxk-page-head>
       ${sessions.length ? html`<div class="card list">${sessions.slice(0, this.limit).map(s => {
           const d = new Date(s.started_at);
           const m = d.toLocaleDateString(locale(), { month: 'long', year: 'numeric' });
@@ -69,7 +69,7 @@ export class HerculesHistory extends LocalPage {
             ${s.perceived_effort ? html`<span class="pill">${tr("RPE")} ${s.perceived_effort}</span>` : nothing}</div>`;
         })}
         ${sessions.length > this.limit ? html`<div class="li" @click=${() => (this.limit += 60)}><span class="link">${tr("pl::Show more")}</span></div>` : nothing}
-      </div>` : html`<hxk-state kind="empty" text=${tr("No workout yet. Start from Workout or import from Strong/Hevy.")}></hxk-state>`}
+      </div>` : html`<hxk-empty icon="dumbbell" heading=${tr("No workout yet")} example=${tr("I did 3 sets of bench press at 60 kg")}>${tr("Start one from Training or import from Strong/Hevy.")}</hxk-empty>`}
       <div class="card col"><h3>${tr("Import and export")}</h3>
         <div class="small muted">${tr("Import the history from Strong or Hevy (CSV exported from the app). Importing the same file again creates no duplicates.")}</div>
         <div class="row wrap">

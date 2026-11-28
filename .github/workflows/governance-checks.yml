@@ -58,6 +58,10 @@ jobs:
         if: ${{ !cancelled() }}
         run: python tools/governance/check_english.py
 
+      - name: No module names in the texts people read
+        if: ${{ !cancelled() }}
+        run: python tools/governance/check_module_names.py
+
       - name: Install gate dependencies
         if: ${{ !cancelled() }}
         env:

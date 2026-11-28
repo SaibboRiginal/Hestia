@@ -68,9 +68,9 @@ export class WardrobePieces extends WardrobeElement {
     const kindCats = vocabOptions(m, 'category').filter(c => !c.parent && (this.fixedKind ? c.kind === this.fixedKind : c.kind !== 'accessory'));
     const colors = vocabOptions(m, 'color');
     return html`<div class="page">
-      <div class="head"><h1>${this.heading()}</h1><span class="sub">${items ? this.total : ''}</span><span class="grow"></span>
+      <hxk-page-head heading=${this.heading()} sub=${items ? this.total : ''} ask=${this.heading()}>
         <hxk-button variant=${this.selecting ? 'primary' : 'ghost'} icon="check" @click=${() => { this.selecting = !this.selecting; this.sel = []; }}>${this.selecting ? tr('End') : tr('Select')}</hxk-button>
-        <hxk-button variant="primary" icon="plus" @click=${() => (this.adding = !this.adding)}>${tr("Add")}</hxk-button></div>
+        <hxk-button variant="primary" icon="plus" @click=${() => (this.adding = !this.adding)}>${tr("Add")}</hxk-button></hxk-page-head>
       ${this.adding ? html`<div class="card"><wardrobe-piece-form .host=${this.host} .ctx=${this.ctx} .meta=${m} kind=${this.fixedKind || 'garment'}
           @save=${this.onSave} @cancel=${() => (this.adding = false)}></wardrobe-piece-form></div>` : nothing}
       <input class="in" placeholder=${tr("Search: «light blue shirt», «linen», «Uniqlo»…")} .value=${this.q} @input=${(e: any) => this.search(e.target.value)}>
@@ -89,8 +89,7 @@ export class WardrobePieces extends WardrobeElement {
         <select class="in" @change=${(e: any) => { this.f = { ...this.f, sort: e.target.value }; this.load(); }}>
           ${Object.entries(SORTS).map(([k, v]) => html`<option value=${k} ?selected=${this.f.sort === k}>${v}</option>`)}</select>
       </div>
-      ${items === undefined ? html`<hxk-state kind="loading"></hxk-state>` : !items.length ? html`<hxk-state kind="empty"
-          text=${this.q || Object.values(this.f).some(v => v && v !== 'recent') ? tr('No item with these filters.') : tr('Still empty: «Add» and take a photo, it takes a few seconds.')}></hxk-state>` : html`
+      ${items === undefined ? html`<hxk-state kind="loading"></hxk-state>` : !items.length ? (this.q || Object.values(this.f).some(v => v && v !== 'recent') ? html`<hxk-state kind="empty" text=${tr('No item with these filters.')}></hxk-state>` : html`<hxk-empty icon="shirt" heading=${tr("Still empty")} example=${tr("I bought a blue linen shirt")}>${tr("«Add» and take a photo, it takes a few seconds.")}</hxk-empty>`) : html`
         <div class="tiles">${items.map(p => html`<div class="tile" data-sel=${this.sel.includes(p.id)}
             @click=${() => (this.selecting ? this.toggleSel(p.id) : this.host.navigate('items/' + p.id))}>
           <div class="ph">${img(this.host, p.photos?.[0], p.name)}</div>

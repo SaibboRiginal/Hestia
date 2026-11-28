@@ -220,18 +220,9 @@ export class HygieiaToday extends HestiaElement {
 
   render() {
     const p = this.plan;
-    const nav = html`<div class="nav">
-      <button class="tab" @click=${() => this.host.navigate('routine')}>${tr("Routine")}</button>
-      <button class="tab" @click=${() => this.host.navigate('products')}>${tr("Products")}</button>
-      <button class="tab" @click=${() => this.host.navigate('diary')}>${tr("Diary")}</button>
-      <button class="tab" @click=${() => this.host.navigate('stats')}>${tr("Statistics")}</button>
-      <button class="tab" @click=${() => this.host.navigate('groceries')}>${tr('Shopping list')}</button></div>`;
-    const head = html`<div class="between wrap">
-      <div class="head"><h1>${tr("Self care")}</h1>
-        <div class="datebar"><hxk-button size="sm" variant="ghost" icon="chevron-left" @click=${() => this.go(-1)}></hxk-button>
-          <span class="sub">${dayLabel(this.date)}</span>
-          ${this.date < today() ? html`<hxk-button size="sm" variant="ghost" icon="chevron-right" @click=${() => this.go(1)}></hxk-button>` : nothing}</div></div>
-      ${nav}</div>`;
+    const head = html`<hxk-page-head heading=${tr("Self care")} sub=${dayLabel(this.date)} ask=${tr("Self care")}>
+        <hxk-button variant="ghost" icon="chevron-left" @click=${() => this.go(-1)}></hxk-button>
+        ${this.date < today() ? html`<hxk-button variant="ghost" icon="chevron-right" @click=${() => this.go(1)}></hxk-button>` : nothing}</hxk-page-head>`;
     if (p === undefined) return html`<div class="page">${head}<hxk-state kind="loading"></hxk-state></div>`;
     if (p === null) return html`<div class="page">${head}<hxk-state kind="offline" @retry=${() => this.load()}></hxk-state></div>`;
     const groups: Record<string, any[]> = { morning: [], anytime: [], evening: [] };
