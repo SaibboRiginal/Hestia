@@ -49,7 +49,10 @@ Any tech that outputs custom elements is allowed, always with these shared style
 `api` · `image` · `upload` (resized on device, base64) · `navigate` / `link` · `openSetting(key?)` (Impostazioni on one
 setting, or on the module's own; the shell already draws a gear to the module's settings on every page) · `toast` (with Annulla) · `confirm` ·
 `assistant` ("Crea con Hestia") · `notify` (browser notification) · `config` (per-client prefs) · `store(name)`
-(IndexedDB per module, offline) · `online` · `on('refresh'|'theme'|'visible'|'hidden'|'online'|'offline')`.
+(IndexedDB per module, offline) · `online` · `on('refresh'|'theme'|'visible'|'hidden'|'online'|'offline')` ·
+`event?.(kind, data)` (tell the assistant what the owner just did: `mood_logged {score}`, `workout_done {records}`,
+`deadline_done`, `budget_over {category?}`; the WebUI's fixed rules pick the mascot's reaction, unknown kinds are ignored;
+call it after the action succeeded, with `?.` so older hosts still work).
 Types: `src/types.ts`. Context (`el.ctx`): module, surface, id, route/widget params, query, size, theme, phone.
 
 ## Kit (`hxk-*`, prefix chosen so it never clashes with the WebUI's Angular `hx-*`)

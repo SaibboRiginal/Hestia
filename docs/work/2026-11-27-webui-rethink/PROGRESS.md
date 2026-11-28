@@ -32,4 +32,8 @@
 - [x] ng build, bench check, precheck, PR
 
 ## Piece 4 — mascot link
-- [ ] not started
+- [x] Contract: SDK `host.event(kind, data)`; `MascotService` (fixed rules → `react(kind, text?, action?)`, `reaction` signal, 15 s quiet time)
+- [x] Pages emit: mood (Psyche save + tap), workout finished with records (Hercules), deadline done (Kairos), over budget once a month (Plutus)
+- [x] Mascot: speech bubble with the reaction text and its button, `data-reaction` pose hook; click = mini chat (current or last conversation, «Open in chat», «Talk»), hold = Talk; the bottom-right bubble steps aside when a mascot is on screen
+- [x] Translations, docs (DESIGN-SYSTEM, SDK README, hestia-webui, module docs, root CHANGELOG)
+- [ ] ng build, bench screenshots (`/mnt/project-files/webui-ripensata/pezzo4/`), precheck, PR

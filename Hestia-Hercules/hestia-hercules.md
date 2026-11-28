@@ -206,3 +206,7 @@ The plugin pages use the shared page header (`hxk-page-head`: title, one line, o
 ### Search everything (2026-11-28)
 
 Provider «Workouts» for the WebUI «Search everything» box: `GET /api/hercules/search/workouts?q=` (plans by name, exercises, muscles; then past workouts; opens the plan or the session). Dossier `docs/work/2026-11-27-webui-rethink` piece 3.
+
+### Mascot reactions (2026-11-28)
+
+When a workout is finished the live page tells the WebUI `host.event("workout_done", {records})` (records = new PRs, first lifts excluded): the mascot cheers, prouder with a record. Dossier `docs/work/2026-11-27-webui-rethink` piece 4.

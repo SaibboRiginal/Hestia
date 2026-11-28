@@ -17,6 +17,7 @@ import { AppearanceService } from '../services/appearance.service';
 import { AppearanceLayerComponent } from './appearance-layer.component';
 import { LiveOverlayComponent } from './live-overlay.component';
 import { QuickBubbleComponent } from './quick-bubble.component';
+import { MascotChatComponent } from './mascot-chat.component';
 import { ChatHistoryComponent } from '../features/chat/chat-history.component';
 import { ChatSummary, ChatsService, TAG_CSS } from '../services/chats.service';
 import { ChatService } from '../services/chat.service';
@@ -36,7 +37,7 @@ interface RailButton { g: NavGroup; label: string; icon: string; }
  */
 @Component({
   selector: 'app-shell',
-  imports: [TrPipe, NgTemplateOutlet, RouterOutlet, RouterLink, RouterLinkActive, DatePipe, ButtonComponent, IconComponent, LogoComponent, ResizeHandleComponent, ToastHostComponent, DialogHostComponent, AssistantDrawerComponent, CommandPaletteComponent, AppearanceLayerComponent, LiveOverlayComponent, ChatHistoryComponent, QuickBubbleComponent],
+  imports: [TrPipe, NgTemplateOutlet, RouterOutlet, RouterLink, RouterLinkActive, DatePipe, ButtonComponent, IconComponent, LogoComponent, ResizeHandleComponent, ToastHostComponent, DialogHostComponent, AssistantDrawerComponent, CommandPaletteComponent, AppearanceLayerComponent, LiveOverlayComponent, ChatHistoryComponent, QuickBubbleComponent, MascotChatComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div class="shell" [class.panel-closed]="panelClosed()" [class.mobile-open]="mobileOpen()">
@@ -218,6 +219,7 @@ interface RailButton { g: NavGroup; label: string; icon: string; }
       </div>
     }
     <hx-quick-bubble />
+    <hx-mascot-chat />
     @defer (when assistant.isOpen()) { <hx-assistant /> }
     @defer (on idle) { <hx-command-palette /> }
     <hx-appearance-layer />

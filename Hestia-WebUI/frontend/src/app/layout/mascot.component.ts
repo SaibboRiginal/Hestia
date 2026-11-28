@@ -1,7 +1,11 @@
-import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, effect, inject, signal } from '@angular/core';
+import { Router } from '@angular/router';
+import { TrPipe } from '../core/i18n';
 import { AppearanceService } from '../services/appearance.service';
 import { ChatService } from '../services/chat.service';
 import { LiveVoiceService } from '../services/live-voice.service';
+import { MascotService } from '../services/mascot.service';
+import { ToastService } from '../ui/overlays';
 import { VoiceService } from '../services/voice.service';
 
 export type MascotState = 'idle' | 'thinking' | 'speaking' | 'listening' | 'sleeping' | 'happy';
@@ -22,18 +26,33 @@ function readPlace(): Place | null {
  * <hx-mascot> — the mascot in a corner of every page (dossier 2026-11-18-real-test-problems G). The built-in ones
  * (Aphrodite `pet.drawn`: ember, cat, owl) are drawn here and need no picture; a pet with pictures uses them. It shows
  * what is happening: thinking while the answer is prepared, speaking while it is written or read aloud, listening in
- * «Talk», sleeping at night, happy when tapped. Drag it: it docks to the nearest side (the place is kept on this
- * browser). Reduced motion = still.
+ * «Talk», sleeping at night. Drag it: it docks to the nearest side (the place is kept on this browser). Reduced
+ * motion = still. Piece 4 of the WebUI rethink (docs/work/2026-11-27-webui-rethink): a click opens the mini chat with
+ * the current or last conversation (`<hx-mascot-chat>`), holding it starts «Talk», and it reacts to what the owner
+ * does on the site (`MascotService.reaction`: a pose per kind, a short bubble, an optional action). While it is on
+ * screen it is the one door to the assistant (the bottom-right bubble steps aside).
  */
 @Component({
   selector: 'hx-mascot',
+  imports: [TrPipe],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     @if (pet(); as p) {
-      <button class="m" [attr.data-state]="state()" [attr.data-drawn]="p.drawn || null" [class.drag]="dragging()"
+      @if (reaction(); as r) {
+        @if (r.text) {
+          <div class="say hx-fade-in" role="status" [class.left]="pos().side === 'left'"
+               [style.top.px]="pos().top !== null ? pos().top! - 8 : null" [style.left.px]="pos().side === 'left' ? edge + size + 10 : null"
+               [style.right.px]="pos().side === 'right' ? edge + size + 10 : null">
+            <span>{{ r.text }}</span>
+            @if (r.action; as a) { <button (click)="mascot.run(a)">{{ a.label }}</button> }
+            <button class="x" (click)="mascot.dismiss()" [attr.aria-label]="'Close' | tr">×</button>
+          </div>
+        }
+      }
+      <button class="m" [attr.data-state]="state()" [attr.data-reaction]="reaction()?.kind || null" [attr.data-drawn]="p.drawn || null" [class.drag]="dragging()"
               [style.left.px]="pos().side === 'left' ? edge : null" [style.right.px]="pos().side === 'right' ? edge : null"
               [style.top.px]="pos().top" [attr.aria-label]="p.name" [title]="p.name"
-              (keydown.enter)="cheer()" (keydown.space)="cheer()" (pointerdown)="down($event)" (pointermove)="move($event)" (pointerup)="up($event)" (pointercancel)="cancel()">
+              (keydown.enter)="tap()" (keydown.space)="tap(); $event.preventDefault()" (pointerdown)="down($event)" (pointermove)="move($event)" (pointerup)="up($event)" (pointercancel)="cancel()">
         @if (state() === 'listening') { <span class="ring" aria-hidden="true"></span> }
         @if (p.drawn) {
           <svg viewBox="0 0 64 64" aria-hidden="true">
@@ -126,7 +145,20 @@ function readPlace(): Place | null {
     @keyframes hx-hop { 50% { transform: translateY(-10px); } }
     :host-context([data-motion=off]) .m *, :host-context([data-motion=off]) .m { animation: none !important; }
     @media (prefers-reduced-motion: reduce) { .m, .m * { animation: none !important; } }
-    @media (max-width: 860px) { .m { width: 48px; height: 48px; } .m:not([style*="top"]) { bottom: 140px; } }   /* above the bubble and the bottom bar */
+    /* reactions (MascotService): proud = a bigger hop, comfort = a slow sway, nudge = a small shake */
+    [data-reaction=proud] { animation: hx-hop .45s var(--ease) 3; }
+    [data-reaction=comfort] .body { animation: hx-sway 2.4s ease-in-out infinite; }
+    [data-reaction=nudge] { animation: hx-shake .5s ease-in-out 2; }
+    @keyframes hx-sway { 50% { transform: rotate(-4deg); } }
+    @keyframes hx-shake { 25% { transform: translateX(-3px); } 75% { transform: translateX(3px); } }
+    .say { position: fixed; z-index: 7; bottom: ${96 + 8}px; max-width: min(280px, calc(100vw - 120px)); display: flex; flex-direction: column; gap: 6px;
+           padding: 9px 30px 9px 12px; border-radius: 14px 14px 4px 14px; background: linear-gradient(var(--surface), var(--surface)), var(--bg);
+           border: 1px solid var(--border); box-shadow: var(--shadow-2); font-size: 13.5px; color: var(--text); }
+    .say.left { border-radius: 14px 14px 14px 4px; }
+    .say button { align-self: flex-start; font-size: 13px; color: var(--accent); padding: 0; }
+    .say button:hover { text-decoration: underline; }
+    .say .x { position: absolute; top: 4px; right: 8px; color: var(--text-3); font-size: 16px; line-height: 1; }
+    @media (max-width: 860px) { .m { width: 48px; height: 48px; } .m:not([style*="top"]) { bottom: 140px; } .say { bottom: 196px; } }   /* above the bubble and the bottom bar */
   `],
 })
 export class MascotComponent {
@@ -134,8 +166,13 @@ export class MascotComponent {
   private chat = inject(ChatService);
   private live = inject(LiveVoiceService);
   private voice = inject(VoiceService);
+  readonly mascot = inject(MascotService);
+  private router = inject(Router);
+  private toasts = inject(ToastService);
 
   readonly edge = EDGE;
+  readonly size = SIZE;
+  readonly reaction = this.mascot.reaction;
   readonly pet = this.look.pet;
   private readonly happyUntil = signal(0);
   readonly dragging = signal(false);
@@ -148,6 +185,8 @@ export class MascotComponent {
     if (live === 'listening' || live === 'hearing') return 'listening';
     if (live === 'speaking' || this.voice.playing()) return 'speaking';
     if (live === 'thinking') return 'thinking';
+    const r = this.reaction();
+    if (r) return r.kind === 'cheer' || r.kind === 'proud' ? 'happy' : 'speaking';
     if (this.chat.isStreaming()) {
       const id = this.chat.currentStreamingId();
       const m = id ? this.chat.messages().find(x => x.id === id) : undefined;
@@ -172,18 +211,31 @@ export class MascotComponent {
 
   private start: { x: number; y: number; top: number } | null = null;
   private moved = false;
+  private held = false;
+  private holdTimer: ReturnType<typeof setTimeout> | undefined;
+
+  constructor() {
+    // On screen = the one door to the assistant; the mini chat opens on its side.
+    effect(() => this.mascot.present.set(!!this.pet()));
+    effect(() => { document.documentElement.dataset['mascotSide'] = this.pos().side; });
+  }
 
   down(e: PointerEvent) {
     const el = e.currentTarget as HTMLElement;
     el.setPointerCapture?.(e.pointerId);
     this.start = { x: e.clientX, y: e.clientY, top: el.getBoundingClientRect().top };
     this.moved = false;
+    this.held = false;
+    clearTimeout(this.holdTimer);
+    // Hold (without moving) = «Talk», like a walkie-talkie button.
+    this.holdTimer = setTimeout(() => { if (this.start && !this.moved) { this.held = true; this.talk(); } }, 550);
   }
 
   move(e: PointerEvent) {
     if (!this.start) return;
     if (!this.moved && Math.hypot(e.clientX - this.start.x, e.clientY - this.start.y) < 5) return;
     this.moved = true;
+    clearTimeout(this.holdTimer);
     this.dragging.set(true);
     this.dragTop.set(this.clampTop(this.start.top + e.clientY - this.start.y));
     const side = e.clientX < window.innerWidth / 2 ? 'left' : 'right';
@@ -192,7 +244,9 @@ export class MascotComponent {
 
   up(e: PointerEvent) {
     if (!this.start) return;
-    if (!this.moved) { this.cheer(); this.start = null; return; }
+    clearTimeout(this.holdTimer);
+    if (this.held) { this.start = null; this.held = false; return; }
+    if (!this.moved) { this.tap(); this.start = null; return; }
     const side: Place['side'] = e.clientX < window.innerWidth / 2 ? 'left' : 'right';
     const place = { side, y: (this.dragTop() ?? 0) / window.innerHeight };
     this.place.set(place);
@@ -200,9 +254,22 @@ export class MascotComponent {
     this.cancel();
   }
 
-  cancel() { this.start = null; this.dragging.set(false); this.dragTop.set(null); }
+  cancel() { clearTimeout(this.holdTimer); this.start = null; this.dragging.set(false); this.dragTop.set(null); }
 
   private clampTop(top: number) { return Math.max(8, Math.min(window.innerHeight - SIZE - 8, Math.round(top))); }
+
+  /** A click: the mini chat with the current or last conversation (on the Chat page the chat is already there). */
+  tap(): void {
+    this.mascot.dismiss();
+    if (this.router.url.startsWith('/chat')) { this.cheer(); return; }
+    this.mascot.chatOpen.update(v => !v);
+  }
+
+  private talk(): void {
+    this.cheer();
+    if (this.live.on) { this.live.stop(); return; }
+    void this.live.start().then(() => { if (this.live.error()) this.toasts.error(this.live.error()); });
+  }
 
   cheer(): void {
     this.happyUntil.set(Date.now() + 2500);

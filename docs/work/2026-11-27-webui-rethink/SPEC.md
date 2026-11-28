@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Version** | 1.3 |
+| **Version** | 1.4 |
 | **Source** | user via WebUI project chat (Marko, 2026-11-27): «non so dove sia cosa, ci sono 20000 voci, la sidebar e logo sono stile claude, non ha uno stile moderno, vivace e facile da usare» |
 | **Status** | Approved («dai iniziamo da qui», 2026-11-27 22:24) — piece 1 in progress |
 
@@ -79,7 +79,9 @@ check for module names in people texts.
 - Page events contract: the SDK host gets `host.event(kind, data)`; pages emit `mood_logged`, `workout_done`,
   `deadline_done`, `budget_over`… Rules (no LLM) map an event to a reaction; the mascot side consumes
   `react(kind, text?, action?)` so the characters play a pose without the site knowing the sprites (agreed with the
-  mascot thread, 2026-11-27).
+  mascot thread, 2026-11-27). Rules have a 15 s quiet time (one reaction at a time). With no mascot on screen only a
+  reaction that offers something (comfort, nudge with its button) becomes a small notice; a plain «well done» is not
+  repeated, the page already said it. «Over budget» is said once a month per browser.
 
 ## 4. New feature checklist (`docs/MARKO-RULES.md`)
 1. Real job for the owner: find things, see what matters, ask fast.

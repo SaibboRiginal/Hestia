@@ -25,6 +25,16 @@ export class PlutusOverview extends HestiaElement {
     this.s = s.ok ? s.data : null;
     this.latest = t.ok ? t.data.items : [];
     if (s.ok && !this.month) this.month = s.data.month;
+    if (s.ok) this.tellOverBudget(s.data);
+  }
+  /** Once a month, when the month in course goes over a budget, the assistant says it (one nudge, never more). */
+  private tellOverBudget(s: any) {
+    if (!s || (this.m?.month && s.month !== this.m.month)) return;
+    const over = (s.categories || []).find((c: any) => c.budget && c.spent > c.budget);
+    if (!over && !(s.budget && s.spent > s.budget)) return;
+    const key = 'hx.plutus.over_budget_told';
+    try { if (localStorage.getItem(key) === s.month) return; localStorage.setItem(key, s.month); } catch { /* private window: the throttle still applies */ }
+    this.host.event?.('budget_over', over ? { category: over.label } : {});
   }
   private shift(n: number) { this.month = addMonths(this.month, n); this.s = undefined; this.load(); }
   private async checkMail() {

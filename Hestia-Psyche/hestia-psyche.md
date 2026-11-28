@@ -77,3 +77,7 @@ and prompt are tested in `Hestia-Oracle/tests/test_mood_capture.py`.
 ### Page pattern (2026-11-28)
 
 The plugin pages use the shared page header (`hxk-page-head`: title, one line, one primary action, «Ask») and, where a list can be empty, the shared empty state (`hxk-empty`, with an example to say in chat); people texts never name a module. Dossier `docs/work/2026-11-27-webui-rethink` piece 2.
+
+### Mascot reactions (2026-11-28)
+
+After a mood is saved (face tap or «Details»), the page tells the WebUI `host.event("mood_logged", {score})`: a low mood gets a gentle offer to talk, a good one a cheer. Dossier `docs/work/2026-11-27-webui-rethink` piece 4.
