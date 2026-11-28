@@ -96,7 +96,7 @@ class TestHealthHistory:
         hh.record("scout", "down", "Connection refused")
         assert [c["id"] for c in hh.recheck_targets()] == ["scout"]
         # people's names and words, never the module name or the raw error (proposal 1, 2026-10-29)
-        assert hh.recheck_targets()[0]["label"] == "Ricontrolla Immobili"
+        assert hh.recheck_targets()[0]["label"] == "Ricontrolla Ricerca casa"
         assert hh.recheck_targets()[0]["hint"] == "non risponde"
 
 
