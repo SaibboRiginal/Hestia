@@ -19,7 +19,7 @@ NAMES = ["Aphrodite", "Apollo", "Argus", "Athena", "Calliope", "Chronos", "Demet
          "Hercules", "Hermes", "Hygieia", "Iris", "Kairos", "Lares", "Metis", "Oracle", "Plutus", "Psyche", "Scout",
          "Themis"]
 WORD = re.compile(r"\b(" + "|".join(NAMES) + r")\b")
-TR = re.compile(r"""\btr\(\s*(["'`])((?:\\.|(?!\1).)*)\1""")
+TR = re.compile(r"""\btr\(\s*(["'`])((?:\\.|(?!\1|\\).)*)\1""")
 
 
 def main() -> int:
