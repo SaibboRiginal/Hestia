@@ -19,7 +19,7 @@ NAMES = ["Aphrodite", "Apollo", "Argus", "Athena", "Calliope", "Chronos", "Demet
          "Hercules", "Hermes", "Hygieia", "Iris", "Kairos", "Lares", "Metis", "Oracle", "Plutus", "Psyche", "Scout",
          "Themis"]
 WORD = re.compile(r"\b(" + "|".join(NAMES) + r")\b")
-TR = re.compile(r"""\btr\(\s*(["'`])((?:\\.|(?!\1|\\).)*)\1""")
+TR = re.compile(r"""\btr\(\s*(?:"((?:[^"\\]|\\.)*)"|'((?:[^'\\]|\\.)*)'|`((?:[^`\\]|\\.)*)`)""")
 
 
 def main() -> int:
@@ -30,9 +30,10 @@ def main() -> int:
                 if line.lstrip().startswith(("//", "*", "/*")):
                     continue
                 for m in TR.finditer(line):
-                    hit = WORD.search(m.group(2))
+                    text = next(g for g in m.groups() if g is not None)
+                    hit = WORD.search(text)
                     if hit:
-                        bad.append(f"{path.relative_to(ROOT)}:{n}: «{m.group(2)[:80]}» names {hit.group(1)}")
+                        bad.append(f"{path.relative_to(ROOT)}:{n}: «{text[:80]}» names {hit.group(1)}")
     if bad:
         print("check_module_names: FAILED — people read the module's people name (MODULE_LABELS), never its own name")
         print("\n".join(f"- {b}" for b in bad))
