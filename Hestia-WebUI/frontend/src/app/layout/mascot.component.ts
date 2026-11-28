@@ -126,7 +126,7 @@ function readPlace(): Place | null {
     @keyframes hx-hop { 50% { transform: translateY(-10px); } }
     :host-context([data-motion=off]) .m *, :host-context([data-motion=off]) .m { animation: none !important; }
     @media (prefers-reduced-motion: reduce) { .m, .m * { animation: none !important; } }
-    @media (max-width: 860px) { .m { width: 48px; height: 48px; } .m:not([style*="top"]) { bottom: 84px; } }
+    @media (max-width: 860px) { .m { width: 48px; height: 48px; } .m:not([style*="top"]) { bottom: 140px; } }   /* above the bubble and the bottom bar */
   `],
 })
 export class MascotComponent {

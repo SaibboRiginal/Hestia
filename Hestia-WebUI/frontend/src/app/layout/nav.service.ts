@@ -78,7 +78,7 @@ export class NavService {
     const out: Record<Place, NavLink[]> = { space: [], agenda: [], assistant: [], notifications: [], system: [] };
     for (const p of pages) {
       if (p.parent && pages.some(x => x.module === p.module && x.local_id === p.parent)) continue;
-      out[this.placeOf(p)].push(this.toLink(p));
+      (out[this.placeOf(p)] ?? out.space).push(this.toLink(p));   // an unknown place never hides the page
     }
     return out;
   });

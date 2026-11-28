@@ -48,6 +48,7 @@ const LABELS: Record<string, string> = {
     .st { font-weight: 600; font-size: 14px; }
     .pt { font-size: 13px; color: var(--text-2); font-style: italic; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     @media (prefers-reduced-motion: reduce) { .ring, .face { animation: none !important; } }
+    @media (max-width: 860px) { .live { bottom: calc(72px + env(safe-area-inset-bottom, 0px)); } }   /* above the bottom bar */
   `],
 })
 export class LiveOverlayComponent {

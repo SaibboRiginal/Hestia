@@ -154,7 +154,8 @@ KEEP_KEYS = frozenset({"id", "key", "value", "status", "state", "type", "kind", 
                        "code", "icon", "color", "tone", "module", "service", "method", "tool", "command",
                        "domain", "source", "role", "lang", "language", "page", "link", "view", "tab", "event",
                        "event_type", "use_case", "provider", "model", "format", "mime", "unit_code", "action",
-                       "name_id", "entity_id", "dedupe_key", "replaces", "query", "q", "args", "params"})
+                       "name_id", "entity_id", "dedupe_key", "replaces", "query", "q", "args", "params",
+                       "place", "parent", "local_id", "element", "open_page"})
 # Kept keys whose value is the owner's data even as a list or object (a setting value, tool arguments): never walked.
 # Under the other kept keys a list or object (a plugin's ``page`` list, an ``action`` button) holds people texts.
 DATA_KEYS = frozenset({"id", "key", "value", "query", "q", "args", "params", "replaces"})
