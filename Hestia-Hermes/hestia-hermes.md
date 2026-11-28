@@ -198,7 +198,7 @@ deactivated so alerts are not sent twice.
 
 Icons, never emoji (DESIGN-SYSTEM rule, `docs/work/2026-10-20-icons-in-clients`): `<hxk-icon name tone>`. The inbox shows the level icon and hides the emoji that module texts carry for Telegram.
 
-Core module (`kind: "core"`, WebUI *Sistema* section, order 140), `api_prefix` `/api/ui/` (Hermes' own routes
+Core module (`kind: "core"`, order 140; its page **Notifiche** is `place="notifications"`, the rail bell since 2026-11-27), `api_prefix` `/api/ui/` (Hermes' own routes
 are spread over `/api/notifications`, `/api/events`…, so the pages use small `/api/ui/*` doors instead):
 - page **Notifiche** (`hermes-inbox`, order 140, P6 — ported from the WebUI built-in page, which redirects here):
   the inbox shared by every client (read here = read on Telegram). Filters *Da leggere · N* / *Da rispondere · N* /

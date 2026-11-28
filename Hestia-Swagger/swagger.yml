@@ -13109,7 +13109,7 @@ paths:
       parameters:
         - {name: fresh, in: query, required: false, schema: {type: boolean}, description: "skip the 15 s cache"}
       responses:
-        "200": {description: "{revision, ui_revision, modules[], contributions.webui.{bundle,page,widget,quick_action}[]}"}
+        "200": {description: "{revision, ui_revision, modules[], contributions.webui.{bundle,page,widget,quick_action}[]}; each page carries `place` (space | agenda | assistant | notifications | system, empty = from the module kind) and `parent` (sub-page = tab of its parent)"}
 
   /api/webui/plugins/{module}/bundle/{file}:
     get:

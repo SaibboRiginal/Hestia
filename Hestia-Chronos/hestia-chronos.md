@@ -347,7 +347,9 @@ Calendar items synced from Google/Outlook are not exported. Settings travel thro
 ## WebUI plugin — inside view (2026-10-18, dossier `docs/work/2026-10-18-core-modules-and-external-mcp` §A2)
 
 Core module (`kind: "core"`, WebUI *Sistema* section, order 150), `api_prefix` `/api/agenda/` (Chronos' own
-agenda routes: no duplicate endpoints):
+agenda routes: no duplicate endpoints). Places (2026-11-27, dossier `docs/work/2026-11-27-webui-rethink`): «Your week»,
+routines and events are `place="agenda"` (rail button Agenda); the calendar, runs and standard activities stay in
+Settings › System:
 - page **Agenda di Hestia** (`chronos-agenda`, order 150, since 2026-10-19; `/calendar` redirects to
   `/p/chronos/agenda`): the calendar moved from the WebUI (`ui/src/agenda.ts` + `ui/src/cal/`) with the same
   behaviour (month/week/day/list, mini calendar, filters, popover details, editor with recurrence, wizard *Da un

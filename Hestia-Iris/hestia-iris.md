@@ -67,7 +67,7 @@ mailbox and posts new mail **headers** to `/api/email/incoming`.
 
 ## WebUI plugin «Email»
 
-Iris serves a small core plugin (`ui/`, entry `iris.js`): page **Email** (subscriptions, last deliveries, unmatched
+Iris serves a small core plugin (`ui/`, entry `iris.js`): page **Email** (place `space`: one of the owner's spaces, not under System; subscriptions, last deliveries, unmatched
 count, watcher state) and quick action «Controlla email» (`POST /api/email/check`), so no log reading is needed.
 Tiles «Subscribed modules» (each with what it asks for) and «Emails seen» (latest subjects) open their list (dossier
 `docs/work/2026-11-18-real-test-problems` D); page texts name no module.
