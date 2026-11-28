@@ -630,3 +630,7 @@ declares it and adds the route `GET <api>/search/<id>` in one call (before `kit.
 every word of the query must appear (case and accents ignored), titles that start with the query first, at most 20.
 `link` is a page of the module («person/12») or `chat:<session_id>`. Providers today: conversations, memory and
 shared files (Oracle), people, deadlines, documents, workouts, expenses, clothes, email.
+
+### Page events (`host.event`, 2026-11-28)
+
+`HestiaHost.event?(kind, data)` joins the SDK types (`PageEventKind`: `mood_logged`, `workout_done`, `deadline_done`, `budget_over`, `item_added`, or any string). A page calls it after an action succeeded; the WebUI maps it with fixed rules to a mascot reaction (unknown kinds are ignored). Dossier `docs/work/2026-11-27-webui-rethink` piece 4.
