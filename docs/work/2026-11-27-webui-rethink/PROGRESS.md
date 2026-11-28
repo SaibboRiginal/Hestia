@@ -11,7 +11,8 @@
 - [x] Translations (it + other catalogs) for every new text
 - [x] DESIGN-SYSTEM.md, hestia-webui.md, ARCHITECTURE, root CHANGELOG
 - [x] ng build: no errors (the two budget warnings are already on main)
-- [ ] bench screenshots, precheck, PR, merge
+- [x] bench screenshots (`/mnt/project-files/webui-ripensata/pezzo1/`), precheck, PR #141
+- [x] merged by the thread once CI is green (Marko's standing rule)
 
 ## Piece 2 — one page pattern
 - [ ] not started
