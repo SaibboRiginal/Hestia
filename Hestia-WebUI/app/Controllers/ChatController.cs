@@ -158,7 +158,11 @@ public class ChatController : ControllerBase
         var message = req.Message?.Trim() ?? "";
         if (message.Length == 0) return BadRequest(new { detail = "empty message" });
         if (message.Length > 2000) message = message[..2000];
-        var sid = string.IsNullOrWhiteSpace(req.SessionId) ? Guid.NewGuid().ToString("N") : req.SessionId.Trim();
+        // A conversation id is letters, digits, «-» and «_» (the browser makes it): anything else starts a new one.
+        var asked = req.SessionId?.Trim() ?? "";
+        var sid = asked.Length is > 0 and <= 64 && asked.All(c => char.IsAsciiLetterOrDigit(c) || c is '-' or '_')
+            ? asked.Replace("\r", "").Replace("\n", "")
+            : Guid.NewGuid().ToString("N");
         var instructions = _sessionManager.BuildClientInstructions() +
             "\nQuick question from the search box: answer in one to three short sentences, no lists or headings." +
             " Use a tool only if the answer needs one.";
