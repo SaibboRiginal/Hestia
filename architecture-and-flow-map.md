@@ -240,6 +240,10 @@ flowchart LR
 6. The WebUI shell uses the same doors: Metis (taps, «Now», «Discover»), Aphrodite (look of now), Hermes
    `/api/ui/push/*` (Web Push), Oracle `/api/ui/chats*` (conversation history and tags → Archive
    `/api/chat/sessions/*`); a suggested tool or an «Cancel» runs through Hestia-MCP `/api/mcp/ui/tools/call`.
+7. «Search everything» (Ctrl+K or `/`): the WebUI reads the `search` contributions of the catalog and calls each
+   provider through the same plugin proxy (`GET <api_prefix>…?q=`), in parallel, 2.5 s each; each group appears when
+   it answers. Tab asks instead: WebUI `POST /api/webui/chat/quick` → Hub → Oracle `/api/chat` (Quick mode) in the
+   browser's «Quick questions» conversation (dossier `docs/work/2026-11-27-webui-rethink` piece 3).
    Deleting a conversation: WebUI «…» → Oracle `DELETE /api/ui/chats/{id}` → Archive `DELETE /api/chat/sessions/{id}`
    (messages + title/tags/pin) and Metis forgets its saved turns. The model that answered travels with the answer:
    Oracle `final.model` → Archive `chat_history.model` → WebUI divider / Telegram line where it changes.
