@@ -61,3 +61,7 @@ The plugin pages use the shared page header (`hxk-page-head`: title, one line, o
 ### Search everything (2026-11-28)
 
 Provider «Deadlines» for the WebUI «Search everything» box: `GET /api/deadlines/search/items?q=` (open and done deadlines by title, notes, category; opens the deadline). Dossier `docs/work/2026-11-27-webui-rethink` piece 3.
+
+### Mascot reactions (2026-11-28)
+
+«Done» on a deadline tells the WebUI `host.event("deadline_done")`: the mascot cheers. Dossier `docs/work/2026-11-27-webui-rethink` piece 4.

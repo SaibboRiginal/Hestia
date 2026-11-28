@@ -168,3 +168,7 @@ The pages use the shared page header (the month in the context line; «Bank stat
 ### Search everything (2026-11-28)
 
 Provider «Expenses» for the WebUI «Search everything» box: `GET /api/finance/search/transactions?q=` (merchant, description, notes, category; hint = amount and date; opens the transaction). Dossier `docs/work/2026-11-27-webui-rethink` piece 3.
+
+### Mascot reactions (2026-11-28)
+
+The overview of the month in course tells the WebUI `host.event("budget_over", {category?})` when a category (or the whole month) is over budget, once a month per browser (`localStorage` `hx.plutus.over_budget_told`): the mascot nudges with «Where can I save?». Dossier `docs/work/2026-11-27-webui-rethink` piece 4.

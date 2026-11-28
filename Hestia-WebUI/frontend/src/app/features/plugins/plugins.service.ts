@@ -1,3 +1,4 @@
+import { MascotService } from '../../services/mascot.service';
 import { Injectable, computed, effect, inject, signal } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Router } from '@angular/router';
@@ -45,6 +46,7 @@ export class PluginsService {
   private toasts = inject(ToastService);
   private dialogs = inject(DialogService);
   private assistant = inject(AssistantService);
+  private mascot = inject(MascotService);
   private theme = inject(ThemeService);
   private settingsApi = inject(CentralSettingsApi);
 
@@ -364,6 +366,8 @@ export class PluginsService {
       assistant: (o: { label: string; hints?: Record<string, string | number>; prompt?: string; suggestions?: string[] }) =>
         svc.assistant.open({ page: `plugin:${module}`, intent: 'ask', label: o.label, hints: { module, ...(o.hints ?? {}) }, prompt: o.prompt, suggestions: o.suggestions }),
       notify: (title: string, body?: string, o?: { tag?: string }) => notify(title, body, o?.tag),
+      // What the owner just did → a short reaction of the mascot by fixed rules (piece 4 of the WebUI rethink).
+      event: (kind: string, data?: Record<string, unknown>) => svc.mascot.pageEvent(kind, data ?? {}, module),
       config: {
         get: (key: string, fallback?: unknown) => (svc.prefs()[module] ?? {})[key] ?? fallback,
         set: async (key: string, value: unknown) => {

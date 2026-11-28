@@ -5,6 +5,7 @@ import { filter, map } from 'rxjs';
 import { IconComponent, ToastService } from '../ui';
 import { AssistantService } from '../services/assistant.service';
 import { LiveVoiceService } from '../services/live-voice.service';
+import { MascotService } from '../services/mascot.service';
 import { TrPipe } from '../core/i18n';
 
 /**
@@ -12,7 +13,8 @@ import { TrPipe } from '../core/i18n';
  * assistant without leaving the page, each with one line that says what it does.
  * - «Write here»: the side panel that knows which page you are on (Ctrl+J).
  * - «Talk»: the continuous voice conversation, which goes on while you move around (Ctrl+Shift+Space).
- * Hidden on the Chat page (it has both in its own bar) and while the side panel is open.
+ * Hidden on the Chat page (it has both in its own bar), while the side panel is open and while a mascot is on screen
+ * (the mascot is the door then: docs/work/2026-11-27-webui-rethink piece 4).
  */
 @Component({
   selector: 'hx-quick-bubble',
@@ -64,9 +66,11 @@ export class QuickBubbleComponent {
   private assistant = inject(AssistantService);
   private toasts = inject(ToastService);
   private router = inject(Router);
+  private mascot = inject(MascotService);
   private url = toSignal(this.router.events.pipe(filter(e => e instanceof NavigationEnd), map(() => this.router.url)), { initialValue: this.router.url });
   readonly open = signal(false);
-  readonly shown = computed(() => !this.url().startsWith('/chat') && !this.assistant.isOpen());
+  // The mascot, when one is on screen, is the door instead (click = mini chat, hold = Talk): one door, never two.
+  readonly shown = computed(() => !this.url().startsWith('/chat') && !this.assistant.isOpen() && !this.mascot.present());
 
   toggle(e: MouseEvent): void { e.stopPropagation(); this.open.update(v => !v); }
 

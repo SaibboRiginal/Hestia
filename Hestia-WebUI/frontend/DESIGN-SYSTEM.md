@@ -219,6 +219,14 @@ Module UI is **not** written in this Angular app. A module ships Web Components 
   ModuleKit module) and answers `GET path?q=&limit=` with `hestia_common.search.results(...)` → `{items: [{title, hint,
   icon, link}]}`; `link` is a page of the module («person/12») or `chat:<session_id>`. Never draw a search box of your
   own for «find anything»: the WebUI box asks every provider, in parallel, with a short timeout.
+- **Page events → mascot** (dossier `docs/work/2026-11-27-webui-rethink` piece 4): after an action succeeds a page calls
+  `this.host.event?.(kind, data)` (`mood_logged`, `workout_done`, `deadline_done`, `budget_over`, `item_added`). The page
+  still gives its own toast; it never writes a reaction itself. `services/mascot.service.ts` maps each kind with fixed
+  rules (no model) to `react(kind, text?, action?)` — kinds `cheer · proud · comfort · nudge` — at most one every 15 s.
+  The mascot side reads the `reaction` signal and plays its pose (`data-reaction` on the mascot) with the text in a bubble
+  and the optional button, which opens the mini chat with a sentence ready (`run(action)`). No mascot on screen: only a
+  reaction with a button becomes a toast. A new kind = one rule in `RULES` + its texts in `tr`; never show sprites or
+  names of modules in it.
 - In Angular, show a plugin element with `<hx-plugin-outlet [module] [element] [ctx]>` (loading/offline/error states built in).
 - Navigation (`layout/shell.component.ts` + `layout/nav.service.ts`, dossier `docs/work/2026-11-27-webui-rethink`):
   an **icon rail** (logo, Oggi, Chat, Agenda, Spazi, the assistant by its chosen name, the pages the owner pins, then
@@ -229,7 +237,8 @@ Module UI is **not** written in this Angular app. A module ships Web Components 
   `assistant`, `notifications`, `system` default for core modules), so a new module finds its place by itself; never
   hard-code a module in the shell. Pins: the pin on a space tile (`webui.sidebar.pinned`, ids `<module>.<page>`).
   Phone (≤ 860 px): bottom bar Oggi · Chat · Agenda · Spazi · Altro, the panel opens as a drawer. One door to the
-  assistant from any page: the bubble (`layout/quick-bubble.component.ts`); never add a top-level button for a
+  assistant from any page: the mascot when one is on screen (click = mini chat `layout/mascot-chat.component.ts`, hold =
+  Talk), otherwise the bubble (`layout/quick-bubble.component.ts`); never add a top-level button for a
   feature. A menu that opens from inside the panel or a scrolling list is drawn in the viewport with the global
   `.hx-ctx` (+ `.hx-ctx-scrim`). A divider inside a conversation is the global `.hx-divider`.
   Module names never reach the owner: `moduleLabel()` (mirror of `hestia_common.areas.MODULE_LABELS`).

@@ -83,7 +83,7 @@ export class PsycheMood extends HestiaElement {
     const body = { ...this.draft, mood: mood ?? this.draft.mood, source: 'webui' };
     if (!body.mood) { this.host.toast(tr('Choose how you are'), 'warning'); return; }
     const r = await call(this.host, 'POST', '', body);
-    if (r.ok) { this.draft = { labels: [], causes: [] }; this.more = false; this.host.toast(tr('Marked'), 'success'); this.load(); }
+    if (r.ok) { this.draft = { labels: [], causes: [] }; this.more = false; this.host.toast(tr('Marked'), 'success'); this.host.event?.('mood_logged', { score: body.mood }); this.load(); }
   }
   private async drop(id: string) {
     const r = await call(this.host, 'DELETE', `/${encodeURIComponent(id)}`);
@@ -164,7 +164,7 @@ export class PsycheWidget extends HestiaElement {
   async load() { const r = await call(this.host, 'GET', '/history?days=7'); this.data = r.ok ? r.data : null; }
   private async tap(mood: number) {
     const r = await call(this.host, 'POST', '/tap', { mood });
-    if (r.ok) { this.host.toast(tr('Marked'), 'success'); this.load(); }
+    if (r.ok) { this.host.toast(tr('Marked'), 'success'); this.host.event?.('mood_logged', { score: mood }); this.load(); }
   }
   render() {
     if (this.data === undefined) return html`<hxk-state kind="loading"></hxk-state>`;

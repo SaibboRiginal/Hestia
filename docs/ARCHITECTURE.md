@@ -749,6 +749,10 @@ Applies to every user-facing Telegram delivery path (chat replies, tool results,
    **One search for everything** (2026-11-28): a module with data the owner looks for declares a search provider
    (`plugin_client.search` / `ModuleKit.search`, answers with `hestia_common.search.results`); the WebUI box (Ctrl+K)
    asks every provider in parallel with a short timeout. No module draws its own «find anything» box.
+   **Pages tell, the WebUI reacts** (2026-11-28): after an action succeeds a plugin page calls `host.event(kind, data)`
+   (`mood_logged`, `workout_done`, `deadline_done`, `budget_over`); the WebUI's fixed rules (no model) choose the mascot's
+   reaction (`cheer · proud · comfort · nudge`, 15 s quiet time). A page never draws a reaction or names a pose; the
+   mascot never knows which page spoke.
 
 ## Logging Contract (Global Observability)
 

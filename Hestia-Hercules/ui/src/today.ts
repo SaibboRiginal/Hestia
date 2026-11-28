@@ -279,6 +279,7 @@ export class HerculesToday extends HestiaElement {
         duration_min: Math.round((Date.now() - Date.parse(sess.started_at)) / 60000) } };
     }
     this.result = detail;
+    this.host.event?.('workout_done', { records: (detail.prs || []).filter((p: any) => !p.first).length });
     this.finishing = null; this.busy = ''; rest.until = 0;
     this.loadNext();
   }

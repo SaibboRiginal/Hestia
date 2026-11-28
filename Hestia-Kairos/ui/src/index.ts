@@ -138,7 +138,7 @@ export class KairosDetail extends Base {
     if (d === null) return html`<hxk-state kind="error" text=${tr("Deadline not found.")}></hxk-state>`;
     return html`<div class="page">
       <div class="between"><div><h1>${d.title}</h1><div class="small muted">${d.category_label} · ${dayLabel(d.due)} · ${when(d.in_days)}</div></div>
-        ${d.status === 'open' ? html`<hxk-button variant="primary" icon="check" @click=${async () => { const r = await call(this.host, 'POST', `/${d.id}/done`); if (r.ok) { this.d = r.data; this.host.toast(tr('Done'), 'success'); } }}>${tr("Done")}</hxk-button>` : html`<hxk-badge>${d.status === 'done' ? 'done' : d.status === 'proposed' ? tr('to confirm') : d.status}</hxk-badge>`}</div>
+        ${d.status === 'open' ? html`<hxk-button variant="primary" icon="check" @click=${async () => { const r = await call(this.host, 'POST', `/${d.id}/done`); if (r.ok) { this.d = r.data; this.host.toast(tr('Done'), 'success'); this.host.event?.('deadline_done'); } }}>${tr("Done")}</hxk-button>` : html`<hxk-badge>${d.status === 'done' ? 'done' : d.status === 'proposed' ? tr('to confirm') : d.status}</hxk-badge>`}</div>
       <div class="card col"><div class="between"><h3>${tr("Tip")}</h3><hxk-button size="sm" variant="ghost" icon="sparkle" ?loading=${this.thinking} @click=${() => this.advise()}>${tr("Ask for advice")}</hxk-button></div>
         ${d.advice ? html`<div class="advice">${d.advice}</div>` : html`<div class="small muted">${tr("No advice for now.")}</div>`}</div>
       <div class="card col">${this.form(this.draft, (k, v) => { this.draft = { ...this.draft, [k]: v }; })}

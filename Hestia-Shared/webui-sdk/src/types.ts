@@ -85,7 +85,14 @@ export interface HestiaHost {
   store(name: string): KeyValueStore;
   readonly online: boolean;
   on(event: HostEvent, cb: () => void): () => void;
+  /** Tells the site what the owner just did (docs/work/2026-11-27-webui-rethink piece 4): the WebUI turns it into a
+   *  short reaction of the assistant/mascot by fixed rules (no model). Kinds: `mood_logged` {score 1-5},
+   *  `workout_done` {name?, records?}, `deadline_done` {title?}, `budget_over` {category?, over?}, `item_added` {what?}.
+   *  Unknown kinds are ignored; optional (an older WebUI may lack it: call `host.event?.(…)`). */
+  event?(kind: PageEventKind, data?: Record<string, unknown>): void;
 }
+
+export type PageEventKind = 'mood_logged' | 'workout_done' | 'deadline_done' | 'budget_over' | 'item_added' | (string & {});
 
 /** Quick action chip returned by a dynamic `source` (§4.2b). */
 export interface QuickChip {

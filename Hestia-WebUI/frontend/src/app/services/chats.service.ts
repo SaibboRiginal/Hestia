@@ -92,14 +92,15 @@ export class ChatsService {
     return true;
   }
 
-  /** Opens a conversation: its messages in the chat, the next message continues it. */
-  async open(sessionId: string): Promise<boolean> {
+  /** Opens a conversation: its messages in the chat, the next message continues it. `stay` keeps the page (the
+   *  mascot's mini chat shows it where the owner is). */
+  async open(sessionId: string, stay = false): Promise<boolean> {
     const r = await this.plugins.call<{ items?: Array<{ role: string; content: string; at?: string; model?: string }> }>(
       'oracle', 'GET', `/api/ui/chats/${encodeURIComponent(sessionId)}/messages`, { query: { limit: 200 } });
     if (!r.ok) return false;
     this.session.sessionId.set(sessionId);
     this.chat.showHistory(r.data?.items ?? [], sessionId);
-    if (!this.router.url.startsWith('/chat')) void this.router.navigateByUrl('/chat');
+    if (!stay && !this.router.url.startsWith('/chat')) void this.router.navigateByUrl('/chat');
     return true;
   }
 }

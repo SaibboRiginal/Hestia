@@ -160,7 +160,14 @@ Oracle and streams the NDJSON response back with proper line delimiters (Hub add
   (`layout/mascot.component.ts`, dossier `docs/work/2026-11-18-real-test-problems` G): built-in ones (`pet.drawn`:
   ember, cat, owl) are inline SVG animated with CSS, pets with pictures use their poses (`host.image`). States: thinking
   (answer being prepared, or «Parla» thinking), speaking (text streaming, read aloud, «Parla» speaking), listening
-  («Parla» listening), sleeping 23–7, happy on tap; still with reduced motion. Drag it: it docks to the nearest side,
+  («Parla» listening), sleeping 23–7; still with reduced motion. A click opens the **mini chat** next to it
+  (`layout/mascot-chat.component.ts`: the conversation in course, or the last one loaded without leaving the page;
+  same conversation as the Chat page; «Apri nella chat», «Parla», Esc closes); on the Chat page a click only cheers.
+  Holding it (550 ms) starts or stops «Parla». While a mascot is on screen the bottom-right bubble is hidden (one door).
+  **Reactions** (`services/mascot.service.ts`, piece 4 of `docs/work/2026-11-27-webui-rethink`): plugin pages call
+  `host.event(kind, data)`; fixed rules turn it into `{kind: cheer|proud|comfort|nudge, text?, action?}` (15 s quiet time),
+  shown as a bubble by the mascot (5 s, 9 s with a button; the button opens the mini chat with the sentence ready) and as
+  `data-reaction` for the poses. Without a mascot only reactions with a button become a toast. Drag it: it docks to the nearest side,
   place kept in `localStorage` (`hx.mascot.place`). No Aphrodite = standard look, no mascot.
   Impostazioni → Personali → Aspetto: «Temi delle feste» (profile of now, link to *Aspetto*) and «Mascotte» (choose
   it or none, `PUT /api/appearance/choice/webui`; also found with Ctrl+K).
