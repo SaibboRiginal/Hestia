@@ -361,6 +361,7 @@ class ModuleKit:
         self.caps: dict[str, Any] = {}
         self._rules: Callable[[], list[dict]] | None = None
         self._warm: list[Callable[[], Any]] = []
+        self._searches: list[dict] = []
         self._tools: list = []
         self._extra_caps: list[Callable[[], dict]] = []
 
@@ -412,6 +413,23 @@ class ModuleKit:
             routes[:] = sorted(routes, key=lambda r: not str(getattr(r, "path", "")).startswith(tools_prefix))
         self.app.include_router(self.settings.router())
 
+    def search(self, label: str, *, rows: Callable[[], Any], title: Callable[[Any], Any], link: Any,
+               hint: Any = "", icon: str = "", more: Callable[[Any], Any] | None = None, id: str = "items",
+               order: int = 100) -> None:
+        """A provider for the WebUI «Search everything» box (``hestia_common.search``): ``GET <api>/search/<id>?q=``
+        filters ``rows()`` with the query. Declare it before ``webui()``, which puts it in the manifest."""
+        from . import search as _search
+        from .plugin_client import search as _provider
+        path = f"{self.api}/search/{id}"
+
+        def find(q: str = "", limit: int = 5) -> dict:
+            if not _search.words(q):
+                return {"items": []}
+            return _search.results(q, rows(), title=title, link=link, hint=hint, icon=icon, more=more, limit=limit)
+
+        self.app.add_api_route(path, find, methods=["GET"], include_in_schema=False)
+        self._searches.append(_provider(id, label, path, icon=icon, order=order))
+
     def webui(self, *, icon: str, color: str, description: str, pages: list, widgets: list | None = None,
               quick_actions: list | None = None) -> Any:
         """The module's WebUI plugin (bundle ``ui/`` → ``<dist>/webui/<name>.js``, built in the image): manifest
@@ -420,7 +438,7 @@ class ModuleKit:
         ui = PluginClient(self.name, title=self.title, icon=icon, color=color, description=description,
                           dist=os.getenv(f"{self.name.upper()}_UI_DIST", "/code/ui/dist"), version=self.version)
         ui.webui(entry=f"{self.name}.js", api_prefix=f"{self.api}/", pages=pages, widgets=widgets or [],
-                 quick_actions=quick_actions or [])
+                 quick_actions=quick_actions or [], searches=list(self._searches))
         self.app.include_router(ui.router())
         self.capabilities(lambda: ui.capabilities(self.base_url))
         self.ui = ui

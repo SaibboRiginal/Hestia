@@ -214,6 +214,11 @@ Module UI is **not** written in this Angular app. A module ships Web Components 
   No developer text for people: no scores, thresholds, formulas, setting paths or module names
   (`tools/governance/check_module_names.py` blocks a module name in a `tr()` text).
 - Quick actions are declared, not drawn: the Home strip, the Ctrl/⌘+K palette and `<hxk-quicklog>` render them.
+- **Search providers** (dossier `docs/work/2026-11-27-webui-rethink` piece 3): a module with data the owner looks for
+  declares `plugin_client.search(id, label, path, icon=…)` (or `kit.search(label, rows=…, title=…, link=…)` in a
+  ModuleKit module) and answers `GET path?q=&limit=` with `hestia_common.search.results(...)` → `{items: [{title, hint,
+  icon, link}]}`; `link` is a page of the module («person/12») or `chat:<session_id>`. Never draw a search box of your
+  own for «find anything»: the WebUI box asks every provider, in parallel, with a short timeout.
 - In Angular, show a plugin element with `<hx-plugin-outlet [module] [element] [ctx]>` (loading/offline/error states built in).
 - Navigation (`layout/shell.component.ts` + `layout/nav.service.ts`, dossier `docs/work/2026-11-27-webui-rethink`):
   an **icon rail** (logo, Oggi, Chat, Agenda, Spazi, the assistant by its chosen name, the pages the owner pins, then

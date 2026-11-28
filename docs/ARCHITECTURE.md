@@ -746,6 +746,9 @@ Applies to every user-facing Telegram delivery path (chat replies, tool results,
    «Athena not reachable»); the gate `tools/governance/check_module_names.py` (precheck and CI) scans the `tr()` texts of
    the WebUI and every plugin. Every plugin page uses the SDK `hxk-page-head` and `hxk-empty` (one page pattern,
    `Hestia-WebUI/frontend/DESIGN-SYSTEM.md` §9).
+   **One search for everything** (2026-11-28): a module with data the owner looks for declares a search provider
+   (`plugin_client.search` / `ModuleKit.search`, answers with `hestia_common.search.results`); the WebUI box (Ctrl+K)
+   asks every provider in parallel with a short timeout. No module draws its own «find anything» box.
 
 ## Logging Contract (Global Observability)
 

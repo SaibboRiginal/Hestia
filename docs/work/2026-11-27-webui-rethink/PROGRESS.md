@@ -24,7 +24,12 @@
 - [x] ng build, bench screenshots (`/mnt/project-files/webui-ripensata/pezzo2/`), precheck, PR
 
 ## Piece 3 — search everything + ask on the fly
-- [ ] not started
+- [x] Contract: catalog type `search` (plugin_client.search, ModuleKit.search, hestia_common.search, Hub, WebUI catalog)
+- [x] Providers: conversations, memory, shared files (Oracle), people, deadlines, documents, workouts, expenses, clothes, email
+- [x] Box: Ctrl+K or `/`, providers in parallel (2.5 s each, groups appear as they arrive), quick maths and dates
+- [x] Ask on the fly: Tab or «?», `POST /api/webui/chat/quick` (Quick mode), «Quick questions» conversation, «Continue in chat»
+- [x] Translations, swagger, docs (DESIGN-SYSTEM, hestia-webui, hestia-shared, Hub and provider modules, root CHANGELOG)
+- [x] ng build, bench check, precheck, PR
 
 ## Piece 4 — mascot link
 - [ ] not started

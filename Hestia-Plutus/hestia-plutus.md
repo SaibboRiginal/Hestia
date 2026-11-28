@@ -164,3 +164,7 @@ The Hub registration declares `capabilities.when_to_use` (one line in the assist
 ### Page pattern (2026-11-28)
 
 The pages use the shared page header (the month in the context line; «Bank statement» lives on the Import tab) and empty state. Dossier `docs/work/2026-11-27-webui-rethink` piece 2.
+
+### Search everything (2026-11-28)
+
+Provider «Expenses» for the WebUI «Search everything» box: `GET /api/finance/search/transactions?q=` (merchant, description, notes, category; hint = amount and date; opens the transaction). Dossier `docs/work/2026-11-27-webui-rethink` piece 3.

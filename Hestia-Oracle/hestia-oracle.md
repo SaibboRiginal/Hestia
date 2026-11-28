@@ -905,3 +905,7 @@ The setup's brain screen asks Oracle (through Hephaestus and the Hub), never a m
 ### Page pattern (2026-11-28)
 
 Memory, Brain and Shared files use the shared page header and empty state; people texts say «Not available», never a module name. Dossier `docs/work/2026-11-27-webui-rethink` piece 2.
+
+### Search everything (2026-11-28)
+
+Three providers for the WebUI «Search everything» box (`hestia_common.search`): `GET /api/ui/search/chats` (conversations whose title or messages hold the words, Archive searches the text; opens the conversation), `/api/ui/search/memory` (what the assistant remembers) and `/api/ui/search/files` (shared files by name, title, summary, tags). Dossier `docs/work/2026-11-27-webui-rethink` piece 3.

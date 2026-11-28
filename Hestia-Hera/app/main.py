@@ -221,6 +221,14 @@ kit.agenda_rules(lambda: [job_rule("hera.daily", tr("People: who to call"), serv
                                    recurrence="FREQ=DAILY", start_at="2026-01-01T18:00:00", tz=kit.tz,
                                    description="A notice for whoever you haven't heard from for longer than the time you chose.")])
 kit.on_warm(lambda: [people.sync_calendar(p) for p in people.store.items("person")])
+def _relation(value: str | None) -> str:
+    return {"partner": tr("Partner"), "family": tr("Family"), "friend": tr("Friend"), "colleague": tr("Colleague"),
+            "other": tr("Other")}.get(value or "other", tr("Other"))
+
+
+kit.search("People", rows=people.list, title=lambda p: p["name"], icon="user", order=30,
+           hint=lambda p: _relation(p.get("relation")), link=lambda p: f"person/{p['id']}",
+           more=lambda p: [p.get("relation"), p.get("notes"), p.get("likes"), [g.get("text") for g in p.get("gift_ideas") or []]])
 kit.webui(icon="user", color="pink", description="The important people: dates in the calendar, tastes, gift ideas.",
           pages=[page("people", "People", element="hera-people", icon="user", order=90,
                       help="Who matters to you: birthdays and dates (they go in the calendar with a notice), tastes, gift ideas the assistant notes from the chat, when to hear from them."),

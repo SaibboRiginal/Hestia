@@ -2,7 +2,7 @@
 
 Contract: ``docs/work/2026-10-17-client-plugins/SPEC.md`` §4. A module with a UI builds a browser bundle
 (Web Components, ``Hestia-<Name>/ui/`` → ``ui/dist/<client>/``) and declares what it contributes per client
-(pages, widgets, quick actions). Hub aggregates every module's manifest into one catalog
+(pages, widgets, quick actions, search providers). Hub aggregates every module's manifest into one catalog
 (``GET /api/discovery/catalog``) organized by client × type; each client loads what it supports and keeps its
 own configuration (visibility, dashboards) as its own Themis settings.
 
@@ -40,7 +40,7 @@ from typing import Any
 logger = logging.getLogger("hestia_common.plugins")
 
 SDK_VERSION = "1"
-UI_KINDS = ("page", "widget", "quick_action", "settings_panel", "connection")
+UI_KINDS = ("page", "widget", "quick_action", "settings_panel", "connection", "search")
 CLIENTS = {"webui", "telegram"}
 SIZES = ("s", "m", "l", "xl")
 METHODS = {"GET", "POST", "PUT", "PATCH", "DELETE"}
@@ -132,6 +132,17 @@ def quick_action(id: str, label: str, method: str = "POST", path: str = "", *, i
             "params": _params(params), "favorite": bool(favorite), "order": int(order)}
 
 
+def search(id: str, label: str, path: str, *, icon: str = "", order: int = 100) -> dict:
+    """A search provider for the client's «Search everything» box: ``GET path?q=&limit=`` (under api_prefix) returns
+    ``{"items": [{title, hint, icon, link}]}`` (``hestia_common.search.results`` builds it). ``label`` names the group
+    of results («People», «Expenses»); ``link`` is a page of this module or ``chat:<session_id>``."""
+    if not _ID_RE.match(id):
+        raise ValueError(f"bad search id {id!r}")
+    if not path:
+        raise ValueError(f"search {id}: path required")
+    return {"id": id, "label": label, "path": path, "icon": icon, "order": int(order)}
+
+
 class PluginClient:
     """Builds the module's manifest, serves it and the bundle files, and gives the Hub capabilities."""
 
@@ -172,8 +183,10 @@ class PluginClient:
 
     def webui(self, *, entry: str, api_prefix: str = "/api/ui/", pages: list | None = None,
               widgets: list | None = None, quick_actions: list | None = None,
-              settings_panels: list | None = None) -> "PluginClient":
+              settings_panels: list | None = None, searches: list | None = None) -> "PluginClient":
         extra = {"settings_panel": settings_panels} if settings_panels else {}
+        if searches:
+            extra["search"] = searches
         return self.client("webui", entry=entry, api_prefix=api_prefix, page=pages or [],
                            widget=widgets or [], quick_action=quick_actions or [], **extra)
 

@@ -36,7 +36,8 @@ from hestia_common.coach import CoachClient, CoachRouter
 from hestia_common.mail_client import MailClient, mail_rule
 from hestia_common.feeds import capabilities as feed_capabilities
 from hestia_common.oracle_usecases import capabilities as llm_capabilities, usecase as llm_usecase
-from hestia_common.plugin_client import PluginClient, page, quick_action, widget
+from hestia_common import search as finder
+from hestia_common.plugin_client import PluginClient, page, quick_action, search, widget
 from hestia_common.reminders import reminder_event, reminder_settings, voice_setting
 from hestia_common.transfer import StoreSection, Transfer
 from hestia_common.settings_client import SettingsClient, setting
@@ -388,6 +389,18 @@ def _money(v: float, cur: str) -> str:
     return f"{v:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".") + (" €" if cur == "EUR" else f" {cur}")
 
 
+@app.get(f"{API}/search/transactions")
+def search_transactions(q: str = "", limit: int = 5):
+    """«Search everything» (dossier docs/work/2026-11-27-webui-rethink piece 3): transactions by merchant, text, notes."""
+    if not finder.words(q):
+        return {"items": []}
+    rows = plutus.transactions(limit=5000)
+    return finder.results(q, rows, limit=limit, title=lambda t: t.get("merchant") or t.get("description"), icon="wallet",
+                          more=lambda t: [t.get("description"), t.get("notes"), t.get("category")],
+                          hint=lambda t: f"{_money(float(t.get('amount') or 0), t.get('currency') or 'EUR')} · {t.get('date')}",
+                          link=lambda t: f"transactions/{t['id']}")
+
+
 @app.post(f"{API}/attachments")
 def attachment(body: dict = Body(...)):
     """Oracle hand-off: a statement PDF sent in chat (Archive blob) → preview; the reply asks to confirm."""
@@ -642,6 +655,7 @@ ui = PluginClient("plutus", title="Expenses", icon="wallet", color="green",
                   dist=UI_DIST, version=SERVICE_VERSION)
 ui.webui(
     entry="plutus.js", api_prefix=f"{API}/",
+    searches=[search("transactions", "Expenses", f"{API}/search/transactions", icon="wallet", order=60)],
     pages=[page("overview", "Expenses", element="plutus-overview", icon="wallet", order=60,
                 help="The current month: spent, budget, categories, latest transactions."),
            page("transactions", "Transactions", element="plutus-transactions", icon="list", order=61, parent="overview",

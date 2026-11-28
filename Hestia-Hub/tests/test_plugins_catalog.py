@@ -148,3 +148,34 @@ def test_page_place_is_declared_and_checked():
     assert page("houses", "House hunting", element="x-houses")["place"] == ""
     with pytest.raises(ValueError):
         page("x", "X", element="x-x", place="sidebar")
+
+
+@pytest.mark.unit
+def test_search_providers_reach_the_catalog(monkeypatch):
+    """«Search everything» (docs/work/2026-11-27-webui-rethink piece 3): a module declares a search provider under
+    its api_prefix; the catalog gives it to the WebUI with the module and the group label."""
+    from hestia_common.plugin_client import search
+    mod = PluginClient("hera", title="People")
+    mod.webui(entry="hera.js", api_prefix="/api/people/", pages=[page("people", "People", element="hera-people")],
+              searches=[search("items", "People", "/api/people/search/items", icon="user")])
+    monkeypatch.setattr(disc.requests, "get", lambda url, timeout=0: _Resp(mod.manifest()))
+    disc._ui_manifest_cache.clear()
+    reg = ServiceRegistry()
+    reg.register({"name": "hera", "base_url": "http://h", "capabilities": mod.capabilities("http://h")})
+    webui = disc.discover_catalog(reg, client="webui", types=["search"])["contributions"]["webui"]
+    assert webui["search"][0]["module"] == "hera" and webui["search"][0]["path"] == "/api/people/search/items"
+    with pytest.raises(ValueError):   # a provider outside the module's own prefix is refused at import
+        PluginClient("hera", title="People").webui(entry="hera.js", api_prefix="/api/people/",
+                                                   searches=[search("x", "X", "/api/other/search")])
+
+
+@pytest.mark.unit
+def test_search_helper_matches_words_without_accents_and_ranks_titles():
+    from hestia_common import search as finder
+    rows = [{"id": 1, "name": "Anna Rossi", "notes": "likes jazz"}, {"id": 2, "name": "Café of Anna", "notes": ""},
+            {"id": 3, "name": "Marco", "notes": "friend of anna"}]
+    out = finder.results("anna", rows, title=lambda r: r["name"], more=lambda r: [r["notes"]], link=lambda r: f"p/{r['id']}")
+    assert [i["link"] for i in out["items"]] == ["p/1", "p/2", "p/3"]          # title start, title word, other text
+    assert finder.matches("cafe anna", "Café of Anna") and not finder.matches("", "anything")
+    assert finder.results("  ", rows, title=lambda r: r["name"], link="x") == {"items": []}
+    assert len(finder.results("a", rows, title=lambda r: r["name"], link="x", limit=1)["items"]) == 1

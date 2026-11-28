@@ -19,7 +19,7 @@ from hestia_common.i18n import is_yes, t as tr  # fixed texts in the owner's lan
 try:
     from hestia_common.logging_utils import create_log_control_router, setup_service_logging
     from hestia_common.mcp_helpers import MCPTool, create_mcp_router
-    from hestia_common.plugin_client import PluginClient, page, widget
+    from hestia_common.plugin_client import PluginClient, page, search, widget
 except ModuleNotFoundError:
     _workspace_root = Path(__file__).resolve().parents[2]
     _shared_pkg = _workspace_root / "Hestia-Shared"
@@ -27,7 +27,7 @@ except ModuleNotFoundError:
         sys.path.insert(0, str(_shared_pkg))
     from hestia_common.logging_utils import create_log_control_router, setup_service_logging
     from hestia_common.mcp_helpers import MCPTool, create_mcp_router
-    from hestia_common.plugin_client import PluginClient, page, widget
+    from hestia_common.plugin_client import PluginClient, page, search, widget
 
 logger, log_buffer = setup_service_logging("hestia_oracle")
 
@@ -241,7 +241,10 @@ ui.webui(entry="oracle.js", api_prefix="/api/ui/",
                      help="What {assistant} remembers about you: learned in chat or noted by an external AI (Claude, ChatGPT) linked to {assistant}. Search, filter by origin, forget.")],
          widgets=[widget("usage-today", "Model usage today", element="oracle-usage-widget", sizes=["s", "m", "l"],
                          size="m", open_page="brain", icon="chart",
-                         help="Today's calls, tokens and cost, per model.")])
+                         help="Today's calls, tokens and cost, per model.")],
+         searches=[search("chats", "Conversations", "/api/ui/search/chats", icon="chat", order=10),
+                   search("memory", "Memory", "/api/ui/search/memory", icon="bookmark", order=20),
+                   search("files", "Shared files", "/api/ui/search/files", icon="file", order=90)])
 app.include_router(ui.router())
 
 # ── export / import (hestia_common.transfer): long-term memory only, never chats ─────────────────────────
@@ -489,6 +492,32 @@ def ui_memory():
     return {"memories": engine._memory_service.list_memories()}
 
 
+@app.get("/api/ui/search/memory")
+def ui_search_memory(q: str = "", limit: int = 5):
+    """«Search everything» (dossier docs/work/2026-11-27-webui-rethink piece 3): what the assistant remembers."""
+    from hestia_common import search as _search
+    if not _search.words(q):
+        return {"items": []}
+    return _search.results(q, engine._memory_service.list_memories(), limit=limit, title=lambda m: m.get("fact"),
+                           more=lambda m: [m.get("topic"), m.get("domains")], hint=lambda m: m.get("topic") or "",
+                           icon="bookmark", link="memory")
+
+
+@app.get("/api/ui/search/files")
+def ui_search_files(q: str = "", limit: int = 5):
+    """«Search everything»: the files shared with the assistant, by name, title, summary and tags."""
+    from hestia_common import search as _search
+    if not _search.words(q):
+        return {"items": []}
+    try:
+        docs = ui_documents.list_documents(engine, limit=200)["documents"]
+    except ui_documents.DocumentError:
+        return {"items": []}
+    return _search.results(q, docs, limit=limit, title=lambda d: d.get("title") or d.get("filename"),
+                           more=lambda d: [d.get("filename"), d.get("summary"), d.get("tags")],
+                           hint=lambda d: d.get("filename") or "", icon="file", link="documents")
+
+
 @app.delete("/api/ui/memory/{memory_id}")
 def ui_memory_forget(memory_id: int):
     if not engine._memory_service.forget(memory_id):
@@ -546,6 +575,20 @@ def ui_chats(q: str = "", tag: str = "", since: str = "", until: str = "", pinne
     """WebUI history sidebar: conversations newest first (pinned on top), search, tag and date filter."""
     return _chats(chat_sessions.list_chats, q=q, tag=tag, since=since, until=until, pinned=pinned,
                   limit=limit, offset=offset)
+
+
+@app.get("/api/ui/search/chats")
+def ui_search_chats(q: str = "", limit: int = 5):
+    """«Search everything»: conversations whose title or messages hold the words (Archive searches the text)."""
+    from hestia_common import search as _search
+    if not _search.words(q):
+        return {"items": []}
+    try:
+        rows = chat_sessions.list_chats(_chat_route, q=q, limit=max(1, min(int(limit or 5), _search.MAX_LIMIT)))
+    except chat_sessions.ChatSessionsError:
+        return {"items": []}
+    return {"items": [_search.hit(c.get("title"), hint=str(c.get("last_at") or "")[:10], icon="chat",
+                                  link=f"chat:{c.get('session_id')}") for c in rows.get("items") or []]}
 
 
 @app.get("/api/ui/chats/tags")

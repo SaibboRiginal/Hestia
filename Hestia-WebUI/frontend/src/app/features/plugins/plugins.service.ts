@@ -69,6 +69,8 @@ export class PluginsService {
   readonly allWidgets = computed(() => this.webui().widget ?? []);
   readonly allQuick = computed(() => this.webui().quick_action ?? []);
   readonly settingsPanels = computed(() => this.webui().settings_panel ?? []);
+  /** Search providers of the online modules («Search everything», Ctrl+K), in manifest order. */
+  readonly searches = computed(() => (this.webui().search ?? []).filter(s => s.online !== false).sort((a, b) => a.order - b.order));
   /** Every external service a module links (catalog type «connection»): page «Connections», Ctrl+K, setup. */
   readonly connections = computed(() => this.webui().connection ?? []);
   readonly bundles = computed(() => new Map((this.webui().bundle ?? []).map(b => [b.module, b] as [string, PluginBundle])));

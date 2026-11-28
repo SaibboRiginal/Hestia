@@ -29,7 +29,8 @@ from hestia_common import recap
 from hestia_common.agenda_client import AgendaClient, job_rule
 from hestia_common.display import action, display, item
 from hestia_common.coach import CoachClient, CoachRouter
-from hestia_common.plugin_client import PluginClient, page, quick_action, widget
+from hestia_common import search as finder
+from hestia_common.plugin_client import PluginClient, page, quick_action, search, widget
 from hestia_common.reminders import reminder_event, reminder_settings, voice_setting
 from hestia_common.transfer import StoreSection, Transfer
 from hestia_common.settings_client import SettingsClient, setting
@@ -229,6 +230,19 @@ def exercise_archive(id: str):
 
 
 # ── templates & programs ─────────────────────────────────────────────────────
+@app.get(f"{API}/search/workouts")
+def search_workouts(q: str = "", limit: int = 5):
+    """«Search everything» (dossier docs/work/2026-11-27-webui-rethink piece 3): plans first, then past workouts."""
+    if not finder.words(q):
+        return {"items": []}
+    rows = [{"kind": "plan", **t} for t in hercules.templates()] + \
+           [{"kind": "done", **s} for s in hercules.history(days=730, limit=500)]
+    return finder.results(q, rows, limit=limit, title=lambda r: r.get("name"), icon="dumbbell",
+                          more=lambda r: [r.get("exercise_names"), r.get("muscles"), r.get("notes")],
+                          hint=lambda r: tr("Workout plan") if r["kind"] == "plan" else str(r.get("started_at") or "")[:10],
+                          link=lambda r: f"plans/{r['id']}" if r["kind"] == "plan" else f"history/{r['id']}")
+
+
 @app.get(f"{API}/templates")
 def templates():
     return {"items": hercules.templates()}
@@ -801,6 +815,7 @@ ui = PluginClient("hercules", title="Training", icon="dumbbell", color="red",
                   version=SERVICE_VERSION)
 ui.webui(
     entry="hercules.js", api_prefix=f"{API}/",
+    searches=[search("workouts", "Workouts", f"{API}/search/workouts", icon="dumbbell", order=50)],
     pages=[page("training", "Training", element="hercules-today", icon="dumbbell", order=30,
                 help="Today's workout: check-in, start, log sets with the timer."),
            page("plans", "Workout plans", element="hercules-templates", icon="list", order=31, parent="training"),
