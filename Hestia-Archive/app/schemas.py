@@ -137,6 +137,8 @@ class ChatMessageCreate(BaseModel):
     timestamp: Optional[datetime] = None
     # The model that wrote an answer.
     model: Optional[str] = None
+    # The reasoning frames (thinking / agent) shown while it answered.
+    steps: Optional[list] = None
 
 
 class ChatMessageResponse(BaseModel):
@@ -146,6 +148,7 @@ class ChatMessageResponse(BaseModel):
     content: str
     timestamp: datetime
     model: Optional[str] = None
+    steps: Optional[list] = None
 
     class Config:
         from_attributes = True

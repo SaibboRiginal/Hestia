@@ -31,6 +31,18 @@ export class SignalRService {
   reconnected$: Observable<void> = this.reconnectSubject.asObservable();
   claims$: Observable<string> = this.claimSubject.asObservable();
 
+  constructor() {
+    // Back on the page (phone back from another app, laptop woken) after the connection gave up: connect again and
+    // tell the listeners, so the chat follows again the answer still being written (2026-11-27-chat-turn-survives).
+    document.addEventListener('visibilitychange', () => {
+      if (document.visibilityState !== 'visible' || !this.hub) return;
+      if (this.hub.state !== signalR.HubConnectionState.Disconnected) return;
+      void this.connect().then(() => {
+        if (this.hub?.state === signalR.HubConnectionState.Connected) this.reconnectSubject.next();
+      });
+    });
+  }
+
   claim(channel: string): void {
     const prev = this.activeChannel;
     this.activeChannel = channel;

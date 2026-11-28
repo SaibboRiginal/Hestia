@@ -9,6 +9,10 @@ import { NoticePrefsService } from './notice-prefs.service';
 import { ToastService } from '../ui';
 import { VoiceService } from './voice.service';
 import { tr } from '../core/i18n';
+import { PluginsService } from '../features/plugins/plugins.service';
+import { SessionService } from './session.service';
+
+type HistoryItem = { role: string; content: string; at?: string; model?: string; steps?: ServerEvent[] };
 
 /**
  * Chat state over the SignalR stream. Root instance = the Chat page ("main" channel);
@@ -43,6 +47,8 @@ export class ChatService {
   /** Where the answer to the assistant's own question goes on (same chat, mode and page context). */
   private resumeTarget: { sessionId: string; mode: string; context?: string } | null = null;
   private restored = false;
+  /** An `attach` was sent: its `live` answer says whether an answer of this conversation is still running. */
+  private attachPending = false;
 
   private thinkingBuffer: ThinkingStep[] = [];
   private stepCounter = 0;
@@ -60,6 +66,17 @@ export class ChatService {
       const text = String(push['message'] ?? '').trim();
       if (this.channel !== 'main' || push.kind !== 'notification' || !chat || !text || push['silent']) return;
       this.messages.update(msgs => [...msgs, { id: uid(), role: 'assistant', content: text, timestamp: new Date() }]);
+    });
+    // The connection came back (network, phone back from another app): the server stopped READING the answer when
+    // it dropped, Oracle kept writing it. The conversation is drawn again and the answer followed from its start.
+    this.signalR.reconnected$.subscribe(() => {
+      const target = this.running?.sessionId;
+      if (this.channel !== 'main' || !this.currentStreamingId() || !target || this.running?.context) return;
+      const id = this.currentStreamingId()!;
+      this.messages.update(msgs => msgs.filter(m => m.id !== id));
+      this.currentStreamingId.set(null);
+      this.isStreaming.set(false);
+      void this.resumeConversation(target);
     });
     // Another chat took the connection: the server cancelled our stream.
     this.signalR.claims$.subscribe(ch => {
@@ -279,6 +296,9 @@ export class ChatService {
   async restorePending(): Promise<void> {
     if (this.restored) return;
     this.restored = true;
+    // The page was reloaded or reopened: the conversation in course comes back, with the answer still being
+    // written (docs/work/2026-11-27-chat-turn-survives). Before: the chat started empty and looked lost.
+    if (!this.messages().length) await this.resumeConversation();
     type Pending = { questions?: ServerEvent[]; queued?: { queue_id: number; text: string; created_at?: string }[] };
     let p: Pending;
     try {
@@ -305,11 +325,11 @@ export class ChatService {
       { id: uid(), role: 'assistant', content: html, timestamp: new Date() }]);
   }
 
-  /** Empties the chat (new conversation, another conversation opened): an answer still running is stopped, so the
-   * box is never left locked by a stream of the chat that is gone. */
+  /** Empties the chat (new conversation, another conversation opened). An answer still running is no longer
+   * followed here, but it is not stopped: it ends and is saved in its own conversation (only «Stop» stops it). */
   clearMessages(): void {
     if (this.currentStreamingId() || this.isStreaming()) {
-      if (this.signalR.activeChannel === this.channel) this.signalR.send({ type: 'cancel' }).catch(() => {});
+      if (this.signalR.activeChannel === this.channel) this.signalR.send({ type: 'detach' }).catch(() => {});
       this.currentStreamingId.set(null);
       this.isStreaming.set(false);
       this.pendingQuestion.set(null);
@@ -385,6 +405,10 @@ export class ChatService {
           this.finalizeStreaming(streamId, event.content || tr('Message queued'));
           this.messages.update(msgs => msgs.map(m => m.id === streamId ? { ...m, queuedId: event.queue_id } : m));
         }
+        break;
+
+      case 'live':
+        this.onLive(event);
         break;
 
       case 'stream_done':
@@ -549,16 +573,89 @@ export class ChatService {
   }
 
   /** Shows a past conversation (oldest first) instead of the current one; answers continue in it. */
-  showHistory(items: Array<{ role: string; content: string; at?: string; model?: string }>, sessionId: string): void {
+  showHistory(items: HistoryItem[], sessionId: string): void {
     this.clearMessages();
     this.messages.set(items.filter(i => i.role === 'user' || i.role === 'assistant').map(i => ({
       id: uid(), role: i.role as 'user' | 'assistant', sessionId,
-      // answers are kept as written by the model: markdown becomes HTML like a live answer
-      content: i.role === 'assistant' && !/<[a-z][^>]*>/i.test(i.content || '')
-        ? marked.parse(i.content || '', { gfm: true, async: false }) as string : i.content || '',
+      content: i.role === 'assistant' ? ChatService.answerHtml(i.content) : i.content || '',
       timestamp: i.at ? new Date(i.at) : new Date(),
       ...(i.model ? { model: i.model } : {}),
+      // the reasoning shown while it answered comes back with the answer
+      ...(i.role === 'assistant' && i.steps?.length ? { thinkingSteps: this.stepsOf(i.steps) } : {}),
     })));
+  }
+
+  /** Saved reasoning frames → the steps of the block, built like the live ones (same rules, nothing shown twice). */
+  private stepsOf(frames: ServerEvent[]): ThinkingStep[] {
+    const keep = { buffer: this.thinkingBuffer, counter: this.stepCounter, streaming: this.currentStreamingId() };
+    this.thinkingBuffer = [];
+    this.stepCounter = 0;
+    this.currentStreamingId.set(null);
+    for (const f of frames) {
+      if (f?.type === 'agent') this.handleAgent(f);
+      else if (f?.type === 'thinking') this.handleThinking(f);
+    }
+    const steps = this.thinkingBuffer;
+    this.thinkingBuffer = keep.buffer;
+    this.stepCounter = keep.counter;
+    this.currentStreamingId.set(keep.streaming);
+    return steps;
+  }
+
+  /** Answers are kept as written by the model: markdown becomes HTML like a live answer. */
+  private static answerHtml(text: string | undefined): string {
+    return !/<[a-z][^>]*>/i.test(text || '') ? marked.parse(text || '', { gfm: true, async: false }) as string : text || '';
+  }
+
+  /**
+   * The conversation on screen again from Archive, then the answer still running in it followed live (the page was
+   * reloaded, reopened, or lost its connection). His message is saved when he sends it, so it is always there.
+   */
+  async resumeConversation(sessionId?: string): Promise<void> {
+    const session = this.injector.get(SessionService);
+    if (!sessionId) {
+      if (!session.sessionId()) await session.load();
+      sessionId = session.sessionId();
+    }
+    if (!sessionId) return;
+    const r = await this.injector.get(PluginsService).call<{ items?: HistoryItem[] }>(
+      'oracle', 'GET', `/api/ui/chats/${encodeURIComponent(sessionId)}/messages`, { query: { limit: 200 } });
+    if (this.isStreaming()) return;              // he wrote meanwhile: his new turn owns the chat
+    const items = r.ok ? r.data?.items ?? [] : [];
+    if (items.length) this.showHistory(items, sessionId);
+    this.attachPending = true;
+    this.signalR.claim(this.channel);
+    this.signalR.send({ type: 'attach', session_id: sessionId }).catch(() => { this.attachPending = false; });
+  }
+
+  /** Answer to `attach`: an answer still running gets its bubble back (its frames follow from the start); one that
+   *  ended right in between gets its text under his message. */
+  private onLive(event: ServerEvent): void {
+    if (!this.attachPending) return;
+    this.attachPending = false;
+    if (!event.found || this.isStreaming()) return;
+    const asked = (event.user_message || '').trim();
+    const msgs = this.messages();
+    const last = msgs[msgs.length - 1];
+    const hisIsLast = !!asked && last?.role === 'user' && last.content.trim() === asked;
+    if (!event.running) {
+      if (hisIsLast && event.text)
+        this.messages.update(list => [...list, { id: uid(), role: 'assistant', sessionId: event.session_id,
+          content: ChatService.answerHtml(event.text), timestamp: new Date() }]);
+      return;
+    }
+    if (asked && !hisIsLast)
+      this.messages.update(list => [...list, { id: uid(), role: 'user', content: asked, timestamp: new Date() }]);
+    this.running = { sessionId: event.session_id || '', mode: '', model: 'generic' };
+    this.stopped = false;
+    this.thinkingBuffer = [];
+    this.stepCounter = 0;
+    const streamId = uid();
+    this.currentStreamingId.set(streamId);
+    this.lastAssistantId = streamId;
+    this.isStreaming.set(true);
+    this.messages.update(list => [...list, { id: streamId, role: 'assistant', content: '', timestamp: new Date(),
+      isStreaming: true, thinkingSteps: [] }]);
   }
 
   private appendToStreaming(streamId: string, text: string): void {

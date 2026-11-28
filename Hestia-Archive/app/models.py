@@ -56,6 +56,8 @@ class ChatHistory(Base):
     timestamp = Column(DateTime(timezone=True), server_default=func.now())
     # The model that wrote an answer (empty on the owner's messages and on old rows): clients mark where it changes.
     model = Column(String, nullable=True)
+    # The reasoning frames (thinking / agent) shown while it answered: the chat shows them again when reopened.
+    steps = Column(JSONB, nullable=True)
 
 
 class ChatSessionMeta(Base):

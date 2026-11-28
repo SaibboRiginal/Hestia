@@ -16,7 +16,7 @@ from typing import Any
 
 import requests
 
-from telegram_bot import core, store, ui
+from telegram_bot import catalog, core, store, ui
 from telegram_bot.services import assistant_questions, chat_queue, chat_wait, reactions, voice_service
 from telegram_bot.services.reply_renderer import ReplyRenderer
 from hestia_common.i18n import t as tr  # fixed texts in the owner's language
@@ -26,18 +26,29 @@ logger = logging.getLogger("hestia_telegram.chat_service")
 WORKING = "<i>Thinking…</i>"   # shown through tr
 
 
-def consume_oracle_stream(res, renderer: "ReplyRenderer", signals: list, questions: list) -> None:
+def consume_oracle_stream(res, renderer: "ReplyRenderer", signals: list, questions: list,
+                          progress: dict | None = None) -> None:
     """Read Oracle NDJSON frames into the renderer. Standard frames: status, thinking,
-    token, final, notice (system packets), question; legacy `signal` kept for flows."""
+    token, final, notice (system packets), question; legacy `signal` kept for flows.
+    ``progress["lines"]`` counts the frames of the turn read so far (heartbeats are not frames of the turn): where to
+    follow it again if the connection drops (docs/work/2026-11-27-chat-turn-survives)."""
+    progress = progress if progress is not None else {}
+    progress.setdefault("lines", 0)
     for line in res.iter_lines():
         if not line:
             continue
         try:
             data = json.loads(line)
         except ValueError:
+            progress["lines"] += 1
             logger.warning("event=oracle_stream_bad_line len=%d", len(line))
             continue
-        kind = data.get("type")
+        kind = data.get("type") if isinstance(data, dict) else None
+        if kind == "heartbeat":            # Oracle is still working (e.g. a local model in line): keep waiting
+            continue
+        progress["lines"] += 1
+        if kind == "final":
+            progress["final"] = True
         if kind == "status":
             renderer.on_status(str(data.get("content") or ""))
         elif kind == "thinking":
@@ -161,9 +172,72 @@ def ask_oracle(chat_id, session_id: str, user_text: str, status_message_id: int,
         if res.status_code in _DOWN_STATUSES:
             raise OracleUnavailable(tr("HTTP {0}", res.status_code))
         res.raise_for_status()
-        consume_oracle_stream(res, renderer, signals, questions)
+        turn_id = str((getattr(res, "headers", None) or {}).get("X-Hestia-Turn") or "")
+        progress: dict = {"lines": 0}
+        try:
+            consume_oracle_stream(res, renderer, signals, questions, progress)
+        except requests.RequestException as error:
+            # The connection dropped but Oracle goes on with the turn: follow it again where we left it.
+            follow_live_turn(session_id, turn_id, renderer, signals, questions, progress, error)
     renderer.finish()
     return OracleResult(renderer, signals, questions)
+
+
+FOLLOW_FOR_S = 600.0         # how long a broken answer is followed again before giving up
+
+
+def follow_live_turn(session_id: str, turn_id: str, renderer: "ReplyRenderer", signals: list, questions: list,
+                     progress: dict, error: Exception) -> None:
+    """The stream of a turn broke (timeout, network, Oracle or the Hub unreachable for a while): Oracle keeps running
+    the turn on its own, so read it again from the last frame seen into the same message, retrying with a growing
+    pause for up to ``FOLLOW_FOR_S``. When the turn is no longer live, its answer is taken from the conversation (it is
+    saved there). Raises *error* only when no answer exists (docs/work/2026-11-27-chat-turn-survives)."""
+    logger.warning("[🔄] event=oracle_stream_broken session_id=%s turn_id=%s lines=%d error=%s fallback=follow_again",
+                   session_id, turn_id, progress.get("lines", 0), error)
+    url = f"{core.resolve_oracle_chat_url()}/live/stream"
+    until = time.time() + FOLLOW_FOR_S
+    attempt = 0
+    while True:
+        attempt += 1
+        try:
+            with requests.get(url, params={"session_id": session_id, "offset": progress.get("lines", 0),
+                                           "turn_id": turn_id},
+                              stream=True,
+                              timeout=(10, float(core.settings.get(core.tg_settings.ORACLE_STREAM_TIMEOUT)))) as res:
+                if res.status_code == 404:
+                    # Not live any more (ended a while ago, or Oracle restarted): the saved answer, if any.
+                    if _deliver_saved_answer(session_id, renderer, progress):
+                        return
+                    break
+                res.raise_for_status()
+                consume_oracle_stream(res, renderer, signals, questions, progress)
+            logger.info("event=oracle_stream_followed_again session_id=%s attempt=%d lines=%d",
+                        session_id, attempt, progress.get("lines", 0))
+            return
+        except requests.RequestException as again:
+            logger.warning("[🔄] event=oracle_stream_follow_failed session_id=%s attempt=%d error=%s",
+                           session_id, attempt, again)
+        if time.time() >= until:
+            if _deliver_saved_answer(session_id, renderer, progress):
+                return
+            break
+        time.sleep(min(5 * attempt, 60))
+    raise error
+
+
+def _deliver_saved_answer(session_id: str, renderer: "ReplyRenderer", progress: dict) -> bool:
+    """The last message of the conversation is the assistant's answer to his message: show it in the same message."""
+    if progress.get("final"):
+        return True
+    ok, data = catalog.route("oracle", f"api/ui/chats/{session_id}/messages", query={"limit": 4}, timeout=10)
+    items = (data or {}).get("items") if ok and isinstance(data, dict) else None
+    last = items[-1] if items else None
+    if not isinstance(last, dict) or last.get("role") != "assistant" or not str(last.get("content") or "").strip():
+        return False
+    logger.info("[🔄] event=oracle_answer_from_history session_id=%s", session_id)
+    renderer.on_final(str(last.get("content")), None, str(last.get("model") or ""))
+    progress["final"] = True
+    return True
 
 
 def is_authorized(message) -> bool:
