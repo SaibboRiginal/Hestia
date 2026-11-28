@@ -43,7 +43,7 @@ export const STYLES: StyleDef[] = [
   },
 ];
 
-export const DEFAULT_STYLE = 'classic';
+export const DEFAULT_STYLE = 'glass';
 
 export const RADII: Record<Corners, Record<string, string>> = {
   squared: { '--radius-xs': '2px', '--radius-sm': '3px', '--radius-md': '4px', '--radius-lg': '6px', '--radius-xl': '8px' },

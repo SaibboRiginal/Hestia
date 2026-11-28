@@ -784,6 +784,9 @@ Claude Code CLI is installed by default (`ORACLE_INSTALL_CLAUDE_CODE=0` for a sl
 
 ## WebUI plugin: Cervello (core module, Sistema section)
 
+Places (2026-11-27, dossier `docs/work/2026-11-27-webui-rethink`): **Memoria** and **File condivisi** (the old
+«Documenti») are `place="assistant"` (rail button with the assistant's name); **Cervello** stays in Settings › System.
+
 Icons, never emoji (DESIGN-SYSTEM rule, `docs/work/2026-10-20-icons-in-clients`): `<hxk-icon name tone>`. Tool chips: failed x; key set check (success).
 
 Oracle ships its inside view on the client plugin contract (`hestia_common.plugin_client`, `kind="core"`; SPEC

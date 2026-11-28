@@ -39,7 +39,7 @@
 
 ## WebUI plugin
 
-Page **Aspetto** (`aphrodite-look`: the look now and why, automatic themes on or off for the site, pet choice, new pet, own picture per pose, regenerate, profile editor with colours, effect, dates, picture prompt, upcoming themes). The WebUI shell draws palette, effect and pet from `GET /now`. Built from `ui/` in the image (`hestia_common.module_kit` `kit.webui`).
+Page **Aspetto** (place `system`, under Settings › System; `aphrodite-look`: the look now and why, automatic themes on or off for the site, pet choice, new pet, own picture per pose, regenerate, profile editor with colours, effect, dates, picture prompt, upcoming themes). The WebUI shell draws palette, effect and pet from `GET /now`. Built from `ui/` in the image (`hestia_common.module_kit` `kit.webui`).
 
 ## Tests
 

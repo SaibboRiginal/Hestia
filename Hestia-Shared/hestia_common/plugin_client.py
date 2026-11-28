@@ -45,6 +45,9 @@ CLIENTS = {"webui", "telegram"}
 SIZES = ("s", "m", "l", "xl")
 METHODS = {"GET", "POST", "PUT", "PATCH", "DELETE"}
 KINDS = {"domain", "core"}   # core = system modules (WebUI groups them under «System»)
+# Where a page lives in a client's navigation (docs/work/2026-11-27-webui-rethink §3.1). "" = from the module kind:
+# domain → space, core → system. agenda / assistant / notifications are the owner's own places a core module may use.
+PLACES = ("", "space", "agenda", "assistant", "notifications", "system")
 PARAM_TYPES = {"string", "text", "int", "float", "bool", "enum", "date", "time", "list"}
 TEXT_FILES = {".js": "text/javascript", ".mjs": "text/javascript", ".css": "text/css",
               ".json": "application/json", ".svg": "image/svg+xml", ".map": "application/json"}
@@ -66,16 +69,20 @@ def _params(params: dict | None) -> dict:
 
 
 def page(id: str, label: str, *, element: str, icon: str = "", order: int = 100, parent: str = "",
-         detail: bool = False, help: str = "", badge: dict | None = None) -> dict:
-    """A full page. Non-detail pages are always visible by default (sidebar entry); ``detail`` pages open
-    from an item (``case/:id``); ``parent`` makes a sub-page. ``badge`` = ``{source, field}``: a GET under
-    api_prefix whose ``field`` (a number) the client shows next to the sidebar entry (e.g. unread count)."""
+         detail: bool = False, help: str = "", badge: dict | None = None, place: str = "") -> dict:
+    """A full page. Non-detail pages are always visible by default (navigation entry); ``detail`` pages open
+    from an item (``case/:id``); ``parent`` makes a sub-page (a tab of its parent). ``badge`` = ``{source, field}``:
+    a GET under api_prefix whose ``field`` (a number) the client shows next to the entry (e.g. unread count).
+    ``place`` = where the page lives in the navigation (``PLACES``; "" = from the module kind); a sub-page follows
+    its parent."""
     if not _ID_RE.match(id):
         raise ValueError(f"bad page id {id!r}")
+    if place not in PLACES:
+        raise ValueError(f"page {id}: place {place!r} not in {PLACES}")
     if badge is not None and (not badge.get("source") or not badge.get("field")):
         raise ValueError(f"page {id}: badge needs source and field")
     return {"id": id, "label": label, "element": element, "icon": icon, "order": int(order),
-            "parent": parent, "detail": bool(detail or ":" in id), "help": help,
+            "parent": parent, "detail": bool(detail or ":" in id), "help": help, "place": place,
             "badge": {"source": badge["source"], "field": badge["field"]} if badge else None}
 
 

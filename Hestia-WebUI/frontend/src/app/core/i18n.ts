@@ -76,7 +76,8 @@ export function followIdentity(key: string, value: unknown): void {
 const KEEP_KEYS = new Set(['id', 'key', 'value', 'status', 'state', 'type', 'kind', 'slug', 'path', 'url', 'href',
   'code', 'icon', 'color', 'tone', 'module', 'service', 'method', 'tool', 'command', 'domain', 'source', 'role', 'lang',
   'language', 'page', 'link', 'view', 'tab', 'event', 'event_type', 'use_case', 'provider', 'model', 'format', 'mime',
-  'unit_code', 'action', 'name_id', 'entity_id', 'dedupe_key', 'replaces', 'query', 'q', 'args', 'params']);
+  'unit_code', 'action', 'name_id', 'entity_id', 'dedupe_key', 'replaces', 'query', 'q', 'args', 'params',
+  'place', 'parent', 'local_id', 'element', 'open_page']);
 /** Kept keys whose value is the owner's data even as a list or object (same list as `hestia_common.i18n.DATA_KEYS`). */
 const DATA_KEYS = new Set(['id', 'key', 'value', 'query', 'q', 'args', 'params', 'replaces']);
 const TAG = /^[a-z][a-z0-9.]*::/;

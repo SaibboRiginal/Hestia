@@ -6,7 +6,6 @@ import { map } from 'rxjs';
 import { UI, DialogService, ToastService } from '../../ui';
 import { uid } from '../../core/uid';
 import { AssistantService } from '../../services/assistant.service';
-import { LiveVoiceService } from '../../services/live-voice.service';
 import { PluginOutletComponent } from './plugin-outlet.component';
 import { QuickStripComponent } from './quick-strip.component';
 import { NowRowComponent } from './now-row.component';
@@ -33,28 +32,12 @@ const SIZE_LABEL: Record<WidgetSize, string> = { s: tr('Small'), m: tr('Medium')
         <button hx-btn variant="ghost" (click)="cancelEdit()">{{ "Cancel" | tr }}</button>
         <button hx-btn variant="primary" icon="check" [loading]="saving()" (click)="saveEdit()">{{ "Save" | tr }}</button>
       } @else {
-        @if (isHome()) {
-          <button hx-btn [variant]="live.on ? 'primary' : 'ghost'" icon="waveform" (click)="toggleLive()" [attr.aria-pressed]="live.on"
-                  [attr.aria-label]="live.on ? ('Stop Talk' | tr) : ('Talk' | tr)"
-                   [title]="'Talk with {assistant} by voice (Ctrl+Shift+Space)' | tr"><span class="lbl">{{ live.on ? ('alt::Stop' | tr) : ('Talk' | tr) }}</span></button>
-        }
-        <button hx-btn variant="ghost" icon="sparkle" class="ask" (click)="askHestia()">{{ "Create with {assistant}" | tr }}</button>
         <button hx-btn variant="secondary" icon="edit" (click)="startEdit()">{{ "Edit" | tr }}</button>
         <hx-menu [items]="menuItems()" (select)="onMenu($event)">
           <button hx-btn variant="ghost" icon="more" iconOnly  [attr.aria-label]="'More actions' | tr" trigger></button>
         </hx-menu>
       }
     </hx-page-header>
-
-    @if (plugins.dashboards().length > 1) {
-      <nav class="tabs"  [attr.aria-label]="'Dashboard' | tr">
-        @for (d of plugins.dashboards(); track d.id) {
-          <a [routerLink]="d.id === 'home' ? '/home' : '/d/' + d.id" [class.on]="d.id === current()?.id">
-            {{ d.title }}@if (d.created_by === 'oracle') { <hx-icon name="sparkle" [size]="12"  [title]="'Created by {assistant}' | tr" /> }
-          </a>
-        }
-      </nav>
-    }
 
     <div class="body">
       @if (isHome() && !editing()) { <hx-setup-card /><hx-now-row /><hx-quick-strip /> }
@@ -156,11 +139,6 @@ const SIZE_LABEL: Record<WidgetSize, string> = { s: tr('Small'), m: tr('Medium')
     </hx-modal>`,
   styles: [`
     :host { display: flex; flex-direction: column; flex: 1; min-height: 0; }
-    .ask { color: var(--accent); }
-    .tabs { display: flex; gap: 4px; padding: 8px 24px 0; border-bottom: 1px solid var(--border); overflow-x: auto; flex-shrink: 0; }
-    .tabs a { padding: 6px 10px; border-bottom: 2px solid transparent; color: var(--text-2); white-space: nowrap; text-decoration: none;
-              display: inline-flex; align-items: center; gap: 5px; margin-bottom: -1px; }
-    .tabs a.on { color: var(--text); border-bottom-color: var(--accent); font-weight: 500; }
     .body { flex: 1; overflow: auto; padding: 18px 24px 32px; display: flex; flex-direction: column; gap: 18px; }
     .center { display: grid; place-items: center; padding: 40px; }
     .grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); grid-auto-rows: 170px; gap: 14px; grid-auto-flow: dense; }
@@ -188,9 +166,7 @@ const SIZE_LABEL: Record<WidgetSize, string> = { s: tr('Small'), m: tr('Medium')
     @media (max-width: 1100px) { .grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
     @media (max-width: 860px) {
       hx-page-header { padding-left: 56px; }
-      .ask, .lbl { display: none; }
       .body { padding: 14px 12px 28px; }
-      .tabs { padding: 6px 12px 0; }
       .grid { grid-template-columns: minmax(0, 1fr); grid-auto-rows: auto; }
       .cell { grid-column: span 1 !important; grid-row: span 1 !important; min-height: 150px; }
       .cell.empty { min-height: 0; }
@@ -204,15 +180,7 @@ export class DashboardPageComponent {
   private dialogs = inject(DialogService);
   private assistant = inject(AssistantService);
   private toasts = inject(ToastService);
-  live = inject(LiveVoiceService);
   readonly sizeLabel = SIZE_LABEL;
-
-  /** «Talk» from the Home (brainstorm C12): the live overlay follows you on every page. */
-  toggleLive(): void {
-    if (this.live.on) { this.live.stop(); return; }
-    void this.live.start().then(() => { if (this.live.error()) this.toasts.error(this.live.error()); });
-  }
-
   private routeId = toSignal(this.route.paramMap.pipe(map(p => p.get('id') ?? 'home')), { initialValue: 'home' });
   readonly current = computed<Dashboard | undefined>(() =>
     this.plugins.dashboards().find(d => d.id === this.routeId()) ?? (this.routeId() === 'home' ? this.plugins.dashboards()[0] : undefined));
@@ -228,7 +196,7 @@ export class DashboardPageComponent {
     return this.isHome() ? tr('Your quick actions and the modules\' widgets') : '';
   });
   readonly menuItems = computed(() => [
-    ...(this.phone() ? [{ id: 'ask', label: tr('Create with {assistant}'), icon: 'sparkle' }] : []),
+    { id: 'ask', label: tr('Create with {assistant}'), icon: 'sparkle' },
     { id: 'new', label: tr('New dashboard'), icon: 'plus' },
     ...(this.current() && !this.isHome() ? [{ id: 'rename', label: tr('Rename'), icon: 'edit' }, { id: 'delete', label: tr('Delete'), icon: 'trash', danger: true }] : []),
   ]);

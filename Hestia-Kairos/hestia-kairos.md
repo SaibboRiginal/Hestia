@@ -37,7 +37,7 @@ due day, amount, recurrence, lead time and a practical advice
 
 ## WebUI plugin
 
-Pages **Scadenze** (`kairos-list`: proposals from mail to confirm or dismiss, next 30 days, later, done; «Done», «After», new deadline) and **Scadenza** (`deadline/:id`: edit, advice, delete); widget «Deadlines» (only the deadlines: title and link to the page are the frame's). Built from `ui/` in the image (`hestia_common.module_kit` `kit.webui`).
+Pages **Scadenze** (place `agenda`: in the Agenda panel; `kairos-list`: proposals from mail to confirm or dismiss, next 30 days, later, done; «Done», «After», new deadline) and **Scadenza** (`deadline/:id`: edit, advice, delete); widget «Deadlines» (only the deadlines: title and link to the page are the frame's). Built from `ui/` in the image (`hestia_common.module_kit` `kit.webui`).
 
 ## Tests
 

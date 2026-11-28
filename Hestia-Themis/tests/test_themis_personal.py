@@ -200,3 +200,15 @@ def test_localize_walks_lists_under_kept_keys(monkeypatch):
     assert out["args"] == {"q": "Deliveries"}            # the owner's data stays as it is
     values["themis.personal.language"] = "en"
     assert i18n.localize({"area_label": "alt::Day"}) == {"area_label": "Day"}
+
+
+@pytest.mark.unit
+def test_localize_keeps_page_ids_of_a_plugin_catalog(monkeypatch):
+    """Dossier 2026-11-27-webui-rethink: a page's place, parent and local id are ids; «system» or «today» translated
+    to Italian broke the WebUI navigation (unknown place) and the sub-page tabs."""
+    from hestia_common import i18n
+    monkeypatch.setattr(i18n, "_reader", {"themis.personal.language": "it"}.get)
+    out = i18n.localize({"page": [{"label": "Today", "place": "system", "parent": "today", "local_id": "today",
+                                   "element": "x-today", "open_page": "today"}]})
+    assert out["page"] == [{"label": "Oggi", "place": "system", "parent": "today", "local_id": "today",
+                            "element": "x-today", "open_page": "today"}]

@@ -139,3 +139,12 @@ class TestHubCatalog:
         cat = disc.discover_catalog(reg, client="webui", types=["page"])
         assert cat["modules"][0]["online"] is False
         assert len(cat["contributions"]["webui"]["page"]) == 2
+
+
+@pytest.mark.unit
+def test_page_place_is_declared_and_checked():
+    """A page says where it lives in the WebUI (rail/panel); an unknown place is refused at import."""
+    assert page("week", "Your week", element="x-week", place="agenda")["place"] == "agenda"
+    assert page("houses", "House hunting", element="x-houses")["place"] == ""
+    with pytest.raises(ValueError):
+        page("x", "X", element="x-x", place="sidebar")

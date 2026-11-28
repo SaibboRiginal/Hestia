@@ -56,13 +56,13 @@ def _dist_dir() -> Path:
     return here / "ui" / "dist"
 
 
-plugin = PluginClient("scout", title="alt::Houses", icon="home", color="amber",
+plugin = PluginClient("scout", title="House hunting", icon="home", color="amber",
                       description="Houses found in the listing emails: list, favourites, statistics.",
                       dist=_dist_dir(), version=os.getenv("SCOUT_SERVICE_VERSION", "1.0.0"))
 plugin.webui(
     entry="scout.js", api_prefix="/api/ui/",
     pages=[
-        page("houses", "Houses", element="scout-listings", icon="home", order=20,
+        page("houses", "House hunting", element="scout-listings", icon="map-pin", order=20,
              help="All the houses found: filters, favourites, discarded."),
         page("houses/:id", "Listing", element="scout-listing", parent="houses", detail=True),
         page("stats", "House statistics", element="scout-stats", icon="chart", order=21, parent="houses",

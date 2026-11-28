@@ -243,7 +243,7 @@ Declared in `app/main.py` (`hestia_common.plugin_client`, `kind="core"`, `api_pr
 | page (order 130) | `thoughts` → `<athena-thoughts>` | status (loop on/off, strategist, threshold), open commitments (Fatto / Ignora → `/commitments/{id}/resolve`), each cycle: 1 Osserva (services, down, errors, domains, weak spots, presence) · 2 Pensa · 3 Filtra (threshold) · 4 Agisce, and every candidate with score vs threshold, the 5 factor bars, the gate reason and the outcome. *Pensa ora* → `POST /think`, then polls until the cycle ends and opens it. Athena down → «Athena not reachable» |
 | page (order 131) | `signals` → `<athena-signals>` | active signals per area (severity icon + tone, «Open» opens the module page), links between areas, recent observations, weekly series charts; area filter |
 | widget (auto) | `latest` → `<athena-last-widget>` (m/l) | «Latest thought»: last cycle, best candidate, accepted/total |
-| quick action | `pensa` «Make Athena think» | `POST /api/athena/think` |
+| quick action | `pensa` «Think now» | `POST /api/athena/think` |
 | page (order 133) | `learned` → `<athena-learning>` | «What I learned»: the learning log (added, merged, let go, weaker) with the owner's quote and «Cancel» (`POST /learning/{id}/undo`; an edit made after wins), pending clean-up proposals (`GET /memory/proposals`, «Apply» / «Leave») and «Review what you know about me» (`POST /memory/review`); proposal notifications link here |
 
 Pensieri has a **Vita / Sistema / Ti scrive** switch (default Vita; «Writes to you» and the card «Collecting evidence» in Sistema: see above): a life cycle shows 1 Legge i segnali · 2 Collega · 3

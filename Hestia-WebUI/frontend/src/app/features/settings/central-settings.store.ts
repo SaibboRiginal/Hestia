@@ -5,9 +5,20 @@ import {
 } from './central-settings.api';
 import { tr } from '../../core/i18n';
 
-/** Pretty module names (Hub service names are lowercase ids). */
+/** People's names of the modules (mirror of hestia_common.areas.MODULE_LABELS): the owner never reads a module id. */
+const MODULE_LABELS: Record<string, string> = {
+  hub: tr('System map'), archive: tr('Archive'), argus: tr('System health'), athena: tr('Thoughts'), chronos: tr('Agenda'),
+  hecate: tr('Accounts and devices'), hephaestus: tr('Development'), hermes: tr('Notifications'), iris: tr('Email'),
+  metis: tr('Improvement'), oracle: tr('Assistant'), themis: tr('Settings'), mcp: tr('Commands'), echo: tr('Voice'),
+  atlas: tr('Web search'), scout: tr('House hunting'), hercules: tr('Training'), hygieia: tr('Self care'),
+  wardrobe: tr('Wardrobe'), plutus: tr('Expenses'), kairos: tr('Deadlines'), hera: tr('People'), demeter: tr('Nutrition'),
+  lares: tr('Home'), apollo: tr('Images'), aphrodite: tr('Look'), calliope: tr('Documents'), psyche: tr('Mood'),
+  webui: tr('Site'), telegram: 'Telegram', dummy: tr('alt::Test'),
+};
+
+/** People's name of a module (Hub service names are lowercase ids); an unknown one is capitalised. */
 export function moduleLabel(id: string): string {
-  return id ? id.charAt(0).toUpperCase() + id.slice(1) : id;
+  return MODULE_LABELS[(id || '').toLowerCase()] ?? (id ? id.charAt(0).toUpperCase() + id.slice(1) : id);
 }
 
 /** Lowercase, accent-free text for search. */

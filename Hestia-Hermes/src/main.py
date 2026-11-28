@@ -61,7 +61,7 @@ ui = PluginClient("hermes", title="Notifications", icon="bell", color="teal", ki
                   description="Notifications and where they arrived: held back, silent, withdrawn, answered.",
                   version=SERVICE_VERSION)
 ui.webui(entry="hermes.js", api_prefix="/api/ui/",
-         pages=[page("notifications", "Notifications", element="hermes-inbox", icon="bell", order=140,
+         pages=[page("notifications", "Notifications", element="hermes-inbox", icon="bell", order=140, place="notifications",
                      badge={"source": "/api/ui/inbox/counts", "field": "unread"},
                      help="The list of notifications, the same on every client (read here = read on Telegram): to read, to answer, all; the buttons answer the module that asked."),
                 page("deliveries", "Deliveries", element="hermes-deliveries", icon="send", order=141, parent="notifications",

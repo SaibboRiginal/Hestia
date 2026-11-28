@@ -196,6 +196,6 @@ app.include_router(transfer.router())
 kit.caps.update({"special_moment_endpoint": f"{API}/moment"})
 kit.capabilities(transfer.capabilities)
 kit.webui(icon="palette", color="pink", description="Holiday, season and special-day themes, a little pet.",
-          pages=[page("look", "Look", element="aphrodite-look", icon="palette", order=220,
+          pages=[page("look", "Look", element="aphrodite-look", icon="palette", order=220, place="system",
                       help="The site changes by itself with holidays, seasons and your special days: here you see what is on now and why, turn themes off, choose and create the little pet, edit the profiles.")])
 kit.finish()
