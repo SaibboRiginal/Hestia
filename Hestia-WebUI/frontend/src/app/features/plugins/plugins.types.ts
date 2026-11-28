@@ -74,6 +74,15 @@ export interface PluginConnection extends Contribution {
   source: string;        // GET under the module's api_prefix → {items}
 }
 
+/** A search provider (catalog type «search», hestia_common.search): GET path?q=&limit= → {items: SearchHit[]}. */
+export interface PluginSearch extends Contribution {
+  path: string;
+  icon: string;
+  order: number;
+}
+/** One result of a provider: `link` = a page of the module («person/12») or `chat:<session_id>`. */
+export interface SearchHit { title: string; hint: string; icon: string; link: string; }
+
 export interface PluginBundle { id: string; module: string; entry: string; api_prefix: string; sdk: string; version: string; online: boolean; }
 
 export interface PluginCatalog {
@@ -81,7 +90,7 @@ export interface PluginCatalog {
   ui_revision: string;
   modules: PluginModule[];
   contributions: { webui?: { page?: PluginPage[]; widget?: PluginWidget[]; quick_action?: QuickActionDef[];
-                             settings_panel?: PluginSettingsPanel[]; connection?: PluginConnection[];
+                             settings_panel?: PluginSettingsPanel[]; connection?: PluginConnection[]; search?: PluginSearch[];
                              bundle?: PluginBundle[] } };
 }
 

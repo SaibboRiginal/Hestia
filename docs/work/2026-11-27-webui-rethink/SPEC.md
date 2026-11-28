@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Version** | 1.2 |
+| **Version** | 1.3 |
 | **Source** | user via WebUI project chat (Marko, 2026-11-27): «non so dove sia cosa, ci sono 20000 voci, la sidebar e logo sono stile claude, non ha uno stile moderno, vivace e facile da usare» |
 | **Status** | Approved («dai iniziamo da qui», 2026-11-27 22:24) — piece 1 in progress |
 
@@ -66,10 +66,11 @@ check for module names in people texts.
 - One box (Ctrl+K or `/` from any page): actions, pages, settings, conversations (message text), memories, people,
   deadlines, workouts, expenses, clothes, documents, email; quick maths and dates.
 - Contract: a module declares a search provider (`hestia_common` plugin contribution `search`, GET under its
-  api_prefix `?q=` → items `{title, hint, icon, link}`); the WebUI backend asks all providers through Hub in parallel
-  with a short timeout and streams results; a slow module never blocks the others.
-- Tab (or a leading «?») = ask: short answer under the box via Oracle `/api/llm/chat` (fast profile), tools allowed,
-  one «Quick questions» conversation; «Continue in chat» opens it.
+  api_prefix `?q=` → items `{title, hint, icon, link}`); the WebUI asks all providers in parallel through its plugin
+  proxy (Hub), 2.5 s each, and shows each group as it arrives; a slow module never blocks the others (v1.3).
+- Tab (or a leading «?») = ask: short answer under the box through Oracle's chat in Quick mode (fast models, the
+  chat's tools; `POST /api/webui/chat/quick`), one «Quick questions» conversation per browser; «Continue in chat»
+  opens it (v1.3).
 
 ### Piece 4 — mascot link (site side; characters stay in the mascot thread)
 

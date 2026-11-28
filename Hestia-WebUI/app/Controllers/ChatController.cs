@@ -2,6 +2,7 @@ namespace Hestia.WebUI.Controllers;
 
 using System.Text.Json;
 using Microsoft.AspNetCore.Mvc;
+using Hestia.WebUI.Models;
 using Hestia.WebUI.Services;
 
 /// <summary>
@@ -140,6 +141,42 @@ public class ChatController : ControllerBase
             await Response.Body.FlushAsync();
         }
 
+        return new EmptyResult();
+    }
+
+    public record QuickAsk(string? Message, string? SessionId);
+
+    /// <summary>
+    /// «Ask on the fly» from the search box (Tab or a leading «?», docs/work/2026-11-27-webui-rethink piece 3): one
+    /// short answer in the browser's «Quick questions» conversation, Quick mode (fast models, the chat's tools).
+    /// NDJSON like the chat (<c>token</c>, <c>final</c>, <c>error</c>); the conversation is saved like any other, so
+    /// «Continue in chat» opens it.
+    /// </summary>
+    [HttpPost("quick")]
+    public async Task<IActionResult> Quick([FromBody] QuickAsk req)
+    {
+        var message = req.Message?.Trim() ?? "";
+        if (message.Length == 0) return BadRequest(new { detail = "empty message" });
+        if (message.Length > 2000) message = message[..2000];
+        var sid = string.IsNullOrWhiteSpace(req.SessionId) ? Guid.NewGuid().ToString("N") : req.SessionId.Trim();
+        var instructions = _sessionManager.BuildClientInstructions() +
+            "\nQuick question from the search box: answer in one to three short sentences, no lists or headings." +
+            " Use a tool only if the answer needs one.";
+        _logger.LogInformation("event=quick_ask_start session={S} msg_len={L}", sid, message.Length);
+
+        Response.ContentType = "application/x-ndjson";
+        Response.Headers["Cache-Control"] = "no-cache";
+        Response.Headers["X-Content-Type-Options"] = "nosniff";
+        await foreach (var evt in _oracleStream.StreamChatAsync(message, sid, "quick", "generic", instructions,
+            HttpContext.RequestAborted))
+        {
+            var frame = evt.Type == OracleStreamService.UnavailableType
+                ? new OracleEvent("error", Content: Texts.Tr("I can't answer right now: try again later."))
+                : evt;
+            await Response.WriteAsync(JsonSerializer.Serialize(frame) + "\n");
+            await Response.Body.FlushAsync();
+            if (frame.Type == "error") break;
+        }
         return new EmptyResult();
     }
 }

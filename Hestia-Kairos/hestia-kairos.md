@@ -57,3 +57,7 @@ Pages **Scadenze** (place `agenda`: in the Agenda panel; `kairos-list`: proposal
 ### Page pattern (2026-11-28)
 
 The plugin pages use the shared page header (`hxk-page-head`: title, one line, one primary action, «Ask») and, where a list can be empty, the shared empty state (`hxk-empty`, with an example to say in chat); people texts never name a module. Dossier `docs/work/2026-11-27-webui-rethink` piece 2.
+
+### Search everything (2026-11-28)
+
+Provider «Deadlines» for the WebUI «Search everything» box: `GET /api/deadlines/search/items?q=` (open and done deadlines by title, notes, category; opens the deadline). Dossier `docs/work/2026-11-27-webui-rethink` piece 3.

@@ -286,8 +286,8 @@ def discover_commands(registry: ServiceRegistry, client_key: str = "") -> list[d
 # The catalog is one view, organized by client × type, over tools, commands and UI contributions.
 _UI_MANIFEST_TTL = 300.0
 _ONLINE_WINDOW = 180.0          # modules re-register every 60 s
-CATALOG_TYPES = ("tool", "command", "page", "widget", "quick_action", "settings_panel", "connection")
-UI_TYPES = ("page", "widget", "quick_action", "settings_panel", "connection")
+CATALOG_TYPES = ("tool", "command", "page", "widget", "quick_action", "settings_panel", "connection", "search")
+UI_TYPES = ("page", "widget", "quick_action", "settings_panel", "connection", "search")
 # Command discovery predates the catalog: the WebUI's commands use the client key "ui".
 _COMMAND_CLIENT_KEY = {"webui": "ui"}
 

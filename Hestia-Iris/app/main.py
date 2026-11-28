@@ -28,7 +28,8 @@ except ModuleNotFoundError:
     from hestia_common.startup_utils import hub_health_url, wait_for_http_ready
 
 from dispatch import Dispatcher
-from hestia_common.plugin_client import PluginClient, page, quick_action
+from hestia_common import search as finder
+from hestia_common.plugin_client import PluginClient, page, quick_action, search
 from hestia_common.settings_client import SettingsClient
 
 logger, log_buffer = setup_service_logging("hestia_iris")
@@ -136,7 +137,8 @@ ui.webui(entry="iris.js", api_prefix="/api/email/",
          pages=[page("email", "Email", element="iris-email", icon="mail", order=145, place="space",
                      help="One mailbox check for all of {assistant}: Iris passes to every module the emails it asked for (Scout the listings, Expenses the PayPal receipts). Here you see subscriptions, latest deliveries and the state of the check, and you can check right away.")],
          quick_actions=[quick_action("check", "Check emails", "POST", "/api/email/check", icon="refresh",
-                                     group="System", order=145)])
+                                     group="System", order=145)],
+         searches=[search("mail", "Email", "/api/email/search", icon="mail", order=100)])
 app.include_router(ui.router())
 
 def _hecate(method: str, path: str, *, query: dict | None = None, body: dict | None = None,
@@ -310,6 +312,22 @@ def email_messages(q: str = "", since: str | None = None,
         return {"status": "error", "query": q, "count": 0, "messages": [],
                 "error": data.get("error"), "action_required": data.get("action_required")}
     return {"status": "ok", "query": q, "backend": data.get("backend"), "count": len(rows), "messages": rows}
+
+
+@app.get("/api/email/search")
+def email_search_box(q: str = "", limit: int = Query(default=5, ge=1, le=20)) -> dict[str, Any]:
+    """«Search everything» (dossier docs/work/2026-11-27-webui-rethink piece 3): the mailbox, searched by the
+    provider; short timeout, since the box never waits for a slow source."""
+    if not finder.words(q):
+        return {"items": []}
+    try:
+        data = _hecate("GET", "api/gateway/email/messages", query={"q": q, "limit": limit}, timeout=4)
+    except HTTPException as exc:
+        logger.info("[🔄] event=email_search_box_failed status=%s", exc.status_code)
+        return {"items": []}
+    return {"items": [finder.hit(m.get("subject") or m.get("snippet"), icon="mail", link="email",
+                                 hint=" · ".join(x for x in (str(m.get("from") or ""), str(m.get("date") or "")[:16]) if x))
+                      for m in (data.get("messages") or [])[:limit]]}
 
 
 @app.post("/api/email/send")

@@ -133,6 +133,9 @@ transfer = Transfer("calliope", kit.hub, sections=[
 ])
 app.include_router(transfer.router())
 kit.capabilities(transfer.capabilities)
+kit.search("Documents", rows=lambda: docs.list(200), title=lambda d: d.get("title"), icon="file", order=80,
+           hint=lambda d: f"{str(d.get('format') or '').upper()} · {str(d.get('created_at') or '')[:10]}", link="documents",
+           more=lambda d: [d.get("name")])
 kit.webui(icon="file", color="indigo", description="Real PDF, Word and Excel files, checked before delivery.",
           pages=[page("documents", "Documents", element="calliope-docs", icon="file", order=200,
                       help="The documents the assistant created for you (PDF, Word, Excel): download them or create a new one. You can also ask in chat: «make me a PDF with…».")])

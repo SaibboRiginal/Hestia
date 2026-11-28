@@ -3780,6 +3780,18 @@ paths:
         "200":
           description: OK
 
+  /api/email/search:
+    get:
+      tags: [Iris]
+      summary: "«Search everything» provider: the mailbox (provider search, 4 s timeout)"
+      servers:
+        - url: http://localhost:19012
+      parameters:
+        - {name: q, in: query, schema: {type: string}, description: "Every word must appear (case and accents ignored); empty = no items"}
+        - {name: limit, in: query, schema: {type: integer, default: 5, maximum: 20}}
+      responses:
+        "200": {description: "{items: [{title, hint, icon, link}]} — link = a page of the module or chat:<session_id> (hestia_common.search; dossier docs/work/2026-11-27-webui-rethink piece 3)"}
+
   /api/email/inbox:
     get:
       tags: [Iris]
@@ -4969,6 +4981,42 @@ paths:
         - url: http://localhost:19004
       responses:
         "200": {description: "{items, total, display}"}
+
+  /oracle/api/ui/search/chats:
+    get:
+      tags: [Oracle]
+      summary: "«Search everything» provider: conversations by title and message text (real path /api/ui/search/chats)"
+      servers:
+        - url: http://localhost:19004
+      parameters:
+        - {name: q, in: query, schema: {type: string}, description: "Every word must appear (case and accents ignored); empty = no items"}
+        - {name: limit, in: query, schema: {type: integer, default: 5, maximum: 20}}
+      responses:
+        "200": {description: "{items: [{title, hint, icon, link}]} — link = a page of the module or chat:<session_id> (hestia_common.search; dossier docs/work/2026-11-27-webui-rethink piece 3)"}
+
+  /oracle/api/ui/search/memory:
+    get:
+      tags: [Oracle]
+      summary: "«Search everything» provider: what the assistant remembers (real path /api/ui/search/memory)"
+      servers:
+        - url: http://localhost:19004
+      parameters:
+        - {name: q, in: query, schema: {type: string}, description: "Every word must appear (case and accents ignored); empty = no items"}
+        - {name: limit, in: query, schema: {type: integer, default: 5, maximum: 20}}
+      responses:
+        "200": {description: "{items: [{title, hint, icon, link}]} — link = a page of the module or chat:<session_id> (hestia_common.search; dossier docs/work/2026-11-27-webui-rethink piece 3)"}
+
+  /oracle/api/ui/search/files:
+    get:
+      tags: [Oracle]
+      summary: "«Search everything» provider: files shared with the assistant (real path /api/ui/search/files)"
+      servers:
+        - url: http://localhost:19004
+      parameters:
+        - {name: q, in: query, schema: {type: string}, description: "Every word must appear (case and accents ignored); empty = no items"}
+        - {name: limit, in: query, schema: {type: integer, default: 5, maximum: 20}}
+      responses:
+        "200": {description: "{items: [{title, hint, icon, link}]} — link = a page of the module or chat:<session_id> (hestia_common.search; dossier docs/work/2026-11-27-webui-rethink piece 3)"}
 
   /oracle/api/ui/memory:
     get:
@@ -9841,6 +9889,18 @@ paths:
       responses:
         "200": {description: OK}
 
+  /api/hercules/search/workouts:
+    get:
+      tags: [Hercules]
+      summary: "«Search everything» provider: workout plans, then past workouts"
+      servers:
+        - url: http://localhost:19019
+      parameters:
+        - {name: q, in: query, schema: {type: string}, description: "Every word must appear (case and accents ignored); empty = no items"}
+        - {name: limit, in: query, schema: {type: integer, default: 5, maximum: 20}}
+      responses:
+        "200": {description: "{items: [{title, hint, icon, link}]} — link = a page of the module or chat:<session_id> (hestia_common.search; dossier docs/work/2026-11-27-webui-rethink piece 3)"}
+
   /api/hercules/templates:
     get:
       tags: [Hercules]
@@ -10569,6 +10629,18 @@ paths:
       responses:
         "200": {description: OK}
 
+  /api/wardrobe/search/clothes:
+    get:
+      tags: [Wardrobe]
+      summary: "«Search everything» provider: items, then outfits"
+      servers:
+        - url: http://localhost:19017
+      parameters:
+        - {name: q, in: query, schema: {type: string}, description: "Every word must appear (case and accents ignored); empty = no items"}
+        - {name: limit, in: query, schema: {type: integer, default: 5, maximum: 20}}
+      responses:
+        "200": {description: "{items: [{title, hint, icon, link}]} — link = a page of the module or chat:<session_id> (hestia_common.search; dossier docs/work/2026-11-27-webui-rethink piece 3)"}
+
   /api/wardrobe/outfits:
     get:
       tags: [Wardrobe]
@@ -11189,6 +11261,18 @@ paths:
         - {name: id, in: path, required: true, schema: {type: string}}
       responses:
         "200": {description: OK}
+
+  /api/finance/search/transactions:
+    get:
+      tags: [Plutus]
+      summary: "«Search everything» provider: transactions by merchant, description, notes"
+      servers:
+        - url: http://localhost:19020
+      parameters:
+        - {name: q, in: query, schema: {type: string}, description: "Every word must appear (case and accents ignored); empty = no items"}
+        - {name: limit, in: query, schema: {type: integer, default: 5, maximum: 20}}
+      responses:
+        "200": {description: "{items: [{title, hint, icon, link}]} — link = a page of the module or chat:<session_id> (hestia_common.search; dossier docs/work/2026-11-27-webui-rethink piece 3)"}
 
   /api/finance/attachments:
     post:
@@ -13144,6 +13228,24 @@ paths:
       responses:
         "200": {description: "{ok, line}"}
 
+  /api/webui/chat/quick:
+    post:
+      tags: [WebUI]
+      summary: "«Ask on the fly» from the search box: a short answer in the browser's «Quick questions» conversation (Quick mode, the chat's tools)"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [message]
+              properties:
+                message: {type: string, maxLength: 2000}
+                sessionId: {type: string, description: "The «Quick questions» conversation of this browser"}
+      responses:
+        "200": {description: "NDJSON like the chat: token, final, error"}
+        "400": {description: empty message}
+
   /api/webui/chat/compact:
     post:
       tags: [WebUI]
@@ -14665,6 +14767,18 @@ paths:
 
   # ── Hera (port 19025) — tools also as REST under /api/people/tools/<name>; /mcp; recap/transfer/settings as every module
 
+  /api/people/search/items:
+    get:
+      tags: [Hera]
+      summary: "«Search everything» provider: people by name, relation, notes, tastes, gift ideas"
+      servers:
+        - url: http://localhost:19025
+      parameters:
+        - {name: q, in: query, schema: {type: string}, description: "Every word must appear (case and accents ignored); empty = no items"}
+        - {name: limit, in: query, schema: {type: integer, default: 5, maximum: 20}}
+      responses:
+        "200": {description: "{items: [{title, hint, icon, link}]} — link = a page of the module or chat:<session_id> (hestia_common.search; dossier docs/work/2026-11-27-webui-rethink piece 3)"}
+
   /api/people:
     get:
       tags: [Hera]
@@ -14948,6 +15062,18 @@ paths:
 
   # ── Calliope (port 19027) — tools also as REST under /api/office/tools/<name>; /mcp; recap/transfer/settings as every module
 
+  /api/office/search/items:
+    get:
+      tags: [Calliope]
+      summary: "«Search everything» provider: documents made by the assistant"
+      servers:
+        - url: http://localhost:19027
+      parameters:
+        - {name: q, in: query, schema: {type: string}, description: "Every word must appear (case and accents ignored); empty = no items"}
+        - {name: limit, in: query, schema: {type: integer, default: 5, maximum: 20}}
+      responses:
+        "200": {description: "{items: [{title, hint, icon, link}]} — link = a page of the module or chat:<session_id> (hestia_common.search; dossier docs/work/2026-11-27-webui-rethink piece 3)"}
+
   /api/office:
     get:
       tags: [Calliope]
@@ -15012,6 +15138,18 @@ paths:
 
 
   # ── Kairos (port 19028) — tools also as REST under /api/deadlines/tools/<name>; /mcp; recap/transfer/settings as every module
+
+  /api/deadlines/search/items:
+    get:
+      tags: [Kairos]
+      summary: "«Search everything» provider: deadlines (open and done) by title, notes, category"
+      servers:
+        - url: http://localhost:19028
+      parameters:
+        - {name: q, in: query, schema: {type: string}, description: "Every word must appear (case and accents ignored); empty = no items"}
+        - {name: limit, in: query, schema: {type: integer, default: 5, maximum: 20}}
+      responses:
+        "200": {description: "{items: [{title, hint, icon, link}]} — link = a page of the module or chat:<session_id> (hestia_common.search; dossier docs/work/2026-11-27-webui-rethink piece 3)"}
 
   /api/deadlines:
     get:

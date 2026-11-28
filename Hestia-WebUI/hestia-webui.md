@@ -115,8 +115,12 @@ Oracle and streams the NDJSON response back with proper line delimiters (Hub add
   `notifications` · `system`; default space for domain modules, system for core ones). Sub-pages are tabs at the top of
   their module page, never list entries. `/spaces` = tiles of every space. Phone: bottom bar Oggi · Chat · Agenda ·
   Spazi · Altro. Module pages at `/p/<module>/<page>`; plugin pages may show a `badge` counter (DESIGN-SYSTEM §9).
-  Ctrl/⌘+K palette: «Now», quick actions,
-  module pages, dashboards, WebUI pages and, while typing, every setting.
+  **Search everything** (Ctrl/⌘+K or `/`, `features/plugins/command-palette.component.ts`): «Now», quick actions,
+  module pages, dashboards, WebUI pages and, while typing, quick maths and dates (`quick-answers.ts`: «12*3»,
+  «200 × 15%», «+10», «3/5/2027»), what the modules find in their own data (catalog type `search`: each provider is
+  asked through the plugin proxy in parallel, 2.5 s each, and its group appears when it answers) and every setting.
+  **Ask on the fly**: Tab or a leading «?» turns the box into a question; `POST /api/webui/chat/quick` streams a short
+  Quick-mode answer (the chat's tools) in the browser's «Quick questions» conversation; «Continue in chat» opens it.
 - Client config (Themis, scope user, layer `client`): `webui.plugins.hidden`, `webui.plugins.order`,
   `webui.home.quick` (pinned chips), `webui.dashboards` (`{dashboards: [...]}`), `webui.plugins.prefs`,
   `webui.sidebar.pinned` (pages pinned on the rail, in order). Panel open/closed and width are per browser.

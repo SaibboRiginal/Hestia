@@ -619,3 +619,14 @@ No library change.
 ### WebUI SDK: page header and empty state (2026-11-28)
 
 `hxk-page-head` and `hxk-empty` join the kit (README of `webui-sdk`); both send `hxk-ask`, which `HestiaElement` turns into `host.assistant(...)` with the page as context. Dossier `docs/work/2026-11-27-webui-rethink` piece 2.
+
+### Search providers (`hestia_common.search`, 2026-11-28)
+
+What a module gives to the WebUI «Search everything» box (dossier `docs/work/2026-11-27-webui-rethink` piece 3).
+`plugin_client.search(id, label, path, icon=, order=)` declares the provider (contribution type `search`, path under
+the `api_prefix`; `webui(searches=[...])`); `ModuleKit.search(label, rows=, title=, link=, hint=, icon=, more=)`
+declares it and adds the route `GET <api>/search/<id>` in one call (before `kit.webui`). The answer is
+`search.results(q, rows, title=, link=, hint=, icon=, more=, limit=)` → `{items: [{title, hint, icon, link}]}`:
+every word of the query must appear (case and accents ignored), titles that start with the query first, at most 20.
+`link` is a page of the module («person/12») or `chat:<session_id>`. Providers today: conversations, memory and
+shared files (Oracle), people, deadlines, documents, workouts, expenses, clothes, email.

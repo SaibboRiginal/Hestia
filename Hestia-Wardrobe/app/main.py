@@ -29,7 +29,8 @@ from hestia_common import recap
 from hestia_common.display import action, display, item
 from hestia_common.agenda_client import AgendaClient, job_rule
 from hestia_common.oracle_usecases import capabilities as llm_capabilities, usecase as llm_usecase
-from hestia_common.plugin_client import PluginClient, page, quick_action, widget
+from hestia_common import search as finder
+from hestia_common.plugin_client import PluginClient, page, quick_action, search, widget
 from hestia_common.reminders import reminder_event, reminder_settings, voice_setting
 from hestia_common.transfer import StoreSection, Transfer
 from hestia_common.settings_client import SettingsClient, setting
@@ -215,6 +216,21 @@ def photo_file(photo_id: str, size: str = "thumb"):
 
 
 # ── outfits ──────────────────────────────────────────────────────────────────
+@app.get(f"{API}/search/clothes")
+def search_clothes(q: str = "", limit: int = 5):
+    """«Search everything» (dossier docs/work/2026-11-27-webui-rethink piece 3): items (the wardrobe's own search:
+    name, brand, colours, materials, tags) and then outfits."""
+    if not finder.words(q):
+        return {"items": []}
+    _refresh()
+    cap = max(1, min(int(limit or 5), finder.MAX_LIMIT))
+    hits = [finder.hit(p.get("name"), hint=p.get("brand") or "", icon="shirt", link=f"items/{p['id']}")
+            for p in wardrobe.pieces(q=q, limit=cap)["items"]]
+    hits += [finder.hit(o.get("name"), hint=tr("Outfit"), icon="grid", link=f"outfit/{o['id']}")
+             for o in wardrobe.outfits(q=q, limit=cap)["items"]]
+    return {"items": hits[:cap]}
+
+
 @app.get(f"{API}/outfits")
 def outfits(q: str = "", season: str = "", occasion: str = "", style: str = "", favorite: bool | None = None,
             include_archived: bool = False, sort: str = "recent", limit: int = 300, offset: int = 0):
@@ -524,6 +540,7 @@ ui = PluginClient("wardrobe", title="Wardrobe", icon="shirt", color="purple",
                   description="Items, accessories, outfits and what to wear.", dist=UI_DIST, version=SERVICE_VERSION)
 ui.webui(
     entry="wardrobe.js", api_prefix=f"{API}/",
+    searches=[search("clothes", "Clothes", f"{API}/search/clothes", icon="shirt", order=70)],
     pages=[page("pieces", "Wardrobe", element="wardrobe-pieces", icon="shirt", order=50,
                 help="All your items with photos, filters and search."),
            page("items/:id", "Item", element="wardrobe-piece", detail=True, parent="pieces"),

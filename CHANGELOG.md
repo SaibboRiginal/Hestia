@@ -4,6 +4,7 @@ One line per finished task (details in `docs/work/<task>/`).
 
 ## 2026-11-28
 
+- WebUI rethought, piece 3: one box finds everything (Ctrl+K or `/`): pages, actions, settings, conversations, memories, people, deadlines, workouts, expenses, clothes, documents, email, plus quick maths and dates; Tab asks the assistant a quick question right there, «Continue in chat» opens it → `docs/work/2026-11-27-webui-rethink/` [ext-chat]
 - WebUI rethought, piece 2: every page has the same header (title, one line, one main button, «Ask» to talk about the page), every empty page says what to do with an example to say in chat, no more technical numbers or module names for people (and a check that blocks them) → `docs/work/2026-11-27-webui-rethink/` [ext-chat]
 
 ## 2026-11-27

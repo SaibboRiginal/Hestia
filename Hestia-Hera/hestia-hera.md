@@ -57,3 +57,7 @@ Pages **People** (`hera-people`: list, search, new person, upcoming dates) and *
 ### Page pattern (2026-11-28)
 
 The plugin pages use the shared page header (`hxk-page-head`: title, one line, one primary action, «Ask») and, where a list can be empty, the shared empty state (`hxk-empty`, with an example to say in chat); people texts never name a module. Dossier `docs/work/2026-11-27-webui-rethink` piece 2.
+
+### Search everything (2026-11-28)
+
+Provider «People» for the WebUI «Search everything» box: `GET /api/people/search/items?q=` (name, relation, notes, tastes, gift ideas; opens the person). Dossier `docs/work/2026-11-27-webui-rethink` piece 3.
